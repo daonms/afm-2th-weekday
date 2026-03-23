@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:www.10000recipe.com)",
+      "WebFetch(domain:wtable.co.kr)",
+      "Bash(curl -sL \"https://static.wtable.co.kr/image/production/service/recipe/1067/520ba5e6-5495-4659-b065-09d6fa42352e.jpg\" -o \"D:/다온/DAON_AI - 문서/afm-2th-weekday/recipes/thumbnails/bunsik-tteokbokki.jpg\")",
+      "WebFetch(domain:namu.wiki)",
+      "WebFetch(domain:www.recipio.kr)",
+      "WebFetch(domain:www.gqkorea.co.kr)"
+    ]
+  }
+}
