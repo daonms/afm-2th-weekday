@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HEX 컬러 변형 생성기</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+
+    body {
+      background-color: #000000;
+      color: #f5f5f7;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+
+    .swatch-animate {
+      animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      opacity: 0;
+    }
+
+    .toast-animate {
+      animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+                 fadeOut 0.3s ease 1.5s forwards;
+    }
+
+    input[type="color"] {
+      -webkit-appearance: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 0;
+      border-radius: 12px;
+    }
+
+    input[type="color"]::-webkit-color-swatch {
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    // ========================================
+    // 1. React Hooks Destructuring
+    // ========================================
+    const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+    // ========================================
+    // 2. Utility Functions
+    // ========================================
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      if (!result) return null;
+      return {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      };
+    }
+
+    function rgbToHex(r, g, b) {
+      return '#' + [r, g, b].map(x => {
+        const hex = Math.max(0, Math.min(255, Math.round(x))).toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      }).join('').toUpperCase();
+    }
+
+    function generateVariants(hex) {
+      const rgb = hexToRgb(hex);
+      if (!rgb) return [];
+
+      const variants = [];
+
+      // 5 lighter variants (from lightest to less light)
+      for (let i = 5; i >= 1; i--) {
+        const factor = i / 6;
+        const r = Math.round(rgb.r + (255 - rgb.r) * factor);
+        const g = Math.round(rgb.g + (255 - rgb.g) * factor);
+        const b = Math.round(rgb.b + (255 - rgb.b) * factor);
+        variants.push({
+          hex: rgbToHex(r, g, b),
+          rgb: { r, g, b },
+          label: `+${i * 15}%`,
+          isOriginal: false,
+        });
+      }
+
+      // Original
+      variants.push({
+        hex: rgbToHex(rgb.r, rgb.g, rgb.b),
+        rgb,
+        label: '원본',
+        isOriginal: true,
+      });
+
+      // 5 darker variants (from less dark to darkest)
+      for (let i = 1; i <= 5; i++) {
+        const factor = 1 - (i / 6);
+        const r = Math.round(rgb.r * factor);
+        const g = Math.round(rgb.g * factor);
+        const b = Math.round(rgb.b * factor);
+        variants.push({
+          hex: rgbToHex(r, g, b),
+          rgb: { r, g, b },
+          label: `-${i * 15}%`,
+          isOriginal: false,
+        });
+      }
+
+      return variants;
+    }
+
+    function getContrastColor(hex) {
+      const rgb = hexToRgb(hex);
+      if (!rgb) return '#FFFFFF';
+      const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+      return luminance > 0.5 ? '#000000' : '#FFFFFF';
+    }
+
+    // ========================================
+    // 3. Design System Components
+    // ========================================
+    function Card({ children, className = '' }) {
+      return (
+        <div className={`glass rounded-2xl ${className}`}>
+          {children}
+        </div>
+      );
+    }
+
+    function Toast({ message, visible }) {
+      if (!visible) return null;
+      return (
+        <div
+          className="fixed top-6 left-1/2 z-50 toast-animate"
+          role="alert"
+        >
+          <div className="glass px-6 py-3 rounded-full shadow-2xl flex items-center gap-2">
+            <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="text-sm font-medium text-white">{message}</span>
+          </div>
+        </div>
+      );
+    }
+
+    function ColorSwatch({ variant, index, onCopy, onSelect }) {
+      const contrastColor = getContrastColor(variant.hex);
+      const contrastSub = contrastColor === '#000000'
+        ? 'rgba(0,0,0,0.5)'
+        : 'rgba(255,255,255,0.6)';
+
+      return (
+        <button
+          onClick={() => {
+            onCopy(variant.hex);
+            if (!variant.isOriginal) onSelect(variant.hex);
+          }}
+          className="swatch-animate group cursor-pointer rounded-2xl overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-black/50 focus:outline-none focus:ring-2 focus:ring-white/30 focus:ring-offset-2 focus:ring-offset-black"
+          style={{ animationDelay: `${index * 60}ms` }}
+          aria-label={`${variant.hex} 선택`}
+          title="클릭하면 이 색상으로 변형 생성"
+        >
+          <div
+            className="relative w-full aspect-[3/4] flex flex-col items-center justify-end p-4 transition-all duration-300"
+            style={{ backgroundColor: variant.hex }}
+          >
+            {variant.isOriginal && (
+              <div
+                className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wider uppercase"
+                style={{
+                  backgroundColor: contrastColor === '#000000' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)',
+                  color: contrastColor,
+                }}
+              >
+                원본
+              </div>
+            )}
+            {!variant.isOriginal && (
+              <div
+                className="absolute top-3 right-3 text-xs font-medium opacity-60"
+                style={{ color: contrastColor }}
+              >
+                {variant.label}
+              </div>
+            )}
+            <div
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+              style={{ color: contrastColor }}
+            >
+              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div className="w-full space-y-1 text-center">
+              <div
+                className="text-xl font-bold tracking-wide"
+                style={{ color: contrastColor }}
+              >
+                {variant.hex}
+              </div>
+              <div
+                className="text-sm font-medium tracking-wide"
+                style={{ color: contrastSub }}
+              >
+                rgb({variant.rgb.r}, {variant.rgb.g}, {variant.rgb.b})
+              </div>
+            </div>
+          </div>
+        </button>
+      );
+    }
+
+    // ========================================
+    // 4. Common/Layout Components
+    // ========================================
+    function Header() {
+      return (
+        <header className="text-center pt-16 pb-8 px-4">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass text-xs font-medium text-white/60 mb-6">
+            <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+            같은 정보, 다른 형태
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-white mb-3">
+            HEX 컬러 변형 생성기
+          </h1>
+          <p className="text-white/40 text-base max-w-md mx-auto leading-relaxed">
+            하나의 색상에서 11가지 밝기 변형을 생성합니다
+          </p>
+        </header>
+      );
+    }
+
+    function Footer() {
+      return (
+        <footer className="text-center py-12 text-white/20 text-xs">
+          <p>색상을 클릭하면 HEX 코드가 클립보드에 복사됩니다</p>
+        </footer>
+      );
+    }
+
+    // ========================================
+    // 5. Page Components
+    // ========================================
+    function ColorGenerator() {
+      const [hexInput, setHexInput] = useState('#3B82F6');
+      const [activeColor, setActiveColor] = useState('#3B82F6');
+      const [toastVisible, setToastVisible] = useState(false);
+      const [toastMessage, setToastMessage] = useState('');
+      const [animationKey, setAnimationKey] = useState(0);
+      const toastTimer = useRef(null);
+
+      const variants = useMemo(() => generateVariants(activeColor), [activeColor]);
+
+      const isValidHex = useCallback((hex) => {
+        return /^#[0-9A-Fa-f]{6}$/.test(hex);
+      }, []);
+
+      const handleTextInput = useCallback((e) => {
+        let value = e.target.value;
+        if (!value.startsWith('#')) {
+          value = '#' + value;
+        }
+        // Limit to 7 characters (#XXXXXX)
+        value = value.slice(0, 7);
+        setHexInput(value);
+
+        if (isValidHex(value)) {
+          setActiveColor(value.toUpperCase());
+          setAnimationKey(prev => prev + 1);
+        }
+      }, [isValidHex]);
+
+      const handleColorPicker = useCallback((e) => {
+        const color = e.target.value.toUpperCase();
+        setHexInput(color);
+        setActiveColor(color);
+        setAnimationKey(prev => prev + 1);
+      }, []);
+
+      const handleSelect = useCallback((hex) => {
+        setHexInput(hex);
+        setActiveColor(hex);
+        setAnimationKey(prev => prev + 1);
+      }, []);
+
+      const handleCopy = useCallback(async (hex) => {
+        try {
+          await navigator.clipboard.writeText(hex);
+          setToastMessage(`${hex} 복사 완료!`);
+        } catch {
+          // Fallback for older browsers
+          const textarea = document.createElement('textarea');
+          textarea.value = hex;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+          setToastMessage(`${hex} 복사 완료!`);
+        }
+
+        setToastVisible(true);
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        toastTimer.current = setTimeout(() => setToastVisible(false), 2000);
+      }, []);
+
+      const presetColors = [
+        { hex: '#3B82F6', name: '블루' },
+        { hex: '#EF4444', name: '레드' },
+        { hex: '#10B981', name: '그린' },
+        { hex: '#F59E0B', name: '앰버' },
+        { hex: '#8B5CF6', name: '퍼플' },
+        { hex: '#EC4899', name: '핑크' },
+        { hex: '#06B6D4', name: '시안' },
+        { hex: '#F97316', name: '오렌지' },
+      ];
+
+      return (
+        <div className="max-w-6xl mx-auto px-4">
+          <Toast message={toastMessage} visible={toastVisible} />
+
+          {/* Color Input Section */}
+          <Card className="p-6 sm:p-8 mb-8 max-w-2xl mx-auto">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              {/* Color Picker */}
+              <div className="relative flex-shrink-0">
+                <input
+                  type="color"
+                  value={activeColor}
+                  onChange={handleColorPicker}
+                  className="w-16 h-16 rounded-xl cursor-pointer"
+                  aria-label="컬러 피커"
+                />
+              </div>
+
+              {/* Text Input */}
+              <div className="flex-1 w-full">
+                <label className="block text-xs font-medium text-white/40 mb-2 uppercase tracking-wider">
+                  HEX 컬러 코드
+                </label>
+                <input
+                  type="text"
+                  value={hexInput}
+                  onChange={handleTextInput}
+                  placeholder="#3B82F6"
+                  maxLength={7}
+                  className={`w-full bg-white/5 border ${
+                    isValidHex(hexInput)
+                      ? 'border-white/10 focus:border-white/30'
+                      : 'border-red-500/50'
+                  } rounded-xl px-4 py-3 text-lg font-mono text-white placeholder-white/20 outline-none transition-all duration-200`}
+                  aria-label="HEX 컬러 코드 입력"
+                />
+                {!isValidHex(hexInput) && hexInput.length > 1 && (
+                  <p className="text-red-400/70 text-xs mt-1.5">
+                    올바른 HEX 형식: #RRGGBB (예: #3B82F6)
+                  </p>
+                )}
+              </div>
+
+              {/* Current Color Preview */}
+              <div
+                className="w-16 h-16 rounded-xl flex-shrink-0 border border-white/10 hidden sm:block"
+                style={{ backgroundColor: activeColor }}
+                aria-label={`현재 색상: ${activeColor}`}
+              />
+            </div>
+
+            {/* Preset Colors */}
+            <div className="mt-6 pt-6 border-t border-white/5">
+              <p className="text-xs font-medium text-white/30 mb-3 uppercase tracking-wider">
+                프리셋 컬러
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {presetColors.map(({ hex, name }) => (
+                  <button
+                    key={hex}
+                    onClick={() => {
+                      setHexInput(hex);
+                      setActiveColor(hex);
+                      setAnimationKey(prev => prev + 1);
+                    }}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+                      activeColor === hex
+                        ? 'bg-white/15 text-white ring-1 ring-white/20'
+                        : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70'
+                    }`}
+                    aria-label={`${name} 프리셋 선택`}
+                  >
+                    <span
+                      className="w-3 h-3 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: hex }}
+                    />
+                    {name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </Card>
+
+          {/* Gradient Bar */}
+          {variants.length > 0 && (
+            <div className="mb-8 max-w-2xl mx-auto">
+              <div className="h-3 rounded-full overflow-hidden flex">
+                {variants.map((v, i) => (
+                  <div
+                    key={`bar-${i}`}
+                    className="flex-1 transition-colors duration-500"
+                    style={{ backgroundColor: v.hex }}
+                  />
+                ))}
+              </div>
+              <div className="flex justify-between mt-2 text-[10px] text-white/20 font-medium">
+                <span>밝게</span>
+                <span>원본</span>
+                <span>어둡게</span>
+              </div>
+            </div>
+          )}
+
+          {/* Color Swatches Grid */}
+          {variants.length > 0 && (
+            <div
+              key={animationKey}
+              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-11 gap-3"
+            >
+              {variants.map((variant, index) => (
+                <ColorSwatch
+                  key={`${animationKey}-${index}`}
+                  variant={variant}
+                  index={index}
+                  onCopy={handleCopy}
+                  onSelect={handleSelect}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Info Section */}
+          <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
+            <Card className="p-5 text-center">
+              <div className="text-2xl font-bold text-white mb-1">11</div>
+              <div className="text-xs text-white/40">컬러 변형</div>
+            </Card>
+            <Card className="p-5 text-center">
+              <div className="text-2xl font-bold text-white mb-1">HEX + RGB</div>
+              <div className="text-xs text-white/40">두 가지 표현</div>
+            </Card>
+            <Card className="p-5 text-center">
+              <div className="text-2xl font-bold text-white mb-1">1-Click</div>
+              <div className="text-xs text-white/40">클립보드 복사</div>
+            </Card>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 6. App Component
+    // ========================================
+    function App() {
+      return (
+        <div className="min-h-screen">
+          <Header />
+          <main>
+            <ColorGenerator />
+          </main>
+          <Footer />
+        </div>
+      );
+    }
+
+    // ========================================
+    // 7. Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
