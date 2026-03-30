@@ -14,7 +14,8 @@
       "WebFetch(domain:pcmap.place.naver.com)",
       "WebFetch(domain:search.naver.com)",
       "WebFetch(domain:www.diningcode.com)",
-      "WebFetch(domain:1noon.kr)"
+      "WebFetch(domain:1noon.kr)",
+      "Read(//d/다온/**)"
     ]
   }
 }
