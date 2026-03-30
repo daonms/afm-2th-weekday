@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>더치페이 계산기</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            warm: {
+              50: '#FFF8F0',
+              100: '#FFEDD5',
+              200: '#FED7AA',
+              300: '#FDBA74',
+              400: '#FB923C',
+              500: '#F97316',
+              600: '#EA580C',
+              700: '#C2410C',
+              800: '#9A3412',
+              900: '#7C2D12',
+            }
+          },
+          fontFamily: {
+            receipt: ['Gowun Batang', 'serif'],
+            sans: ['Noto Sans KR', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* ======================================== */
+    /* 커스텀 애니메이션 & 톱니 모양 영수증 스타일  */
+    /* ======================================== */
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.8); }
+      60% { transform: scale(1.05); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    @keyframes receiptPrint {
+      from { opacity: 0; max-height: 0; transform: scaleY(0); }
+      to { opacity: 1; max-height: 2000px; transform: scaleY(1); }
+    }
+    .animate-slideDown { animation: slideDown 0.5s ease-out forwards; }
+    .animate-fadeIn { animation: fadeIn 0.4s ease-out forwards; }
+    .animate-popIn { animation: popIn 0.4s ease-out forwards; }
+    .animate-receiptPrint { animation: receiptPrint 0.6s ease-out forwards; transform-origin: top; }
+
+    .card-hover {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 40px rgba(249, 115, 22, 0.15);
+    }
+
+    /* 영수증 톱니 모양 */
+    .receipt-top {
+      background: linear-gradient(135deg, #FFF8F0 33.33%, transparent 33.33%) -6px 0,
+                  linear-gradient(225deg, #FFF8F0 33.33%, transparent 33.33%) -6px 0;
+      background-size: 12px 12px;
+      background-repeat: repeat-x;
+      height: 12px;
+    }
+    .receipt-bottom {
+      background: linear-gradient(315deg, #FFF8F0 33.33%, transparent 33.33%) -6px 0,
+                  linear-gradient(45deg, #FFF8F0 33.33%, transparent 33.33%) -6px 0;
+      background-size: 12px 12px;
+      background-repeat: repeat-x;
+      height: 12px;
+    }
+
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] { -moz-appearance: textfield; }
+  </style>
+</head>
+<body class="bg-warm-50 min-h-screen font-sans">
+  <div id="root"></div>
+  <script type="text/babel">
+    // ========================================
+    // 1. React Hooks 디스트럭처링
+    // ========================================
+    const { useState, useEffect, useContext, createContext, useRef, useMemo, useCallback } = React;
+
+    // ========================================
+    // 2. 디자인 시스템 컴포넌트 (Design System)
+    // ========================================
+
+    // Button 컴포넌트 - variant: primary, secondary, danger, ghost / size: sm, md, lg
+    function Button({ variant = 'primary', size = 'md', disabled = false, onClick, className = '', children }) {
+      const baseClass = 'rounded-xl font-semibold transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed';
+      // 조건분기 (Conditional): variant별 스타일 분기
+      const variantClass = {
+        primary: 'bg-warm-500 hover:bg-warm-600 text-white shadow-lg shadow-warm-200',
+        secondary: 'bg-warm-100 hover:bg-warm-200 text-warm-700 border border-warm-200',
+        danger: 'bg-red-500 hover:bg-red-600 text-white shadow-lg',
+        ghost: 'bg-transparent hover:bg-warm-100 text-warm-600',
+      }[variant];
+      const sizeClass = { sm: 'px-3 py-1.5 text-sm', md: 'px-5 py-2.5 text-base', lg: 'px-8 py-4 text-lg' }[size];
+      return (
+        <button className={`${baseClass} ${variantClass} ${sizeClass} ${className}`} disabled={disabled} onClick={onClick}>
+          {children}
+        </button>
+      );
+    }
+
+    // Input 컴포넌트
+    function Input({ type = 'text', label, value, onChange, placeholder, error, disabled, className = '', suffix }) {
+      return (
+        <div className={`w-full ${className}`}>
+          {label && <label className="block text-sm font-medium text-warm-700 mb-1">{label}</label>}
+          <div className="relative">
+            <input
+              type={type}
+              value={value}
+              onChange={onChange}
+              placeholder={placeholder}
+              disabled={disabled}
+              className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 outline-none bg-white
+                ${error ? 'border-red-400 focus:border-red-500' : 'border-warm-200 focus:border-warm-400'}
+                ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}
+                ${suffix ? 'pr-12' : ''}`}
+            />
+            {suffix && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-warm-400 font-medium">{suffix}</span>}
+          </div>
+          {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+        </div>
+      );
+    }
+
+    // Card 컴포넌트
+    function Card({ className = '', children, hover = false, style }) {
+      return (
+        <div className={`bg-white rounded-2xl shadow-md p-6 ${hover ? 'card-hover cursor-pointer' : ''} ${className}`} style={style}>
+          {children}
+        </div>
+      );
+    }
+
+    // NumberStepper 컴포넌트 - +/- 버튼으로 숫자 조절
+    function NumberStepper({ value, onChange, min = 1, max = 20, label }) {
+      return (
+        <div className="flex flex-col items-center gap-2">
+          {label && <span className="text-sm font-medium text-warm-700">{label}</span>}
+          <div className="flex items-center gap-3">
+            <button onClick={() => onChange(Math.max(min, value - 1))}
+              className="w-10 h-10 rounded-full bg-warm-100 hover:bg-warm-200 text-warm-600 font-bold text-xl flex items-center justify-center transition-all">
+              -
+            </button>
+            <span className="text-2xl font-bold text-warm-800 w-12 text-center">{value}</span>
+            <button onClick={() => onChange(Math.min(max, value + 1))}
+              className="w-10 h-10 rounded-full bg-warm-100 hover:bg-warm-200 text-warm-600 font-bold text-xl flex items-center justify-center transition-all">
+              +
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // BackButton 컴포넌트
+    function BackButton() {
+      return (
+        <button onClick={() => window.location.hash = '#/'}
+          className="flex items-center gap-2 text-warm-500 hover:text-warm-700 font-medium transition-colors mb-6">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          메인으로 돌아가기
+        </button>
+      );
+    }
+
+    // DiscountSelector 컴포넌트
+    function DiscountSelector({ discountType, setDiscountType, discountValue, setDiscountValue }) {
+      return (
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-warm-700">할인 적용</label>
+          {/* 반복문 (Loops): map으로 라디오 버튼 렌더링 */}
+          <div className="flex gap-2 flex-wrap">
+            {/* 배열 (Arrays): 할인 타입 배열 정의 */}
+            {[
+              { key: 'none', label: '할인없음' },
+              { key: 'percent', label: '% 할인' },
+              { key: 'amount', label: '원 할인' },
+            ].map((opt) => (
+              <button key={opt.key}
+                onClick={() => { setDiscountType(opt.key); if (opt.key === 'none') setDiscountValue(0); }}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all
+                  ${discountType === opt.key
+                    ? 'bg-warm-500 text-white shadow-md'
+                    : 'bg-warm-100 text-warm-600 hover:bg-warm-200'}`}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {/* 조건분기 (Conditional): 할인 타입에 따라 입력 필드 표시 */}
+          {discountType !== 'none' && (
+            <Input
+              type="number"
+              value={discountValue || ''}
+              onChange={(e) => setDiscountValue(Number(e.target.value))}
+              placeholder={discountType === 'percent' ? '할인율 입력' : '할인 금액 입력'}
+              suffix={discountType === 'percent' ? '%' : '원'}
+            />
+          )}
+        </div>
+      );
+    }
+
+    // 영수증 카드 컴포넌트
+    function ReceiptCard({ children, className = '' }) {
+      return (
+        <div className={`animate-receiptPrint ${className}`}>
+          <div className="receipt-top"></div>
+          <div className="bg-warm-50 px-6 py-4 font-receipt border-x-2 border-dashed border-warm-200">
+            {children}
+          </div>
+          <div className="receipt-bottom"></div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 3. 라우터 컴포넌트 (Router)
+    // ========================================
+    const RouterContext = createContext({ path: '/' });
+
+    function Router({ children }) {
+      const [path, setPath] = useState(window.location.hash.slice(1) || '/');
+
+      useEffect(() => {
+        const handleHash = () => setPath(window.location.hash.slice(1) || '/');
+        window.addEventListener('hashchange', handleHash);
+        return () => window.removeEventListener('hashchange', handleHash);
+      }, []);
+
+      return <RouterContext.Provider value={{ path }}>{children}</RouterContext.Provider>;
+    }
+
+    function useRouter() {
+      return useContext(RouterContext);
+    }
+
+    function Routes({ children }) {
+      const { path } = useRouter();
+      // 반복문 (Loops): children을 배열로 변환 후 find로 매칭
+      const routes = React.Children.toArray(children);
+      const matched = routes.find((child) => child.props.path === path);
+      return matched ? matched.props.element : routes[0]?.props.element;
+    }
+
+    function Route({ path, element }) {
+      return null;
+    }
+
+    // ========================================
+    // 4. 유틸리티 함수
+    // ========================================
+
+    // 숫자 포맷 (천단위 콤마)
+    function formatNumber(num) {
+      if (num === null || num === undefined || isNaN(num)) return '0';
+      return Math.round(num).toLocaleString('ko-KR');
+    }
+
+    // 할인 계산 함수
+    // 조건분기 (Conditional): 할인 타입별 계산 분기 (if/else)
+    function applyDiscount(amount, discountType, discountValue) {
+      if (discountType === 'percent') {
+        return amount * (1 - discountValue / 100);
+      } else if (discountType === 'amount') {
+        return Math.max(0, amount - discountValue);
+      } else {
+        return amount;
+      }
+    }
+
+    // Fisher-Yates 셔플 알고리즘
+    // 배열 (Arrays): spread로 복사 후 Fisher-Yates 셔플
+    function shuffleArray(arr) {
+      const shuffled = [...arr];
+      // 반복문 (Loops): for loop로 역순 순회하며 셔플
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    }
+
+    // ========================================
+    // 5. 페이지 컴포넌트 - 메인 페이지
+    // ========================================
+    function HomePage() {
+      // 배열 (Arrays): 모드 선택 카드 데이터 배열 정의
+      const modes = [
+        {
+          icon: '➗',
+          title: '1/N 균등 정산',
+          desc: '총금액을 인원수로 똑같이 나눠요',
+          path: '#/equal',
+          gradient: 'from-orange-400 to-amber-400',
+        },
+        {
+          icon: '🪜',
+          title: '사다리타기 정산',
+          desc: '운명에 맡기는 스릴 넘치는 정산! (5명 전용)',
+          path: '#/ladder',
+          gradient: 'from-rose-400 to-pink-400',
+        },
+        {
+          icon: '🍽️',
+          title: '메뉴별 정산',
+          desc: '각자 먹은 만큼 정확하게 계산해요',
+          path: '#/menu',
+          gradient: 'from-emerald-400 to-teal-400',
+        },
+      ];
+
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 animate-fadeIn">
+          <div className="text-center mb-10">
+            <h1 className="text-4xl md:text-5xl font-extrabold text-warm-800 mb-3">
+              더치페이 계산기 <span className="inline-block animate-bounce">🧾</span>
+            </h1>
+            <p className="text-warm-500 text-lg">공평하게 나누는 똑똑한 정산</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full">
+            {/* 반복문 (Loops): map으로 모드 카드 렌더링 */}
+            {modes.map((mode, index) => (
+              <div key={mode.path}
+                onClick={() => window.location.hash = mode.path}
+                className="animate-popIn"
+                style={{ animationDelay: `${index * 0.15}s`, opacity: 0, animationFillMode: 'forwards' }}>
+                <Card hover className="text-center h-full">
+                  <div className={`w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br ${mode.gradient} flex items-center justify-center text-4xl shadow-lg`}>
+                    {mode.icon}
+                  </div>
+                  <h2 className="text-xl font-bold text-warm-800 mb-2">{mode.title}</h2>
+                  <p className="text-warm-500 text-sm">{mode.desc}</p>
+                </Card>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-10 text-warm-400 text-sm">made with React 18</p>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 6. 페이지 컴포넌트 - 1/N 균등 정산
+    // ========================================
+    function EqualPage() {
+      const [totalAmount, setTotalAmount] = useState('');
+      const [people, setPeople] = useState(4);
+      const [discountType, setDiscountType] = useState('none');
+      const [discountValue, setDiscountValue] = useState(0);
+      const [showResult, setShowResult] = useState(false);
+
+      // 조건분기 (Conditional): 할인 타입별 최종 금액 계산 분기
+      const discountedTotal = useMemo(() => {
+        const amount = Number(totalAmount) || 0;
+        return applyDiscount(amount, discountType, discountValue);
+      }, [totalAmount, discountType, discountValue]);
+
+      const perPerson = useMemo(() => Math.ceil(discountedTotal / people), [discountedTotal, people]);
+
+      const handleCalculate = () => {
+        if (!totalAmount || Number(totalAmount) <= 0) return;
+        setShowResult(true);
+      };
+
+      // 배열 (Arrays): 인원수만큼 배열 생성 (Array.from)
+      const peopleArray = useMemo(() =>
+        Array.from({ length: people }, (_, i) => ({
+          id: i + 1,
+          name: `참여자 ${i + 1}`,
+          amount: perPerson,
+        }))
+      , [people, perPerson]);
+
+      return (
+        <div className="min-h-screen p-4 max-w-lg mx-auto animate-slideDown">
+          <BackButton />
+          <div className="text-center mb-8">
+            <span className="text-5xl mb-2 inline-block">➗</span>
+            <h1 className="text-2xl font-bold text-warm-800">1/N 균등 정산</h1>
+          </div>
+
+          <div className="space-y-6">
+            <Input
+              type="number"
+              label="총금액"
+              value={totalAmount}
+              onChange={(e) => { setTotalAmount(e.target.value); setShowResult(false); }}
+              placeholder="금액을 입력하세요"
+              suffix="원"
+            />
+
+            <NumberStepper label="인원수" value={people} onChange={(v) => { setPeople(v); setShowResult(false); }} min={1} max={20} />
+
+            <DiscountSelector
+              discountType={discountType}
+              setDiscountType={(v) => { setDiscountType(v); setShowResult(false); }}
+              discountValue={discountValue}
+              setDiscountValue={(v) => { setDiscountValue(v); setShowResult(false); }}
+            />
+
+            <Button variant="primary" size="lg" className="w-full" onClick={handleCalculate}
+              disabled={!totalAmount || Number(totalAmount) <= 0}>
+              정산하기
+            </Button>
+          </div>
+
+          {/* 조건분기 (Conditional): 결과 표시 조건부 렌더링 */}
+          {showResult && (
+            <div className="mt-8 space-y-4 animate-popIn">
+              <Card className="text-center bg-gradient-to-br from-warm-500 to-orange-500 text-white">
+                <p className="text-sm opacity-80 mb-1">1인당 금액</p>
+                <p className="text-4xl font-extrabold">{formatNumber(perPerson)}원</p>
+                {discountType !== 'none' && (
+                  <p className="text-sm opacity-80 mt-2">
+                    원래 {formatNumber(Number(totalAmount))}원 &rarr; 할인 후 {formatNumber(discountedTotal)}원
+                  </p>
+                )}
+              </Card>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* 반복문 (Loops): map으로 각 참여자 카드 렌더링 */}
+                {peopleArray.map((p) => (
+                  <Card key={p.id} className="text-center py-4 animate-fadeIn"
+                    style={{ animationDelay: `${p.id * 0.05}s` }}>
+                    <p className="text-warm-500 text-sm">{p.name}</p>
+                    <p className="text-lg font-bold text-warm-800">{formatNumber(p.amount)}원</p>
+                  </Card>
+                ))}
+              </div>
+
+              <Card className="bg-warm-50 border border-warm-200">
+                <div className="text-sm text-warm-600 space-y-1">
+                  <div className="flex justify-between">
+                    <span>총금액</span><span>{formatNumber(Number(totalAmount))}원</span>
+                  </div>
+                  {/* 조건분기 (Conditional): 삼항 연산자로 할인 타입 표시 */}
+                  {discountType !== 'none' && (
+                    <div className="flex justify-between text-red-500">
+                      <span>할인</span>
+                      <span>-{discountType === 'percent' ? `${discountValue}%` : `${formatNumber(discountValue)}원`}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold text-warm-800 border-t border-warm-200 pt-1 mt-1">
+                    <span>인원</span><span>{people}명</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-warm-800">
+                    <span>1인당</span><span>{formatNumber(perPerson)}원</span>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ========================================
+    // 7. 페이지 컴포넌트 - 사다리타기 정산
+    // ========================================
+    function LadderPage() {
+      const [totalAmount, setTotalAmount] = useState('');
+      // 배열 (Arrays): 5명 이름 배열 (spread 연산자 활용)
+      const [names, setNames] = useState(['참여자1', '참여자2', '참여자3', '참여자4', '참여자5']);
+      const [gameState, setGameState] = useState('input'); // input, playing, done
+      const canvasRef = useRef(null);
+      const animationRef = useRef(null);
+      const [results, setResults] = useState(null);
+      const [tracingPlayer, setTracingPlayer] = useState(-1);
+
+      // 배열 (Arrays): 비율 배열 정의
+      const ratios = [50, 30, 10, 5, 1];
+      const ratioEmojis = { 50: '😱', 30: '😰', 10: '😐', 5: '😊', 1: '🎉' };
+      const ratioColors = { 50: '#EF4444', 30: '#F97316', 10: '#EAB308', 5: '#22C55E', 1: '#3B82F6' };
+      const pathColors = ['#EF4444', '#3B82F6', '#22C55E', '#A855F7', '#F97316'];
+
+      const generateLadder = useCallback(() => {
+        const cols = 5;
+        const rows = 12;
+        // 배열 (Arrays): 2차원 배열로 사다리 가로줄 생성
+        const rungs = [];
+        // 반복문 (Loops): for loop로 사다리 가로줄 생성
+        for (let r = 0; r < rows; r++) {
+          const row = [];
+          for (let c = 0; c < cols - 1; c++) {
+            row.push(Math.random() < 0.4);
+          }
+          rungs.push(row);
+        }
+        // 인접 가로줄 겹침 방지 및 최소 보장
+        for (let c = 0; c < cols - 1; c++) {
+          const hasRung = rungs.some(row => row[c]);
+          if (!hasRung) {
+            rungs[Math.floor(Math.random() * rows)][c] = true;
+          }
+        }
+        return { cols, rows, rungs };
+      }, []);
+
+      // 경로 추적 함수
+      const tracePath = useCallback((ladder, startCol) => {
+        const { cols, rows, rungs } = ladder;
+        // 배열 (Arrays): 경로 좌표 배열
+        const path = [];
+        let col = startCol;
+        path.push({ row: -1, col });
+
+        // 반복문 (Loops): for loop로 사다리 경로 추적
+        for (let r = 0; r < rows; r++) {
+          // 조건분기 (Conditional): 가로줄 좌/우 이동 판별 (if/else)
+          if (col > 0 && rungs[r][col - 1]) {
+            path.push({ row: r, col });
+            col = col - 1;
+            path.push({ row: r, col });
+          } else if (col < cols - 1 && rungs[r][col]) {
+            path.push({ row: r, col });
+            col = col + 1;
+            path.push({ row: r, col });
+          } else {
+            path.push({ row: r, col });
+          }
+        }
+        path.push({ row: rows, col });
+        return { path, endCol: col };
+      }, []);
+
+      const getCanvasCoords = useCallback((point, ladder, canvas) => {
+        const { rows } = ladder;
+        const W = canvas.width;
+        const H = canvas.height;
+        const paddingTop = 60;
+        const paddingBottom = 60;
+        const paddingX = 50;
+        const colSpacing = (W - paddingX * 2) / 4;
+        const rowSpacing = (H - paddingTop - paddingBottom) / (rows + 1);
+
+        const x = paddingX + point.col * colSpacing;
+        let y;
+        if (point.row === -1) {
+          y = paddingTop;
+        } else if (point.row === rows) {
+          y = H - paddingBottom;
+        } else {
+          y = paddingTop + (point.row + 1) * rowSpacing;
+        }
+        return { x, y };
+      }, []);
+
+      const drawBaseLadder = useCallback((ladder, shuffledRatios, revealAll = false) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const { cols, rows, rungs } = ladder;
+
+        const W = canvas.width;
+        const H = canvas.height;
+        const paddingTop = 60;
+        const paddingBottom = 60;
+        const paddingX = 50;
+        const colSpacing = (W - paddingX * 2) / (cols - 1);
+        const rowSpacing = (H - paddingTop - paddingBottom) / (rows + 1);
+
+        ctx.clearRect(0, 0, W, H);
+
+        // 배경
+        ctx.fillStyle = '#FFFBF5';
+        ctx.fillRect(0, 0, W, H);
+
+        // 세로줄
+        ctx.strokeStyle = '#D4A574';
+        ctx.lineWidth = 3;
+        // 반복문 (Loops): for loop로 세로줄 그리기
+        for (let c = 0; c < cols; c++) {
+          const x = paddingX + c * colSpacing;
+          ctx.beginPath();
+          ctx.moveTo(x, paddingTop);
+          ctx.lineTo(x, H - paddingBottom);
+          ctx.stroke();
+        }
+
+        // 가로줄
+        ctx.strokeStyle = '#C4956A';
+        ctx.lineWidth = 2;
+        // 반복문 (Loops): for loop로 가로줄 그리기
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols - 1; c++) {
+            if (rungs[r][c]) {
+              const x1 = paddingX + c * colSpacing;
+              const x2 = paddingX + (c + 1) * colSpacing;
+              const y = paddingTop + (r + 1) * rowSpacing;
+              ctx.beginPath();
+              ctx.moveTo(x1, y);
+              ctx.lineTo(x2, y);
+              ctx.stroke();
+            }
+          }
+        }
+
+        // 상단 이름
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 14px Noto Sans KR';
+        // 반복문 (Loops): forEach로 이름 그리기
+        names.forEach((name, i) => {
+          const x = paddingX + i * colSpacing;
+          ctx.fillStyle = '#9A3412';
+          ctx.fillText(name.length > 4 ? name.slice(0, 4) + '..' : name, x, paddingTop - 15);
+        });
+
+        // 하단 비율 (숨김/공개)
+        ctx.font = 'bold 16px Noto Sans KR';
+        if (shuffledRatios) {
+          // 반복문 (Loops): forEach로 비율 표시
+          shuffledRatios.forEach((ratio, i) => {
+            const x = paddingX + i * colSpacing;
+            // 조건분기 (Conditional): 공개 여부에 따라 표시 분기
+            if (revealAll) {
+              ctx.fillStyle = ratioColors[ratio];
+              ctx.fillText(`${ratio}%`, x, H - paddingBottom + 30);
+            } else {
+              ctx.fillStyle = '#C4956A';
+              ctx.fillText('??%', x, H - paddingBottom + 30);
+            }
+          });
+        }
+      }, [names]);
+
+      const drawPaths = useCallback((ladder, completedPaths) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        // 반복문 (Loops): forEach로 완료된 경로 그리기
+        completedPaths.forEach((pathInfo, idx) => {
+          const { path } = pathInfo;
+          ctx.strokeStyle = pathColors[idx];
+          ctx.lineWidth = 4;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.globalAlpha = 0.8;
+          ctx.beginPath();
+
+          // 반복문 (Loops): for loop로 경로 점 연결
+          for (let i = 0; i < path.length; i++) {
+            const { x, y } = getCanvasCoords(path[i], ladder, canvas);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+          ctx.globalAlpha = 1.0;
+        });
+      }, [getCanvasCoords]);
+
+      const startGame = useCallback(() => {
+        if (!totalAmount || Number(totalAmount) <= 0) return;
+
+        const ladder = generateLadder();
+        // 배열 (Arrays): Fisher-Yates 셔플로 비율 랜덤 배치
+        const shuffledRatios = shuffleArray(ratios);
+        setGameState('playing');
+        setTracingPlayer(0);
+        setResults(null);
+
+        // 초기 사다리 그리기 (비율 숨김)
+        setTimeout(() => {
+          drawBaseLadder(ladder, shuffledRatios, false);
+          // 순차적 경로 추적 시작
+          animateSequentially(ladder, shuffledRatios, 0, []);
+        }, 200);
+      }, [totalAmount, generateLadder, drawBaseLadder]);
+
+      const animateSequentially = useCallback((ladder, shuffledRatios, playerIdx, accumulatedPaths) => {
+        if (playerIdx >= 5) {
+          // 모든 경로 추적 완료 - 비율 공개
+          setGameState('done');
+          setTracingPlayer(-1);
+          drawBaseLadder(ladder, shuffledRatios, true);
+          drawPaths(ladder, accumulatedPaths);
+
+          // 결과 계산
+          const amount = Number(totalAmount);
+          // 배열 (Arrays): map으로 결과 배열 생성
+          const resultList = accumulatedPaths.map((p, i) => {
+            const ratio = shuffledRatios[p.endCol];
+            return {
+              name: names[i],
+              ratio,
+              amount: Math.round(amount * ratio / 100),
+              emoji: ratioEmojis[ratio],
+              color: ratioColors[ratio],
+            };
+          });
+          setResults(resultList);
+          return;
+        }
+
+        setTracingPlayer(playerIdx);
+        const pathResult = tracePath(ladder, playerIdx);
+        const { path } = pathResult;
+        let step = 0;
+
+        const interval = setInterval(() => {
+          step += 1;
+          // 조건분기 (Conditional): 애니메이션 완료 여부 판별
+          if (step >= path.length) {
+            clearInterval(interval);
+            const newPaths = [...accumulatedPaths, pathResult];
+
+            // 전체 다시 그리기 (완료된 경로 포함)
+            drawBaseLadder(ladder, shuffledRatios, false);
+            drawPaths(ladder, newPaths);
+
+            // 다음 참여자 추적 (지연)
+            setTimeout(() => {
+              animateSequentially(ladder, shuffledRatios, playerIdx + 1, newPaths);
+            }, 600);
+            return;
+          }
+
+          // 부분 경로 그리기: 기존 완료 경로 + 현재 진행 중 경로
+          drawBaseLadder(ladder, shuffledRatios, false);
+          drawPaths(ladder, accumulatedPaths);
+
+          // 현재 진행 중인 경로 그리기
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          const ctx = canvas.getContext('2d');
+          const partialPath = path.slice(0, step + 1);
+          ctx.strokeStyle = pathColors[playerIdx];
+          ctx.lineWidth = 4;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.globalAlpha = 0.8;
+          ctx.beginPath();
+          for (let i = 0; i < partialPath.length; i++) {
+            const { x, y } = getCanvasCoords(partialPath[i], ladder, canvas);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+          ctx.globalAlpha = 1.0;
+
+          // 현재 위치 마커
+          const lastPoint = partialPath[partialPath.length - 1];
+          const { x: cx, y: cy } = getCanvasCoords(lastPoint, ladder, canvas);
+          ctx.beginPath();
+          ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+          ctx.fillStyle = pathColors[playerIdx];
+          ctx.fill();
+        }, 80);
+
+        animationRef.current = interval;
+      }, [totalAmount, names, tracePath, drawBaseLadder, drawPaths, getCanvasCoords]);
+
+      const handleNameChange = (index, value) => {
+        // 배열 (Arrays): spread 연산자로 이름 배열 복사 후 업데이트
+        const newNames = [...names];
+        newNames[index] = value;
+        setNames(newNames);
+      };
+
+      const resetGame = () => {
+        if (animationRef.current) clearInterval(animationRef.current);
+        setGameState('input');
+        setResults(null);
+        setTracingPlayer(-1);
+      };
+
+      // cleanup on unmount
+      useEffect(() => {
+        return () => {
+          if (animationRef.current) clearInterval(animationRef.current);
+        };
+      }, []);
+
+      // 배열 (Arrays): reduce로 총 배분 금액 계산
+      const totalDistributed = results ? results.reduce((sum, r) => sum + r.amount, 0) : 0;
+      const remainder = results ? Number(totalAmount) - totalDistributed : 0;
+
+      return (
+        <div className="min-h-screen p-4 max-w-lg mx-auto animate-slideDown">
+          <BackButton />
+          <div className="text-center mb-6">
+            <span className="text-5xl mb-2 inline-block">🪜</span>
+            <h1 className="text-2xl font-bold text-warm-800">사다리타기 정산</h1>
+            <p className="text-warm-500 text-sm mt-1">5명 전용 - 운명의 사다리!</p>
+          </div>
+
+          {/* 조건분기 (Conditional): 게임 상태별 UI 분기 (if/else) */}
+          {gameState === 'input' && (
+            <div className="space-y-5 animate-fadeIn">
+              <Input
+                type="number"
+                label="총금액"
+                value={totalAmount}
+                onChange={(e) => setTotalAmount(e.target.value)}
+                placeholder="금액을 입력하세요"
+                suffix="원"
+              />
+
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-warm-700">참여자 이름 (5명)</label>
+                {/* 반복문 (Loops): map으로 이름 입력 필드 렌더링 */}
+                {names.map((name, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-lg w-8 text-center" style={{ color: pathColors[i] }}>●</span>
+                    <Input
+                      value={name}
+                      onChange={(e) => handleNameChange(i, e.target.value)}
+                      placeholder={`참여자 ${i + 1}`}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <Button variant="primary" size="lg" className="w-full" onClick={startGame}
+                disabled={!totalAmount || Number(totalAmount) <= 0}>
+                사다리 시작!
+              </Button>
+            </div>
+          )}
+
+          {(gameState === 'playing' || gameState === 'done') && (
+            <div className="space-y-4">
+              {gameState === 'playing' && tracingPlayer >= 0 && (
+                <div className="text-center animate-fadeIn">
+                  <span className="inline-block px-4 py-2 bg-warm-100 rounded-full text-warm-700 font-medium">
+                    <span style={{ color: pathColors[tracingPlayer] }}>●</span>
+                    {' '}{names[tracingPlayer]} 경로 추적 중...
+                  </span>
+                </div>
+              )}
+
+              <div className="bg-white rounded-2xl shadow-lg p-3 overflow-hidden">
+                <canvas ref={canvasRef} width={400} height={500}
+                  className="w-full" style={{ maxHeight: '500px' }} />
+              </div>
+
+              {/* 조건분기 (Conditional): 결과 완료 시 결과 표시 */}
+              {gameState === 'done' && results && (
+                <div className="space-y-3 animate-popIn">
+                  <h2 className="text-lg font-bold text-warm-800 text-center">정산 결과</h2>
+
+                  {/* 반복문 (Loops): map으로 결과 카드 렌더링 */}
+                  {results.map((r, i) => (
+                    <Card key={i} className="flex items-center justify-between py-3 animate-fadeIn"
+                      style={{ animationDelay: `${i * 0.1}s`, borderLeft: `4px solid ${r.color}` }}>
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{r.emoji}</span>
+                        <div>
+                          <p className="font-bold text-warm-800">{r.name}</p>
+                          <p className="text-sm" style={{ color: r.color }}>{r.ratio}%</p>
+                        </div>
+                      </div>
+                      <p className="text-xl font-extrabold" style={{ color: r.color }}>
+                        {formatNumber(r.amount)}원
+                      </p>
+                    </Card>
+                  ))}
+
+                  {/* 나머지 금액 표시 (4%) */}
+                  {remainder > 0 && (
+                    <Card className="text-center bg-green-50 border border-green-200 py-3">
+                      <p className="text-green-600 font-medium">
+                        🍀 행운의 나머지: <span className="font-bold">{formatNumber(remainder)}원</span>
+                      </p>
+                      <p className="text-green-500 text-xs mt-1">(배분되지 않은 {Math.round(remainder / Number(totalAmount) * 100)}%)</p>
+                    </Card>
+                  )}
+
+                  <Button variant="secondary" size="lg" className="w-full" onClick={resetGame}>
+                    다시 타기
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ========================================
+    // 8. 페이지 컴포넌트 - 메뉴별 정산
+    // ========================================
+    function MenuPage() {
+      const [peopleCount, setPeopleCount] = useState(2);
+      // 배열 (Arrays): people 배열 - 각 참여자별 이름과 메뉴 아이템 관리
+      const [people, setPeople] = useState(() =>
+        Array.from({ length: 2 }, (_, i) => ({
+          id: i,
+          name: `참여자 ${i + 1}`,
+          // 배열 (Arrays): menuItems 배열 - 메뉴명과 가격
+          menuItems: [{ id: 0, name: '', price: '' }],
+        }))
+      );
+      const [discountType, setDiscountType] = useState('none');
+      const [discountValue, setDiscountValue] = useState(0);
+      const [showResult, setShowResult] = useState(false);
+
+      // 인원수 변경 시 people 배열 업데이트
+      const handlePeopleCountChange = (newCount) => {
+        setPeopleCount(newCount);
+        setShowResult(false);
+        setPeople(prev => {
+          // 조건분기 (Conditional): 인원 증가/감소 분기
+          if (newCount > prev.length) {
+            // 배열 (Arrays): spread로 기존 배열 유지 + 새 항목 추가
+            return [
+              ...prev,
+              ...Array.from({ length: newCount - prev.length }, (_, i) => ({
+                id: prev.length + i,
+                name: `참여자 ${prev.length + i + 1}`,
+                menuItems: [{ id: 0, name: '', price: '' }],
+              })),
+            ];
+          } else {
+            // 배열 (Arrays): slice로 배열 잘라내기
+            return prev.slice(0, newCount);
+          }
+        });
+      };
+
+      const updatePersonName = (personIdx, name) => {
+        setPeople(prev => {
+          const updated = [...prev];
+          updated[personIdx] = { ...updated[personIdx], name };
+          return updated;
+        });
+        setShowResult(false);
+      };
+
+      const addMenuItem = (personIdx) => {
+        setPeople(prev => {
+          const updated = [...prev];
+          const person = { ...updated[personIdx] };
+          const newId = person.menuItems.length > 0 ? Math.max(...person.menuItems.map(m => m.id)) + 1 : 0;
+          // 배열 (Arrays): spread로 메뉴 아이템 추가
+          person.menuItems = [...person.menuItems, { id: newId, name: '', price: '' }];
+          updated[personIdx] = person;
+          return updated;
+        });
+        setShowResult(false);
+      };
+
+      const removeMenuItem = (personIdx, menuId) => {
+        setPeople(prev => {
+          const updated = [...prev];
+          const person = { ...updated[personIdx] };
+          // 배열 (Arrays): filter로 메뉴 아이템 삭제
+          person.menuItems = person.menuItems.filter(m => m.id !== menuId);
+          updated[personIdx] = person;
+          return updated;
+        });
+        setShowResult(false);
+      };
+
+      const updateMenuItem = (personIdx, menuId, field, value) => {
+        setPeople(prev => {
+          const updated = [...prev];
+          const person = { ...updated[personIdx] };
+          // 배열 (Arrays): map으로 특정 메뉴 아이템 업데이트
+          person.menuItems = person.menuItems.map(m =>
+            m.id === menuId ? { ...m, [field]: value } : m
+          );
+          updated[personIdx] = person;
+          return updated;
+        });
+        setShowResult(false);
+      };
+
+      // 배열 (Arrays): reduce로 각 참여자 소계 계산
+      const getSubtotal = (person) => {
+        return person.menuItems.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+      };
+
+      // 배열 (Arrays): reduce로 전체 합계 계산
+      const grandTotal = useMemo(() => {
+        return people.reduce((sum, p) => sum + getSubtotal(p), 0);
+      }, [people]);
+
+      const handleCalculate = () => {
+        // 조건분기 (Conditional): 빈 메뉴 체크
+        const hasAnyMenu = people.some(p => p.menuItems.some(m => m.name && Number(m.price) > 0));
+        if (!hasAnyMenu) return;
+        setShowResult(true);
+      };
+
+      // 결과 데이터 생성
+      // 배열 (Arrays): map으로 결과 배열 생성, 할인 비율 계산 포함
+      const resultData = useMemo(() => {
+        if (!showResult) return null;
+        const discountedGrand = applyDiscount(grandTotal, discountType, discountValue);
+        const discountRatio = grandTotal > 0 ? discountedGrand / grandTotal : 1;
+
+        return people.map(p => {
+          const subtotal = getSubtotal(p);
+          const discounted = Math.round(subtotal * discountRatio);
+          // 배열 (Arrays): filter로 유효한 메뉴만 추출
+          const validMenus = p.menuItems.filter(m => m.name && Number(m.price) > 0);
+          return {
+            name: p.name,
+            menus: validMenus,
+            subtotal,
+            discounted,
+          };
+        });
+      }, [showResult, people, grandTotal, discountType, discountValue]);
+
+      // 배열 (Arrays): reduce로 검증 - 개별합계 = 전체합계
+      const verifiedTotal = resultData ? resultData.reduce((sum, r) => sum + r.discounted, 0) : 0;
+
+      return (
+        <div className="min-h-screen p-4 max-w-lg mx-auto animate-slideDown pb-20">
+          <BackButton />
+          <div className="text-center mb-6">
+            <span className="text-5xl mb-2 inline-block">🍽️</span>
+            <h1 className="text-2xl font-bold text-warm-800">메뉴별 정산</h1>
+          </div>
+
+          <div className="space-y-5">
+            <NumberStepper label="인원수" value={peopleCount} onChange={handlePeopleCountChange} min={1} max={10} />
+
+            {/* 반복문 (Loops): map으로 각 참여자 카드 렌더링 */}
+            {people.map((person, pIdx) => (
+              <Card key={person.id} className="space-y-3 animate-fadeIn border-l-4 border-warm-400">
+                <Input
+                  value={person.name}
+                  onChange={(e) => updatePersonName(pIdx, e.target.value)}
+                  placeholder={`참여자 ${pIdx + 1}`}
+                  label={`참여자 ${pIdx + 1}`}
+                />
+
+                {/* 반복문 (Loops): map으로 메뉴 아이템 렌더링 */}
+                {person.menuItems.map((menu) => (
+                  <div key={menu.id} className="flex gap-2 items-end">
+                    <Input
+                      value={menu.name}
+                      onChange={(e) => updateMenuItem(pIdx, menu.id, 'name', e.target.value)}
+                      placeholder="메뉴명"
+                      className="flex-1"
+                    />
+                    <Input
+                      type="number"
+                      value={menu.price}
+                      onChange={(e) => updateMenuItem(pIdx, menu.id, 'price', e.target.value)}
+                      placeholder="가격"
+                      suffix="원"
+                      className="flex-1"
+                    />
+                    {/* 조건분기 (Conditional): 메뉴가 2개 이상일 때만 삭제 버튼 표시 */}
+                    {person.menuItems.length > 1 && (
+                      <button onClick={() => removeMenuItem(pIdx, menu.id)}
+                        className="w-10 h-10 rounded-xl bg-red-100 hover:bg-red-200 text-red-500 flex items-center justify-center flex-shrink-0 mb-0.5 transition-colors">
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+
+                <div className="flex items-center justify-between">
+                  <Button variant="ghost" size="sm" onClick={() => addMenuItem(pIdx)}>
+                    + 메뉴 추가
+                  </Button>
+                  <span className="text-sm font-bold text-warm-600">
+                    소계: {formatNumber(getSubtotal(person))}원
+                  </span>
+                </div>
+              </Card>
+            ))}
+
+            <DiscountSelector
+              discountType={discountType}
+              setDiscountType={(v) => { setDiscountType(v); setShowResult(false); }}
+              discountValue={discountValue}
+              setDiscountValue={(v) => { setDiscountValue(v); setShowResult(false); }}
+            />
+
+            <div className="text-right text-lg font-bold text-warm-800">
+              전체 합계: {formatNumber(grandTotal)}원
+            </div>
+
+            <Button variant="primary" size="lg" className="w-full" onClick={handleCalculate}
+              disabled={grandTotal <= 0}>
+              정산하기
+            </Button>
+          </div>
+
+          {/* 결과: 영수증 스타일 */}
+          {showResult && resultData && (
+            <div className="mt-8 space-y-4">
+              <h2 className="text-lg font-bold text-warm-800 text-center animate-fadeIn">정산 영수증</h2>
+
+              {/* 반복문 (Loops): map으로 각 참여자 영수증 렌더링 */}
+              {resultData.map((r, i) => (
+                <ReceiptCard key={i} className="animate-fadeIn" style={{ animationDelay: `${i * 0.15}s` }}>
+                  <div className="text-center border-b border-dashed border-warm-300 pb-2 mb-3">
+                    <p className="font-bold text-lg text-warm-800">{r.name}</p>
+                  </div>
+                  {/* 반복문 (Loops): map으로 메뉴 목록 렌더링 */}
+                  {r.menus.length > 0 ? r.menus.map((m, mi) => (
+                    <div key={mi} className="flex justify-between text-sm text-warm-700 py-0.5">
+                      <span>{m.name}</span>
+                      <span>{formatNumber(Number(m.price))}원</span>
+                    </div>
+                  )) : (
+                    <p className="text-sm text-warm-400 text-center">주문 없음</p>
+                  )}
+                  <div className="border-t border-dashed border-warm-300 mt-2 pt-2">
+                    <div className="flex justify-between text-sm text-warm-600">
+                      <span>소계</span>
+                      <span>{formatNumber(r.subtotal)}원</span>
+                    </div>
+                    {/* 조건분기 (Conditional): 할인 적용 시에만 할인 정보 표시 */}
+                    {discountType !== 'none' && r.subtotal !== r.discounted && (
+                      <div className="flex justify-between text-sm text-red-500">
+                        <span>할인</span>
+                        <span>-{formatNumber(r.subtotal - r.discounted)}원</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-bold text-warm-800 text-lg mt-1">
+                      <span>최종</span>
+                      <span>{formatNumber(r.discounted)}원</span>
+                    </div>
+                  </div>
+                </ReceiptCard>
+              ))}
+
+              {/* 총합계 검증 카드 */}
+              <ReceiptCard>
+                <div className="text-center">
+                  <p className="text-sm text-warm-500 mb-1">총합계</p>
+                  <p className="text-3xl font-extrabold text-warm-800">{formatNumber(verifiedTotal)}원</p>
+                  {discountType !== 'none' && (
+                    <p className="text-sm text-warm-500 mt-1">
+                      (할인 전: {formatNumber(grandTotal)}원)
+                    </p>
+                  )}
+                  {/* forEach 검증: 개별합계와 전체합계 일치 확인 */}
+                  <div className="mt-2">
+                    {(() => {
+                      let sum = 0;
+                      // 반복문 (Loops): forEach로 합계 검증
+                      resultData.forEach(r => { sum += r.discounted; });
+                      const discountedGrand = applyDiscount(grandTotal, discountType, discountValue);
+                      // 조건분기 (Conditional): 검증 결과에 따른 표시 분기
+                      const diff = Math.abs(sum - Math.round(discountedGrand));
+                      return diff <= resultData.length ? (
+                        <span className="text-green-600 text-sm font-medium">
+                          ✓ 정산 검증 완료 (오차: {diff}원 이내)
+                        </span>
+                      ) : (
+                        <span className="text-red-500 text-sm font-medium">
+                          ⚠ 정산 오차 발생: {diff}원
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </ReceiptCard>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ========================================
+    // 9. App 컴포넌트 (Root)
+    // ========================================
+    function App() {
+      return (
+        <Router>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/equal" element={<EqualPage />} />
+            <Route path="/ladder" element={<LadderPage />} />
+            <Route path="/menu" element={<MenuPage />} />
+          </Routes>
+        </Router>
+      );
+    }
+
+    // ========================================
+    // 10. 렌더링
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

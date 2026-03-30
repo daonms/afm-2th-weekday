@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>짤 생성기 (밈 메이커)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            dark1: '#0d0d1a',
+            dark2: '#1a1a2e',
+            dark3: '#16213e',
+            dark4: '#0f3460',
+            accent: '#e94560',
+            accentLight: '#ff6b81',
+            neon: '#a855f7',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+    body { font-family: 'Noto Sans KR', sans-serif; }
+
+    /* 스크롤바 */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #1a1a2e; }
+    ::-webkit-scrollbar-thumb { background: #0f3460; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #e94560; }
+
+    /* 네온 글로우 버튼 */
+    .btn-glow {
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    .btn-glow:hover {
+      box-shadow: 0 0 15px rgba(233, 69, 96, 0.6), 0 0 30px rgba(233, 69, 96, 0.3);
+    }
+    .btn-glow-purple:hover {
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.6), 0 0 30px rgba(168, 85, 247, 0.3);
+    }
+    .btn-glow-green:hover {
+      box-shadow: 0 0 15px rgba(34, 197, 94, 0.6), 0 0 30px rgba(34, 197, 94, 0.3);
+    }
+
+    /* 슬라이더 커스텀 */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      background: #0f3460;
+      border-radius: 3px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      background: #e94560;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid #fff;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      background: #e94560;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid #fff;
+    }
+
+    /* 컬러피커 */
+    input[type="color"] {
+      -webkit-appearance: none;
+      appearance: none;
+      border: 2px solid #0f3460;
+      border-radius: 6px;
+      cursor: pointer;
+      padding: 0;
+      background: transparent;
+    }
+    input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+    input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
+
+    /* 드래그 앤 드롭 영역 */
+    .drop-zone {
+      border: 2px dashed #0f3460;
+      transition: all 0.3s ease;
+    }
+    .drop-zone.dragover {
+      border-color: #e94560;
+      background: rgba(233, 69, 96, 0.1);
+    }
+
+    /* 애니메이션 */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeIn 0.3s ease-out; }
+
+    /* 캔버스 체크 패턴 (투명 배경 표시) */
+    .canvas-container {
+      background-image:
+        linear-gradient(45deg, #2a2a3e 25%, transparent 25%),
+        linear-gradient(-45deg, #2a2a3e 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #2a2a3e 75%),
+        linear-gradient(-45deg, transparent 75%, #2a2a3e 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+  </style>
+</head>
+<body class="bg-dark1 text-gray-200 min-h-screen">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // ========================================
+    // React Hooks 추출
+    // ========================================
+    const { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } = React;
+
+    // ========================================
+    // 상수 및 유틸 함수
+    // ========================================
+
+    // [배열] 샘플 이미지 템플릿 목록 배열
+    const SAMPLE_TEMPLATES = [
+      { id: 1, name: '빈 캔버스 (흰색)', url: 'https://placehold.co/800x600/ffffff/ffffff', color: '#ffffff' },
+      { id: 2, name: '빈 캔버스 (검정)', url: 'https://placehold.co/800x600/000000/000000', color: '#000000' },
+      { id: 3, name: '그라데이션 배경 1', url: 'https://placehold.co/800x600/667eea/764ba2', color: '#667eea', gradient: true },
+      { id: 4, name: '그라데이션 배경 2', url: 'https://placehold.co/800x600/f093fb/f5576c', color: '#f093fb', gradient: true },
+      { id: 5, name: '파스텔 핑크', url: 'https://placehold.co/800x600/fce4ec/fce4ec', color: '#fce4ec' },
+      { id: 6, name: '네이비 블루', url: 'https://placehold.co/800x600/1a237e/1a237e', color: '#1a237e' },
+      { id: 7, name: '민트 그린', url: 'https://placehold.co/800x600/e0f2f1/e0f2f1', color: '#e0f2f1' },
+      { id: 8, name: '선셋 오렌지', url: 'https://placehold.co/800x600/ff6f00/ff8f00', color: '#ff6f00', gradient: true },
+    ];
+
+    // [배열] 필터 효과 옵션 배열
+    const FILTER_OPTIONS = [
+      { id: 'brightness', name: '밝기', min: 50, max: 200, default: 100, unit: '%' },
+      { id: 'contrast', name: '대비', min: 50, max: 200, default: 100, unit: '%' },
+      { id: 'saturate', name: '채도', min: 0, max: 300, default: 100, unit: '%' },
+      { id: 'grayscale', name: '흑백', min: 0, max: 100, default: 0, unit: '%' },
+      { id: 'sepia', name: '세피아', min: 0, max: 100, default: 0, unit: '%' },
+      { id: 'blur', name: '블러', min: 0, max: 10, default: 0, unit: 'px' },
+    ];
+
+    // 기본 텍스트 블록 생성
+    function createTextBlock(position = 'top') {
+      return {
+        id: Date.now() + Math.random(),
+        content: '',
+        fontSize: 48,
+        color: '#ffffff',
+        outlineColor: '#000000',
+        outlineWidth: 3,
+        bold: true,
+        italic: false,
+        align: 'center',
+        // [조건 분기] 위치에 따라 Y축 기본값 다르게 설정
+        yPercent: position === 'top' ? 10 : position === 'bottom' ? 85 : 50,
+      };
+    }
+
+    // 필터 문자열 빌드
+    function buildFilterString(filters) {
+      // [배열 - reduce] 필터 배열을 하나의 CSS filter 문자열로 합침
+      return FILTER_OPTIONS.reduce((str, opt) => {
+        const val = filters[opt.id];
+        if (val !== undefined && val !== opt.default) {
+          return `${str} ${opt.id}(${val}${opt.unit})`;
+        }
+        return str;
+      }, '').trim() || 'none';
+    }
+
+    // [반복문 - for loop] 텍스트 줄바꿈 처리 시 문자열 순회
+    function wrapText(ctx, text, maxWidth) {
+      if (!text) return [];
+      const words = text.split('');
+      const lines = [];
+      let currentLine = '';
+
+      for (let i = 0; i < words.length; i++) {
+        const char = words[i];
+        if (char === '\n') {
+          lines.push(currentLine);
+          currentLine = '';
+          continue;
+        }
+        const testLine = currentLine + char;
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && currentLine !== '') {
+          lines.push(currentLine);
+          currentLine = char;
+        } else {
+          currentLine = testLine;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+      return lines;
+    }
+
+    // 텍스트 정렬에 따른 X좌표 계산
+    function getAlignX(align, canvasWidth) {
+      // [조건 분기] 정렬 방향에 따라 X 좌표 분기
+      if (align === 'left') return 20;
+      if (align === 'right') return canvasWidth - 20;
+      return canvasWidth / 2;
+    }
+
+    // localStorage 히스토리 관리
+    const HISTORY_KEY = 'meme-maker-history';
+    function loadHistory() {
+      try {
+        const data = localStorage.getItem(HISTORY_KEY);
+        return data ? JSON.parse(data) : [];
+      } catch { return []; }
+    }
+    function saveToHistory(dataUrl) {
+      // [배열 - spread] 기존 히스토리에 새 항목 추가
+      const history = loadHistory();
+      const newHistory = [
+        { id: Date.now(), thumbnail: dataUrl, createdAt: new Date().toLocaleString('ko-KR') },
+        ...history
+      // [배열 - filter] 최대 5개까지만 유지
+      ].filter((_, idx) => idx < 5);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
+      return newHistory;
+    }
+
+    // ========================================
+    // 디자인 시스템 컴포넌트
+    // ========================================
+
+    // Button 컴포넌트 - variant, size, glow 지원
+    function Button({ children, onClick, variant = 'primary', size = 'md', disabled = false, className = '', glowClass = '' }) {
+      const variants = {
+        primary: 'bg-accent hover:bg-accentLight text-white',
+        secondary: 'bg-dark4 hover:bg-dark3 text-gray-200',
+        danger: 'bg-red-700 hover:bg-red-600 text-white',
+        ghost: 'bg-transparent hover:bg-dark3 text-gray-300 border border-dark4',
+        success: 'bg-green-600 hover:bg-green-500 text-white',
+        purple: 'bg-purple-600 hover:bg-purple-500 text-white',
+      };
+      const sizes = {
+        sm: 'px-3 py-1.5 text-xs',
+        md: 'px-4 py-2 text-sm',
+        lg: 'px-6 py-3 text-base',
+      };
+      return (
+        <button
+          onClick={onClick}
+          disabled={disabled}
+          className={`rounded-lg font-bold transition-all duration-200 ${variants[variant]} ${sizes[size]} ${glowClass || 'btn-glow'} ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    // Card 컴포넌트 - 어두운 배경의 카드
+    function Card({ children, className = '', title = '' }) {
+      return (
+        <div className={`bg-dark2 rounded-xl border border-dark4/50 p-4 ${className}`}>
+          {title && <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">{title}</h3>}
+          {children}
+        </div>
+      );
+    }
+
+    // SliderInput 컴포넌트
+    function SliderInput({ label, value, onChange, min, max, step = 1, unit = '' }) {
+      return (
+        <div className="flex flex-col gap-1">
+          <div className="flex justify-between items-center">
+            <label className="text-xs text-gray-400">{label}</label>
+            <span className="text-xs text-accent font-mono">{value}{unit}</span>
+          </div>
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={e => onChange(Number(e.target.value))}
+            className="w-full"
+          />
+        </div>
+      );
+    }
+
+    // ColorInput 컴포넌트
+    function ColorInput({ label, value, onChange }) {
+      return (
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-gray-400 whitespace-nowrap">{label}</label>
+          <input
+            type="color"
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            className="w-8 h-8 rounded"
+          />
+          <span className="text-xs font-mono text-gray-500">{value}</span>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 레이아웃 컴포넌트
+    // ========================================
+
+    function Header() {
+      return (
+        <header className="bg-dark2/80 backdrop-blur-md border-b border-dark4/50 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🎨</span>
+              <div>
+                <h1 className="text-xl font-black text-white">짤 생성기</h1>
+                <p className="text-xs text-gray-500">밈 메이커 — 이미지 + 텍스트 합성</p>
+              </div>
+            </div>
+            <span className="text-xs text-dark4 hidden sm:block">Canvas API 기반</span>
+          </div>
+        </header>
+      );
+    }
+
+    // ========================================
+    // 이미지 업로드 컴포넌트
+    // ========================================
+
+    function ImageUploader({ onImageLoad }) {
+      const [dragover, setDragover] = useState(false);
+      const fileRef = useRef(null);
+
+      // FileReader로 이미지 로드
+      const handleFile = useCallback((file) => {
+        // [조건 분기] 파일 타입 확인
+        if (!file || !file.type.startsWith('image/')) {
+          alert('이미지 파일만 업로드 가능합니다.');
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => onImageLoad(img, e.target.result);
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }, [onImageLoad]);
+
+      const handleDrop = useCallback((e) => {
+        e.preventDefault();
+        setDragover(false);
+        const file = e.dataTransfer.files[0];
+        handleFile(file);
+      }, [handleFile]);
+
+      return (
+        <Card title="이미지 업로드">
+          {/* 드래그 앤 드롭 영역 */}
+          <div
+            className={`drop-zone rounded-lg p-6 text-center cursor-pointer mb-3 ${dragover ? 'dragover' : ''}`}
+            onDragOver={(e) => { e.preventDefault(); setDragover(true); }}
+            onDragLeave={() => setDragover(false)}
+            onDrop={handleDrop}
+            onClick={() => fileRef.current?.click()}
+          >
+            <div className="text-3xl mb-2">📁</div>
+            <p className="text-sm text-gray-400">클릭하거나 이미지를 드래그해서 놓으세요</p>
+            <p className="text-xs text-gray-600 mt-1">PNG, JPG, GIF, WebP</p>
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => handleFile(e.target.files[0])}
+          />
+
+          {/* [배열 - map] 샘플 이미지 목록 렌더링 */}
+          <div className="mt-3">
+            <p className="text-xs text-gray-500 mb-2">또는 샘플 템플릿 선택:</p>
+            <div className="grid grid-cols-4 gap-2">
+              {SAMPLE_TEMPLATES.map((tmpl) => (
+                <button
+                  key={tmpl.id}
+                  onClick={() => {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = () => onImageLoad(img, tmpl.url);
+                    img.src = tmpl.url;
+                  }}
+                  className="group relative rounded-lg overflow-hidden border-2 border-dark4 hover:border-accent transition-all aspect-square"
+                  title={tmpl.name}
+                >
+                  <div
+                    className="w-full h-full"
+                    style={{
+                      background: tmpl.gradient
+                        ? `linear-gradient(135deg, ${tmpl.color}, ${tmpl.url.split('/').pop()})`
+                        : tmpl.color,
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                    <span className="text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity text-center px-1 leading-tight">
+                      {tmpl.name}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 텍스트 블록 편집 컴포넌트
+    // ========================================
+
+    function TextBlockEditor({ textBlock, onChange, onDelete, index }) {
+      // 텍스트 블록의 개별 속성 업데이트
+      const update = (key, value) => {
+        onChange({ ...textBlock, [key]: value });
+      };
+
+      return (
+        <div className="bg-dark3/50 rounded-lg p-3 border border-dark4/30 fade-in">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-bold text-neon">텍스트 #{index + 1}</span>
+            <button
+              onClick={onDelete}
+              className="text-red-500 hover:text-red-400 text-xs px-2 py-0.5 rounded hover:bg-red-500/10 transition-colors"
+            >
+              삭제
+            </button>
+          </div>
+
+          {/* 텍스트 내용 입력 */}
+          <textarea
+            value={textBlock.content}
+            onChange={(e) => update('content', e.target.value)}
+            placeholder="텍스트를 입력하세요..."
+            className="w-full bg-dark1 border border-dark4 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 mb-2 resize-none focus:outline-none focus:border-accent"
+            rows={2}
+          />
+
+          {/* 폰트 크기 슬라이더 */}
+          <SliderInput
+            label="폰트 크기"
+            value={textBlock.fontSize}
+            onChange={(v) => update('fontSize', v)}
+            min={16}
+            max={120}
+            unit="px"
+          />
+
+          {/* Y축 위치 슬라이더 */}
+          <div className="mt-2">
+            <SliderInput
+              label="Y축 위치"
+              value={textBlock.yPercent}
+              onChange={(v) => update('yPercent', v)}
+              min={0}
+              max={100}
+              unit="%"
+            />
+          </div>
+
+          {/* 색상 설정 */}
+          <div className="flex flex-wrap gap-3 mt-2">
+            <ColorInput label="글자색" value={textBlock.color} onChange={(v) => update('color', v)} />
+            <ColorInput label="외곽선" value={textBlock.outlineColor} onChange={(v) => update('outlineColor', v)} />
+          </div>
+
+          {/* 외곽선 두께 */}
+          <div className="mt-2">
+            <SliderInput
+              label="외곽선 두께"
+              value={textBlock.outlineWidth}
+              onChange={(v) => update('outlineWidth', v)}
+              min={0}
+              max={10}
+              unit="px"
+            />
+          </div>
+
+          {/* 스타일 토글 및 정렬 */}
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            {/* [조건 분기 - 삼항 연산자] 볼드 토글 */}
+            <button
+              onClick={() => update('bold', !textBlock.bold)}
+              className={`px-3 py-1 rounded text-xs font-bold border transition-all ${
+                textBlock.bold ? 'bg-accent text-white border-accent' : 'bg-dark1 text-gray-400 border-dark4'
+              }`}
+            >
+              B
+            </button>
+            {/* [조건 분기 - 삼항 연산자] 이탤릭 토글 */}
+            <button
+              onClick={() => update('italic', !textBlock.italic)}
+              className={`px-3 py-1 rounded text-xs italic border transition-all ${
+                textBlock.italic ? 'bg-accent text-white border-accent' : 'bg-dark1 text-gray-400 border-dark4'
+              }`}
+            >
+              I
+            </button>
+
+            <span className="text-gray-600 text-xs">|</span>
+
+            {/* 텍스트 정렬 버튼 */}
+            {['left', 'center', 'right'].map((al) => (
+              <button
+                key={al}
+                onClick={() => update('align', al)}
+                className={`px-2 py-1 rounded text-xs border transition-all ${
+                  textBlock.align === al ? 'bg-neon text-white border-neon' : 'bg-dark1 text-gray-400 border-dark4'
+                }`}
+              >
+                {al === 'left' ? '◀' : al === 'center' ? '◆' : '▶'}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 텍스트 편집 패널 컴포넌트
+    // ========================================
+
+    function TextPanel({ texts, setTexts }) {
+      // [배열 - map] 텍스트 블록 업데이트
+      const updateText = (id, updated) => {
+        setTexts(texts.map((t) => (t.id === id ? updated : t)));
+      };
+
+      // [배열 - filter] 텍스트 블록 삭제
+      const deleteText = (id) => {
+        setTexts(texts.filter((t) => t.id !== id));
+      };
+
+      // [배열 - spread] 새 텍스트 블록 추가
+      const addText = () => {
+        setTexts([...texts, createTextBlock('custom')]);
+      };
+
+      return (
+        <Card title="텍스트 편집">
+          <div className="space-y-3">
+            {/* [조건부 렌더링] 텍스트 블록이 없을 때 안내 */}
+            {texts.length === 0 ? (
+              <p className="text-xs text-gray-500 text-center py-4">
+                텍스트를 추가해보세요!
+              </p>
+            ) : (
+              /* [배열 - map] 각 텍스트 블록 렌더링 */
+              texts.map((block, idx) => (
+                <TextBlockEditor
+                  key={block.id}
+                  textBlock={block}
+                  onChange={(updated) => updateText(block.id, updated)}
+                  onDelete={() => deleteText(block.id)}
+                  index={idx}
+                />
+              ))
+            )}
+          </div>
+          <Button
+            variant="purple"
+            size="sm"
+            onClick={addText}
+            className="w-full mt-3"
+            glowClass="btn-glow-purple"
+          >
+            + 텍스트 추가
+          </Button>
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 필터 패널 컴포넌트
+    // ========================================
+
+    function FilterPanel({ filters, setFilters }) {
+      const resetFilters = () => {
+        // [배열 - reduce] 필터 기본값으로 초기화 객체 생성
+        const defaults = FILTER_OPTIONS.reduce((obj, opt) => {
+          obj[opt.id] = opt.default;
+          return obj;
+        }, {});
+        setFilters(defaults);
+      };
+
+      return (
+        <Card title="필터 효과">
+          <div className="space-y-2">
+            {/* [배열 - map] 필터 옵션 슬라이더 렌더링 */}
+            {FILTER_OPTIONS.map((opt) => (
+              <SliderInput
+                key={opt.id}
+                label={opt.name}
+                value={filters[opt.id] ?? opt.default}
+                onChange={(v) => setFilters({ ...filters, [opt.id]: v })}
+                min={opt.min}
+                max={opt.max}
+                unit={opt.unit}
+              />
+            ))}
+          </div>
+          <Button variant="ghost" size="sm" onClick={resetFilters} className="w-full mt-3">
+            필터 초기화
+          </Button>
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 히스토리 컴포넌트
+    // ========================================
+
+    function HistoryPanel({ history, onLoad }) {
+      // [조건부 렌더링] 히스토리가 없으면 안내 표시
+      if (history.length === 0) {
+        return (
+          <Card title="최근 작업">
+            <p className="text-xs text-gray-500 text-center py-3">아직 저장된 밈이 없습니다.</p>
+          </Card>
+        );
+      }
+
+      return (
+        <Card title="최근 작업">
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {/* [배열 - map] 히스토리 썸네일 렌더링 */}
+            {history.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => onLoad(item.thumbnail)}
+                className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 border-dark4 hover:border-accent transition-all"
+                title={item.createdAt}
+              >
+                <img src={item.thumbnail} alt="밈" className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 캔버스 미리보기 컴포넌트
+    // ========================================
+
+    function CanvasPreview({ image, texts, filters, canvasRef, onHistoryUpdate, onPreview }) {
+      const containerRef = useRef(null);
+
+      // Canvas에 이미지 + 텍스트 합성하는 함수
+      const renderCanvas = useCallback(() => {
+        const canvas = canvasRef.current;
+        if (!canvas || !image) return;
+
+        const ctx = canvas.getContext('2d');
+
+        // 캔버스 크기 설정 (원본 사이즈 유지)
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+
+        // 1. 필터 적용
+        ctx.filter = buildFilterString(filters);
+
+        // 2. 이미지 그리기
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+        // 3. 필터 리셋 (텍스트에는 적용 안함)
+        ctx.filter = 'none';
+
+        // 4. [반복문 - forEach] 각 텍스트 블록 순회하며 그리기
+        texts.forEach((text) => {
+          if (!text.content) return;
+
+          // [조건 분기 - 삼항 연산자] 볼드/이탤릭 조합
+          const fontStyle = `${text.italic ? 'italic ' : ''}${text.bold ? 'bold ' : ''}`;
+          ctx.font = `${fontStyle}${text.fontSize}px 'Noto Sans KR', sans-serif`;
+          ctx.fillStyle = text.color;
+          ctx.strokeStyle = text.outlineColor;
+          ctx.lineWidth = text.outlineWidth;
+          ctx.textAlign = text.align;
+          ctx.textBaseline = 'top';
+
+          // [반복문 - for loop 기반 함수] 텍스트 줄바꿈 처리
+          const lines = wrapText(ctx, text.content, canvas.width - 40);
+
+          // [반복문 - forEach] 각 줄 렌더링
+          lines.forEach((line, i) => {
+            const x = getAlignX(text.align, canvas.width);
+            const y = (text.yPercent / 100) * canvas.height + i * (text.fontSize * 1.3);
+
+            // [조건 분기] 외곽선 두께가 있을 때만 strokeText
+            if (text.outlineWidth > 0) {
+              ctx.strokeText(line, x, y);
+            }
+            ctx.fillText(line, x, y);
+          });
+        });
+      }, [image, texts, filters, canvasRef]);
+
+      // 상태 변경시 자동 리렌더
+      useEffect(() => {
+        renderCanvas();
+      }, [renderCanvas]);
+
+      // 다운로드 함수
+      const handleDownload = (format) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const timestamp = Date.now();
+        const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+        const quality = format === 'jpg' ? 0.9 : undefined;
+        const dataUrl = canvas.toDataURL(mimeType, quality);
+
+        // anchor 태그로 다운로드
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = `my-meme-${timestamp}.${format}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        // 히스토리에 저장
+        // 썸네일용 작은 캔버스 생성
+        const thumbCanvas = document.createElement('canvas');
+        thumbCanvas.width = 120;
+        thumbCanvas.height = 90;
+        const thumbCtx = thumbCanvas.getContext('2d');
+        thumbCtx.drawImage(canvas, 0, 0, 120, 90);
+        const thumbnail = thumbCanvas.toDataURL('image/jpeg', 0.6);
+        const newHistory = saveToHistory(thumbnail);
+        onHistoryUpdate(newHistory);
+      };
+
+      return (
+        <div>
+          <Card title="미리보기" className="mb-4">
+            <div className="canvas-container rounded-lg overflow-hidden flex items-center justify-center min-h-[200px]">
+              {/* [조건부 렌더링] 이미지 선택 전/후 UI 변경 */}
+              {image ? (
+                <canvas
+                  ref={canvasRef}
+                  className="max-w-full h-auto block"
+                />
+              ) : (
+                <div className="py-20 text-center">
+                  <div className="text-5xl mb-3 opacity-50">🖼️</div>
+                  <p className="text-gray-500 text-sm">이미지를 업로드하거나</p>
+                  <p className="text-gray-500 text-sm">샘플 템플릿을 선택하세요</p>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* 미리보기 & 다운로드 버튼 */}
+          {image && (
+            <div className="space-y-3 mb-4 fade-in">
+              <Button
+                variant="purple"
+                size="lg"
+                onClick={() => {
+                  const canvas = canvasRef.current;
+                  if (!canvas) return;
+                  onPreview(canvas.toDataURL('image/png'));
+                }}
+                className="w-full text-lg"
+                glowClass="btn-glow-purple"
+              >
+                👁️ 미리보기
+              </Button>
+              <div className="flex gap-3">
+                <Button
+                  variant="success"
+                  size="lg"
+                  onClick={() => handleDownload('png')}
+                  className="flex-1"
+                  glowClass="btn-glow-green"
+                >
+                  PNG 다운로드
+                </Button>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={() => handleDownload('jpg')}
+                  className="flex-1"
+                >
+                  JPG 다운로드
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ========================================
+    // App 컴포넌트 - 루트 컴포넌트
+    // ========================================
+
+    function App() {
+      const [image, setImage] = useState(null);
+      const [imagePreviewUrl, setImagePreviewUrl] = useState('');
+      // [배열] 커스텀 텍스트 블록들을 배열로 관리
+      const [texts, setTexts] = useState([
+        createTextBlock('top'),
+        createTextBlock('bottom'),
+      ]);
+      // [배열 - reduce] 필터 기본값 객체 생성
+      const [filters, setFilters] = useState(
+        FILTER_OPTIONS.reduce((obj, opt) => {
+          obj[opt.id] = opt.default;
+          return obj;
+        }, {})
+      );
+      // [배열] 히스토리 배열 (localStorage)
+      const [history, setHistory] = useState(loadHistory);
+      const [previewUrl, setPreviewUrl] = useState(null);
+      const canvasRef = useRef(null);
+
+      // ESC 키로 미리보기 모달 닫기
+      useEffect(() => {
+        const handleKeyDown = (e) => {
+          if (e.key === 'Escape') setPreviewUrl(null);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+      }, []);
+
+      // 이미지 로드 콜백
+      const handleImageLoad = useCallback((img, previewUrl) => {
+        setImage(img);
+        setImagePreviewUrl(previewUrl || '');
+      }, []);
+
+      // 히스토리에서 이미지 로드
+      const handleHistoryLoad = useCallback((dataUrl) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          setImage(img);
+          setImagePreviewUrl(dataUrl);
+        };
+        img.src = dataUrl;
+      }, []);
+
+      // 전체 초기화
+      const handleReset = () => {
+        setImage(null);
+        setImagePreviewUrl('');
+        setTexts([createTextBlock('top'), createTextBlock('bottom')]);
+        setFilters(
+          FILTER_OPTIONS.reduce((obj, opt) => {
+            obj[opt.id] = opt.default;
+            return obj;
+          }, {})
+        );
+      };
+
+      return (
+        <div className="min-h-screen bg-dark1">
+          <Header />
+
+          <main className="max-w-7xl mx-auto px-4 py-6">
+            {/* 데스크톱: 2열, 모바일: 세로 스택 */}
+            <div className="flex flex-col md:flex-row gap-6">
+
+              {/* 왼쪽 패널 (설정/편집) */}
+              <div className="w-full md:w-[380px] flex-shrink-0 space-y-4">
+                <ImageUploader onImageLoad={handleImageLoad} />
+
+                {/* [조건부 렌더링] 이미지 미리보기 */}
+                {imagePreviewUrl && (
+                  <Card title="선택된 이미지" className="fade-in">
+                    <img
+                      src={imagePreviewUrl}
+                      alt="미리보기"
+                      className="w-full h-32 object-cover rounded-lg"
+                    />
+                  </Card>
+                )}
+
+                <TextPanel texts={texts} setTexts={setTexts} />
+                <FilterPanel filters={filters} setFilters={setFilters} />
+
+                <Button
+                  variant="danger"
+                  size="md"
+                  onClick={handleReset}
+                  className="w-full"
+                >
+                  전체 초기화
+                </Button>
+              </div>
+
+              {/* 오른쪽 패널 (캔버스 미리보기) */}
+              <div className="flex-1 min-w-0 space-y-4">
+                <CanvasPreview
+                  image={image}
+                  texts={texts}
+                  filters={filters}
+                  canvasRef={canvasRef}
+                  onHistoryUpdate={setHistory}
+                  onPreview={(dataUrl) => setPreviewUrl(dataUrl)}
+                />
+                <HistoryPanel history={history} onLoad={handleHistoryLoad} />
+              </div>
+            </div>
+          </main>
+
+          {/* 미리보기 모달 */}
+          {previewUrl && (
+            <div
+              className="fixed inset-0 bg-black/85 z-50 fade-in overflow-auto"
+              onClick={() => setPreviewUrl(null)}
+            >
+              {/* 상단 고정 바 */}
+              <div className="sticky top-0 z-10 bg-black/70 backdrop-blur-sm border-b border-dark4/30 px-4 py-3 flex items-center justify-between">
+                <span className="text-sm text-gray-400">👁️ 최종 미리보기 (원본 사이즈)</span>
+                <button
+                  onClick={() => setPreviewUrl(null)}
+                  className="text-white/70 hover:text-white text-sm flex items-center gap-2 transition-colors"
+                >
+                  ESC 또는 클릭으로 닫기 ✕
+                </button>
+              </div>
+
+              <div className="flex flex-col items-center p-4 min-h-full" onClick={(e) => e.stopPropagation()}>
+                {/* 미리보기 이미지 - 원본 사이즈 */}
+                <div className="bg-dark2 rounded-2xl p-3 shadow-2xl border border-dark4/50 inline-block">
+                  <img
+                    src={previewUrl}
+                    alt="밈 미리보기"
+                    className="rounded-lg"
+                    style={{ maxWidth: 'none', width: 'auto', height: 'auto' }}
+                  />
+                  <div className="flex gap-3 mt-4">
+                    <Button
+                      variant="success"
+                      size="lg"
+                      onClick={() => {
+                        const a = document.createElement('a');
+                        a.href = previewUrl;
+                        a.download = `my-meme-${Date.now()}.png`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        setPreviewUrl(null);
+                      }}
+                      className="flex-1"
+                      glowClass="btn-glow-green"
+                    >
+                      PNG 다운로드
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      onClick={() => {
+                        const canvas = canvasRef.current;
+                        if (!canvas) return;
+                        const a = document.createElement('a');
+                        a.href = canvas.toDataURL('image/jpeg', 0.9);
+                        a.download = `my-meme-${Date.now()}.jpg`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        setPreviewUrl(null);
+                      }}
+                      className="flex-1"
+                    >
+                      JPG 다운로드
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="lg"
+                      onClick={() => setPreviewUrl(null)}
+                      className="flex-1"
+                    >
+                      닫기
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 푸터 */}
+          <footer className="border-t border-dark4/30 mt-12 py-6 text-center">
+            <p className="text-xs text-gray-600">짤 생성기 (밈 메이커) -- Canvas API + React 18 + Tailwind CSS</p>
+          </footer>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 렌더링
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

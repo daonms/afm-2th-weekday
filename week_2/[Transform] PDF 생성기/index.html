@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF 생성기</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Noto Sans KR', sans-serif; }
+    .drop-highlight { border-color: #2563EB !important; background-color: #EFF6FF !important; }
+    .block-enter { animation: slideIn 0.3s ease-out; }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .paper-shadow { box-shadow: 0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08); }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+    input[type="range"] { -webkit-appearance: none; height: 6px; border-radius: 3px; background: #E2E8F0; }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 16px; height: 16px;
+      border-radius: 50%; background: #2563EB; cursor: pointer;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <div id="root"></div>
+  <script type="text/babel">
+    // ========================================
+    // 1. React Hooks Destructuring
+    // ========================================
+    const { useState, useRef, useCallback, useMemo, useEffect } = React;
+
+    // ========================================
+    // 2. Design System Components
+    // ========================================
+
+    // Button 컴포넌트: variant, size, disabled 지원
+    function Button({ children, variant = 'primary', size = 'md', disabled = false, onClick, className = '', type = 'button' }) {
+      const variants = {
+        primary: 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm',
+        secondary: 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300',
+        danger: 'bg-red-500 hover:bg-red-600 text-white',
+        ghost: 'hover:bg-gray-100 text-gray-600',
+        success: 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm',
+      };
+      const sizes = {
+        sm: 'px-2.5 py-1 text-xs rounded-md',
+        md: 'px-4 py-2 text-sm rounded-lg',
+        lg: 'px-6 py-3 text-base rounded-lg',
+      };
+      return (
+        <button
+          type={type}
+          onClick={onClick}
+          disabled={disabled}
+          className={`font-medium transition-all duration-200 inline-flex items-center justify-center gap-1.5
+            ${variants[variant]} ${sizes[size]}
+            ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+            ${className}`}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    // Input 컴포넌트: label, error 지원
+    function Input({ label, type = 'text', value, onChange, placeholder, error, disabled, className = '' }) {
+      return (
+        <div className={`flex flex-col gap-1 ${className}`}>
+          {label && <label className="text-sm font-medium text-gray-700">{label}</label>}
+          <input
+            type={type}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            disabled={disabled}
+            className={`px-3 py-2 rounded-lg border text-sm transition-colors
+              ${error ? 'border-red-400 focus:ring-red-200' : 'border-gray-300 focus:ring-blue-200'}
+              focus:outline-none focus:ring-2 focus:border-transparent
+              ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+          />
+          {error && <span className="text-xs text-red-500">{error}</span>}
+        </div>
+      );
+    }
+
+    // Card 컴포넌트: 섹션 래퍼
+    function Card({ children, title, icon, className = '' }) {
+      return (
+        <div className={`bg-white rounded-xl border border-gray-200 overflow-hidden ${className}`}>
+          {title && (
+            <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
+              <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                {icon && <span>{icon}</span>}
+                {title}
+              </h3>
+            </div>
+          )}
+          <div className="p-4">{children}</div>
+        </div>
+      );
+    }
+
+    // Select 컴포넌트
+    function Select({ label, value, onChange, options, className = '' }) {
+      return (
+        <div className={`flex flex-col gap-1 ${className}`}>
+          {label && <label className="text-sm font-medium text-gray-700">{label}</label>}
+          <select
+            value={value}
+            onChange={onChange}
+            className="px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white
+              focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-transparent cursor-pointer"
+          >
+            {/* 배열: options 배열을 map으로 렌더링 */}
+            {options.map((opt, i) => (
+              <option key={i} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 3. Constants & Templates (배열)
+    // ========================================
+
+    // 용지 크기 옵션 배열
+    const PAPER_SIZES = [
+      { value: 'a4', label: 'A4 (210 x 297mm)', width: 210, height: 297 },
+      { value: 'letter', label: 'Letter (216 x 279mm)', width: 216, height: 279 },
+      { value: 'legal', label: 'Legal (216 x 356mm)', width: 216, height: 356 },
+    ];
+
+    // 블록 타입 배열
+    const BLOCK_TYPES = [
+      { value: 'h1', label: '제목 (H1)', icon: 'H1' },
+      { value: 'h2', label: '소제목 (H2)', icon: 'H2' },
+      { value: 'paragraph', label: '본문', icon: 'P' },
+      { value: 'list', label: '목록', icon: '::' },
+      { value: 'quote', label: '인용문', icon: '"' },
+      { value: 'divider', label: '구분선', icon: '--' },
+      { value: 'image', label: '이미지', icon: 'IMG' },
+    ];
+
+    // 템플릿 배열: 4종
+    const TEMPLATES = [
+      {
+        name: '빈 문서',
+        icon: '📄',
+        desc: '빈 문서에서 시작합니다',
+        blocks: [{ id: Date.now(), type: 'paragraph', content: '', fontSize: 14, color: '#333333', align: 'left' }],
+      },
+      {
+        name: '이력서',
+        icon: '👤',
+        desc: '기본 이력서 템플릿',
+        blocks: [
+          { id: 1, type: 'h1', content: '이름', fontSize: 28, color: '#1E40AF', align: 'center' },
+          { id: 2, type: 'paragraph', content: '연락처: 010-0000-0000 | email@example.com', fontSize: 12, color: '#6B7280', align: 'center' },
+          { id: 3, type: 'divider' },
+          { id: 4, type: 'h2', content: '학력', fontSize: 20, color: '#1E40AF', align: 'left' },
+          { id: 5, type: 'paragraph', content: '2020.03 ~ 2024.02  OO대학교 OO학과', fontSize: 14, color: '#333333', align: 'left' },
+          { id: 6, type: 'h2', content: '경력', fontSize: 20, color: '#1E40AF', align: 'left' },
+          { id: 7, type: 'paragraph', content: '2024.03 ~ 현재  OO회사 OO팀', fontSize: 14, color: '#333333', align: 'left' },
+          { id: 8, type: 'h2', content: '기술 스택', fontSize: 20, color: '#1E40AF', align: 'left' },
+          { id: 9, type: 'list', content: 'JavaScript, React\nPython, Django\nSQL, MongoDB', fontSize: 14, color: '#333333', align: 'left' },
+        ],
+      },
+      {
+        name: '보고서',
+        icon: '📊',
+        desc: '업무 보고서 템플릿',
+        blocks: [
+          { id: 10, type: 'h1', content: '프로젝트 보고서', fontSize: 28, color: '#1E40AF', align: 'center' },
+          { id: 11, type: 'paragraph', content: '작성일: 2026-03-30', fontSize: 12, color: '#6B7280', align: 'center' },
+          { id: 12, type: 'divider' },
+          { id: 13, type: 'h2', content: '1. 개요', fontSize: 20, color: '#1E40AF', align: 'left' },
+          { id: 14, type: 'paragraph', content: '프로젝트의 배경과 목적을 작성합니다.', fontSize: 14, color: '#333333', align: 'left' },
+          { id: 15, type: 'h2', content: '2. 진행 현황', fontSize: 20, color: '#1E40AF', align: 'left' },
+          { id: 16, type: 'list', content: '1단계: 기획 완료\n2단계: 개발 진행 중\n3단계: 테스트 예정', fontSize: 14, color: '#333333', align: 'left' },
+          { id: 17, type: 'h2', content: '3. 결론', fontSize: 20, color: '#1E40AF', align: 'left' },
+          { id: 18, type: 'paragraph', content: '결론 및 향후 계획을 작성합니다.', fontSize: 14, color: '#333333', align: 'left' },
+        ],
+      },
+      {
+        name: '회의록',
+        icon: '📝',
+        desc: '회의록 템플릿',
+        blocks: [
+          { id: 20, type: 'h1', content: '회의록', fontSize: 28, color: '#1E40AF', align: 'center' },
+          { id: 21, type: 'paragraph', content: '일시: 2026-03-30 14:00 | 장소: 회의실 A', fontSize: 12, color: '#6B7280', align: 'left' },
+          { id: 22, type: 'divider' },
+          { id: 23, type: 'h2', content: '참석자', fontSize: 20, color: '#1E40AF', align: 'left' },
+          { id: 24, type: 'list', content: '홍길동 (팀장)\n김철수 (개발)\n이영희 (디자인)', fontSize: 14, color: '#333333', align: 'left' },
+          { id: 25, type: 'h2', content: '안건', fontSize: 20, color: '#1E40AF', align: 'left' },
+          { id: 26, type: 'list', content: 'Q2 프로젝트 일정 확인\n디자인 리뷰\n개발 이슈 공유', fontSize: 14, color: '#333333', align: 'left' },
+          { id: 27, type: 'h2', content: '회의 내용', fontSize: 20, color: '#1E40AF', align: 'left' },
+          { id: 28, type: 'paragraph', content: '회의 내용을 작성합니다.', fontSize: 14, color: '#333333', align: 'left' },
+          { id: 29, type: 'h2', content: '결정 사항', fontSize: 20, color: '#1E40AF', align: 'left' },
+          { id: 30, type: 'quote', content: '핵심 결정 사항을 기록합니다.', fontSize: 14, color: '#333333', align: 'left' },
+        ],
+      },
+    ];
+
+    // ========================================
+    // 4. File Upload Zone Component
+    // ========================================
+
+    function FileUploadZone({ onFilesUploaded }) {
+      const [isDragOver, setIsDragOver] = useState(false);
+      const fileInputRef = useRef(null);
+
+      // 드래그앤드롭 핸들러
+      const handleDragOver = useCallback((e) => {
+        e.preventDefault();
+        setIsDragOver(true);
+      }, []);
+
+      const handleDragLeave = useCallback((e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+      }, []);
+
+      const handleDrop = useCallback((e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        if (e.dataTransfer.files.length > 0) {
+          onFilesUploaded(e.dataTransfer.files);
+        }
+      }, [onFilesUploaded]);
+
+      const handleFileSelect = useCallback((e) => {
+        if (e.target.files.length > 0) {
+          onFilesUploaded(e.target.files);
+          e.target.value = '';
+        }
+      }, [onFilesUploaded]);
+
+      return (
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer
+            transition-all duration-200
+            ${isDragOver
+              ? 'drop-highlight border-blue-500 bg-blue-50'
+              : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50/30'}`}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/jpeg,image/png,image/gif,image/webp,.txt"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <div className="text-3xl mb-2">{isDragOver ? '📥' : '📎'}</div>
+          <p className="text-sm font-medium text-gray-700">
+            {isDragOver ? '여기에 놓으세요!' : '파일을 드래그하거나 클릭하세요'}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">이미지 (jpg, png, gif, webp) / 텍스트 (.txt)</p>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 5. Block Editor Component
+    // ========================================
+
+    function BlockEditor({ block, index, totalBlocks, onUpdate, onDelete, onMoveUp, onMoveDown }) {
+      const blockType = BLOCK_TYPES.find(t => t.value === block.type);
+
+      // 조건 분기: 블록 타입별 아이콘 색상
+      const typeColor = block.type === 'h1' ? 'bg-blue-600 text-white'
+        : block.type === 'h2' ? 'bg-blue-400 text-white'
+        : block.type === 'quote' ? 'bg-amber-500 text-white'
+        : block.type === 'divider' ? 'bg-gray-400 text-white'
+        : block.type === 'list' ? 'bg-emerald-500 text-white'
+        : block.type === 'image' ? 'bg-purple-500 text-white'
+        : 'bg-gray-200 text-gray-700';
+
+      return (
+        <div className="block-enter border border-gray-200 rounded-lg bg-white overflow-hidden group hover:border-blue-200 transition-colors">
+          {/* 블록 헤더 */}
+          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border-b border-gray-100">
+            <span className={`text-xs font-bold px-2 py-0.5 rounded ${typeColor}`}>
+              {blockType?.icon}
+            </span>
+            <span className="text-xs text-gray-500 flex-1">{blockType?.label}</span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onMoveUp(index)}
+                disabled={index === 0}
+                className="p-1 rounded hover:bg-gray-200 disabled:opacity-30 transition-colors"
+                title="위로 이동"
+              >
+                <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7"/></svg>
+              </button>
+              <button
+                onClick={() => onMoveDown(index)}
+                disabled={index === totalBlocks - 1}
+                className="p-1 rounded hover:bg-gray-200 disabled:opacity-30 transition-colors"
+                title="아래로 이동"
+              >
+                <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
+              </button>
+              <button
+                onClick={() => onDelete(index)}
+                className="p-1 rounded hover:bg-red-100 transition-colors"
+                title="삭제"
+              >
+                <svg className="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </div>
+
+          {/* 조건 분기: 블록 타입에 따라 다른 편집 UI 렌더링 */}
+          <div className="p-3">
+            {/* 구분선 블록 */}
+            {block.type === 'divider' ? (
+              <div className="flex items-center gap-2 py-2">
+                <hr className="flex-1 border-gray-300" />
+                <span className="text-xs text-gray-400">구분선</span>
+                <hr className="flex-1 border-gray-300" />
+              </div>
+            ) : block.type === 'image' ? (
+              /* 이미지 블록 */
+              <div>
+                {block.src ? (
+                  <div>
+                    <img
+                      src={block.src}
+                      alt={block.name || '이미지'}
+                      className="max-h-32 rounded-lg border border-gray-200 mb-2 object-contain"
+                    />
+                    <p className="text-xs text-gray-400 mb-2 truncate">{block.name}</p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 mb-2">이미지를 파일 업로드로 추가하세요</p>
+                )}
+                <div className="flex gap-2 flex-wrap">
+                  <Select
+                    label="너비"
+                    value={block.imageWidth || '100'}
+                    onChange={(e) => onUpdate(index, { imageWidth: e.target.value })}
+                    options={[
+                      { value: '25', label: '25%' },
+                      { value: '50', label: '50%' },
+                      { value: '75', label: '75%' },
+                      { value: '100', label: '100%' },
+                    ]}
+                    className="flex-1 min-w-[80px]"
+                  />
+                  <Select
+                    label="정렬"
+                    value={block.align || 'center'}
+                    onChange={(e) => onUpdate(index, { align: e.target.value })}
+                    options={[
+                      { value: 'left', label: '왼쪽' },
+                      { value: 'center', label: '가운데' },
+                      { value: 'right', label: '오른쪽' },
+                    ]}
+                    className="flex-1 min-w-[80px]"
+                  />
+                </div>
+              </div>
+            ) : (
+              /* 텍스트 계열 블록 (h1, h2, paragraph, list, quote) */
+              <div className="space-y-2">
+                {block.type === 'list' ? (
+                  <textarea
+                    value={block.content || ''}
+                    onChange={(e) => onUpdate(index, { content: e.target.value })}
+                    placeholder="항목을 줄바꿈으로 구분하세요"
+                    rows={4}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-blue-200 resize-none"
+                  />
+                ) : block.type === 'quote' ? (
+                  <textarea
+                    value={block.content || ''}
+                    onChange={(e) => onUpdate(index, { content: e.target.value })}
+                    placeholder="인용문을 입력하세요"
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-blue-200 resize-none
+                      border-l-4 border-l-amber-400"
+                  />
+                ) : (
+                  <textarea
+                    value={block.content || ''}
+                    onChange={(e) => onUpdate(index, { content: e.target.value })}
+                    placeholder={block.type === 'h1' ? '제목을 입력하세요' : block.type === 'h2' ? '소제목을 입력하세요' : '내용을 입력하세요'}
+                    rows={block.type === 'h1' || block.type === 'h2' ? 1 : 3}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-blue-200 resize-none"
+                  />
+                )}
+                <div className="flex gap-2 flex-wrap items-end">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-500">크기</label>
+                    <input
+                      type="number"
+                      min={8}
+                      max={48}
+                      value={block.fontSize || 14}
+                      onChange={(e) => onUpdate(index, { fontSize: parseInt(e.target.value) || 14 })}
+                      className="w-16 px-2 py-1.5 rounded border border-gray-300 text-xs text-center
+                        focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-500">색상</label>
+                    <input
+                      type="color"
+                      value={block.color || '#333333'}
+                      onChange={(e) => onUpdate(index, { color: e.target.value })}
+                      className="w-10 h-8 rounded border border-gray-300 cursor-pointer"
+                    />
+                  </div>
+                  <Select
+                    label="정렬"
+                    value={block.align || 'left'}
+                    onChange={(e) => onUpdate(index, { align: e.target.value })}
+                    options={[
+                      { value: 'left', label: '왼쪽' },
+                      { value: 'center', label: '가운데' },
+                      { value: 'right', label: '오른쪽' },
+                    ]}
+                    className="min-w-[80px]"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 6. Preview Component
+    // ========================================
+
+    function PreviewBlock({ block }) {
+      // 조건 분기: if/else로 블록 타입별 렌더링
+      if (block.type === 'h1') {
+        return (
+          <div style={{ fontSize: `${block.fontSize || 28}px`, color: block.color || '#1E40AF', textAlign: block.align || 'left', fontWeight: 700, lineHeight: 1.3, marginBottom: '8px' }}>
+            {block.content || ' '}
+          </div>
+        );
+      } else if (block.type === 'h2') {
+        return (
+          <div style={{ fontSize: `${block.fontSize || 20}px`, color: block.color || '#1E40AF', textAlign: block.align || 'left', fontWeight: 600, lineHeight: 1.4, marginBottom: '6px' }}>
+            {block.content || ' '}
+          </div>
+        );
+      } else if (block.type === 'paragraph') {
+        return (
+          <div style={{ fontSize: `${block.fontSize || 14}px`, color: block.color || '#333333', textAlign: block.align || 'left', lineHeight: 1.7, marginBottom: '6px', whiteSpace: 'pre-wrap' }}>
+            {block.content || ' '}
+          </div>
+        );
+      } else if (block.type === 'divider') {
+        return <hr style={{ border: 'none', borderTop: '1px solid #D1D5DB', margin: '12px 0' }} />;
+      } else if (block.type === 'list') {
+        const items = (block.content || '').split('\n').filter(item => item.trim());
+        return (
+          <ul style={{ fontSize: `${block.fontSize || 14}px`, color: block.color || '#333333', textAlign: block.align || 'left', lineHeight: 1.7, marginBottom: '6px', paddingLeft: '20px' }}>
+            {/* 반복문: map으로 목록 항목 렌더링 */}
+            {items.map((item, i) => (
+              <li key={i} style={{ marginBottom: '2px' }}>{item}</li>
+            ))}
+          </ul>
+        );
+      } else if (block.type === 'quote') {
+        return (
+          <div style={{
+            fontSize: `${block.fontSize || 14}px`, color: block.color || '#555555',
+            textAlign: block.align || 'left', lineHeight: 1.7, marginBottom: '6px',
+            borderLeft: '3px solid #F59E0B', paddingLeft: '12px', fontStyle: 'italic',
+            backgroundColor: '#FFFBEB', padding: '8px 12px', borderRadius: '0 6px 6px 0',
+            whiteSpace: 'pre-wrap',
+          }}>
+            {block.content || ' '}
+          </div>
+        );
+      } else if (block.type === 'image') {
+        // 이미지 블록 렌더링
+        if (!block.src) return null;
+        const widthPercent = block.imageWidth || '100';
+        const align = block.align || 'center';
+        // 삼항: 정렬에 따른 justify 값
+        const justifyContent = align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center';
+        return (
+          <div style={{ display: 'flex', justifyContent, marginBottom: '8px' }}>
+            <img
+              src={block.src}
+              alt={block.name || '이미지'}
+              style={{ width: `${widthPercent}%`, maxWidth: '100%', objectFit: 'contain', borderRadius: '4px' }}
+            />
+          </div>
+        );
+      }
+      return null;
+    }
+
+    // ========================================
+    // 7. App Component (루트 컴포넌트)
+    // ========================================
+
+    // ========================================
+    // 메인 페이지 (모드 선택) 컴포넌트
+    // ========================================
+    function MainPage({ onSelect }) {
+      // [배열] 모드 선택 카드 배열
+      const modes = [
+        {
+          id: 'template',
+          icon: '📑',
+          title: '템플릿으로 시작',
+          desc: '이력서, 보고서, 회의록 등 미리 준비된 템플릿을 선택하여 빠르게 문서를 작성합니다.',
+          color: 'from-blue-500 to-blue-600',
+          hoverColor: 'hover:border-blue-400',
+          bgLight: 'bg-blue-50',
+          features: ['이력서', '보고서', '회의록', '빈 문서'],
+        },
+        {
+          id: 'word',
+          icon: '📄',
+          title: '텍스트 파일 업로드',
+          desc: '.txt 텍스트 파일을 업로드하면 자동으로 본문에 삽입되어 PDF로 변환할 수 있습니다.',
+          color: 'from-emerald-500 to-emerald-600',
+          hoverColor: 'hover:border-emerald-400',
+          bgLight: 'bg-emerald-50',
+          features: ['.txt 파일 지원', '자동 본문 변환', '편집 후 PDF 저장'],
+        },
+        {
+          id: 'image',
+          icon: '🖼️',
+          title: '이미지 파일 업로드',
+          desc: '이미지(jpg, png, gif, webp)를 업로드하여 PDF 문서에 삽입하고 변환합니다.',
+          color: 'from-purple-500 to-purple-600',
+          hoverColor: 'hover:border-purple-400',
+          bgLight: 'bg-purple-50',
+          features: ['jpg, png, gif, webp', '크기/정렬 조절', '텍스트와 함께 배치'],
+        },
+      ];
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-gray-50 to-indigo-50 flex flex-col items-center justify-center p-4">
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl text-white text-3xl shadow-lg mb-4">
+              P
+            </div>
+            <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">PDF 생성기</h1>
+            <p className="text-gray-500 text-sm md:text-base">텍스트와 이미지를 PDF로 변환하세요</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl w-full">
+            {/* [반복문] map으로 모드 카드 렌더링 */}
+            {modes.map((mode) => (
+              <button
+                key={mode.id}
+                onClick={() => onSelect(mode.id)}
+                className={`bg-white rounded-2xl border-2 border-gray-200 ${mode.hoverColor}
+                  p-6 text-left transition-all duration-300 group
+                  hover:shadow-xl hover:-translate-y-2 cursor-pointer`}
+              >
+                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${mode.color}
+                  flex items-center justify-center text-3xl mb-4 shadow-md
+                  group-hover:scale-110 transition-transform duration-300`}>
+                  {mode.icon}
+                </div>
+                <h2 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-700 transition-colors">
+                  {mode.title}
+                </h2>
+                <p className="text-sm text-gray-500 mb-4 leading-relaxed">{mode.desc}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {/* [반복문] map으로 기능 태그 렌더링 */}
+                  {mode.features.map((f, i) => (
+                    <span key={i} className={`text-xs px-2 py-0.5 rounded-full ${mode.bgLight} text-gray-600 font-medium`}>
+                      {f}
+                    </span>
+                  ))}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <p className="text-xs text-gray-400 mt-8">어떤 모드를 선택하든 편집기에서 자유롭게 수정할 수 있습니다</p>
+        </div>
+      );
+    }
+
+    function App() {
+      // 페이지 모드 state: 'main' | 'editor'
+      const [page, setPage] = useState('main');
+      const [initialMode, setInitialMode] = useState(null); // 'template' | 'word' | 'image'
+
+      // 문서 설정 state
+      const [title, setTitle] = useState('내 문서');
+      const [author, setAuthor] = useState('');
+      const [date, setDate] = useState('2026-03-30');
+      const [paperSize, setPaperSize] = useState('a4');
+      const [orientation, setOrientation] = useState('portrait');
+      const [margins, setMargins] = useState({ top: 20, bottom: 20, left: 20, right: 20 });
+
+      // 본문 블록 배열 state
+      const [blocks, setBlocks] = useState([
+        { id: Date.now(), type: 'paragraph', content: '', fontSize: 14, color: '#333333', align: 'left' },
+      ]);
+
+      // 미리보기 state
+      const [zoom, setZoom] = useState(100);
+      const [isGenerating, setIsGenerating] = useState(false);
+      const [addBlockType, setAddBlockType] = useState('paragraph');
+
+      const previewRef = useRef(null);
+      const wordFileRef = useRef(null);
+      const imageFileRef = useRef(null);
+
+      // [조건 분기] 모드 선택 핸들러
+      const handleModeSelect = useCallback((mode) => {
+        setInitialMode(mode);
+        if (mode === 'template') {
+          // 템플릿 모드: 에디터로 이동 (템플릿 선택은 에디터에서)
+          setPage('editor');
+        } else if (mode === 'word') {
+          // 텍스트 파일 업로드 모드: 파일 선택 다이얼로그 열기
+          setPage('editor');
+          setTimeout(() => wordFileRef.current?.click(), 300);
+        } else if (mode === 'image') {
+          // 이미지 업로드 모드: 파일 선택 다이얼로그 열기
+          setPage('editor');
+          setTimeout(() => imageFileRef.current?.click(), 300);
+        }
+      }, []);
+
+      // 용지 정보 계산 (useMemo)
+      const paperInfo = useMemo(() => {
+        const paper = PAPER_SIZES.find(p => p.value === paperSize);
+        // 삼항: 방향에 따라 가로/세로 교환
+        return orientation === 'portrait'
+          ? { width: paper.width, height: paper.height }
+          : { width: paper.height, height: paper.width };
+      }, [paperSize, orientation]);
+
+      // ========================================
+      // 파일 업로드 핸들러 (FileReader API)
+      // ========================================
+      const handleFileUpload = useCallback((files) => {
+        // 배열: FileList를 Array로 변환
+        const fileArray = Array.from(files);
+
+        // 반복문: forEach로 각 파일 순회 처리
+        fileArray.forEach(file => {
+          const reader = new FileReader();
+
+          // 조건 분기: 파일 타입에 따라 다르게 처리
+          if (file.type.startsWith('image/')) {
+            reader.onload = (e) => {
+              // 이미지 블록으로 추가 (spread 연산자)
+              const newBlock = {
+                id: Date.now() + Math.random(),
+                type: 'image',
+                src: e.target.result,
+                name: file.name,
+                imageWidth: '100',
+                align: 'center',
+              };
+              setBlocks(prev => [...prev, newBlock]);
+            };
+            reader.readAsDataURL(file);
+          } else if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+            reader.onload = (e) => {
+              // 텍스트 블록으로 추가
+              const newBlock = {
+                id: Date.now() + Math.random(),
+                type: 'paragraph',
+                content: e.target.result,
+                fontSize: 14,
+                color: '#333333',
+                align: 'left',
+              };
+              setBlocks(prev => [...prev, newBlock]);
+            };
+            reader.readAsText(file, 'UTF-8');
+          }
+        });
+      }, []);
+
+      // 블록 추가
+      const addBlock = useCallback((type) => {
+        const newBlock = {
+          id: Date.now() + Math.random(),
+          type,
+          content: '',
+          fontSize: type === 'h1' ? 28 : type === 'h2' ? 20 : 14,
+          color: (type === 'h1' || type === 'h2') ? '#1E40AF' : '#333333',
+          align: 'left',
+          ...(type === 'image' ? { src: '', name: '', imageWidth: '100', align: 'center' } : {}),
+        };
+        setBlocks(prev => [...prev, newBlock]);
+      }, []);
+
+      // 블록 업데이트 (spread 연산자)
+      const updateBlock = useCallback((index, updates) => {
+        setBlocks(prev => prev.map((block, i) =>
+          i === index ? { ...block, ...updates } : block
+        ));
+      }, []);
+
+      // 블록 삭제 (filter)
+      const deleteBlock = useCallback((index) => {
+        setBlocks(prev => prev.filter((_, i) => i !== index));
+      }, []);
+
+      // 블록 위로 이동 (findIndex + spread)
+      const moveBlockUp = useCallback((index) => {
+        if (index === 0) return;
+        setBlocks(prev => {
+          const newBlocks = [...prev];
+          [newBlocks[index - 1], newBlocks[index]] = [newBlocks[index], newBlocks[index - 1]];
+          return newBlocks;
+        });
+      }, []);
+
+      // 블록 아래로 이동
+      const moveBlockDown = useCallback((index) => {
+        setBlocks(prev => {
+          if (index >= prev.length - 1) return prev;
+          const newBlocks = [...prev];
+          [newBlocks[index], newBlocks[index + 1]] = [newBlocks[index + 1], newBlocks[index]];
+          return newBlocks;
+        });
+      }, []);
+
+      // 템플릿 적용
+      const applyTemplate = useCallback((templateIndex) => {
+        const template = TEMPLATES[templateIndex];
+        // spread 연산자로 블록 복사 (id 재생성)
+        const newBlocks = template.blocks.map(block => ({
+          ...block,
+          id: Date.now() + Math.random(),
+        }));
+        setBlocks(newBlocks);
+      }, []);
+
+      // 전체 초기화
+      const resetAll = useCallback(() => {
+        if (!confirm('문서를 초기화하시겠습니까?')) return;
+        setTitle('내 문서');
+        setAuthor('');
+        setDate('2026-03-30');
+        setPaperSize('a4');
+        setOrientation('portrait');
+        setMargins({ top: 20, bottom: 20, left: 20, right: 20 });
+        setBlocks([{ id: Date.now(), type: 'paragraph', content: '', fontSize: 14, color: '#333333', align: 'left' }]);
+        setZoom(100);
+      }, []);
+
+      // ========================================
+      // PDF 생성 & 다운로드 (html2canvas + jsPDF)
+      // ========================================
+      const generatePDF = useCallback(async () => {
+        if (!previewRef.current) return;
+        setIsGenerating(true);
+
+        try {
+          const previewEl = previewRef.current;
+          const { jsPDF } = window.jspdf;
+
+          // html2canvas로 미리보기 캡처 (한글 완벽 지원)
+          const canvas = await html2canvas(previewEl, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#FFFFFF',
+          });
+
+          const imgData = canvas.toDataURL('image/png');
+          const imgWidth = paperInfo.width;
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+          // 삼항: 방향에 따른 orientation
+          const pdfOrientation = orientation === 'portrait' ? 'p' : 'l';
+          const pdf = new jsPDF(pdfOrientation, 'mm', paperSize);
+
+          const pageHeight = paperInfo.height;
+          let heightLeft = imgHeight;
+          let position = 0;
+
+          // 첫 페이지
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+
+          // while 반복문: 여러 페이지 분할 처리
+          while (heightLeft > 0) {
+            position -= pageHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+          }
+
+          // 파일명: "{제목}-{날짜}.pdf"
+          const fileName = `${title || '문서'}-${date || 'undated'}.pdf`;
+          pdf.save(fileName);
+        } catch (error) {
+          console.error('PDF 생성 오류:', error);
+          alert('PDF 생성 중 오류가 발생했습니다.');
+        } finally {
+          setIsGenerating(false);
+        }
+      }, [paperInfo, orientation, paperSize, title, date]);
+
+      // 미리보기 용지 비율 계산
+      const previewStyle = useMemo(() => {
+        const baseWidth = 595; // A4 px 기준
+        const ratio = paperInfo.height / paperInfo.width;
+        const scaledWidth = baseWidth * (zoom / 100);
+        return {
+          width: `${scaledWidth}px`,
+          minHeight: `${scaledWidth * ratio}px`,
+          padding: `${margins.top * 2}px ${margins.right * 2}px ${margins.bottom * 2}px ${margins.left * 2}px`,
+        };
+      }, [paperInfo, zoom, margins]);
+
+      // [조건 분기] 메인 페이지 vs 에디터 페이지
+      if (page === 'main') {
+        return <MainPage onSelect={handleModeSelect} />;
+      }
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-gray-50 to-indigo-50">
+          {/* 모드별 숨겨진 파일 입력 */}
+          <input
+            ref={wordFileRef}
+            type="file"
+            accept=".txt"
+            multiple
+            className="hidden"
+            onChange={(e) => { if (e.target.files.length > 0) { handleFileUpload(e.target.files); e.target.value = ''; } }}
+          />
+          <input
+            ref={imageFileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            multiple
+            className="hidden"
+            onChange={(e) => { if (e.target.files.length > 0) { handleFileUpload(e.target.files); e.target.value = ''; } }}
+          />
+
+          {/* 헤더 */}
+          <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-30">
+            <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setPage('main')}
+                  className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white text-lg shadow-sm hover:bg-blue-700 transition-colors cursor-pointer"
+                  title="메인으로 돌아가기"
+                >
+                  ←
+                </button>
+                <div>
+                  <h1 className="text-lg font-bold text-gray-900">PDF 생성기</h1>
+                  <p className="text-xs text-gray-400">
+                    {/* [조건 분기] 모드별 설명 텍스트 */}
+                    {initialMode === 'template' ? '📑 템플릿 모드' : initialMode === 'word' ? '📄 텍스트 파일 모드' : '🖼️ 이미지 파일 모드'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setPage('main')}>
+                  모드 변경
+                </Button>
+                <Button variant="ghost" size="sm" onClick={resetAll}>
+                  초기화
+                </Button>
+                <Button
+                  variant="success"
+                  size="md"
+                  onClick={generatePDF}
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? (
+                    <>
+                      <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                      생성 중...
+                    </>
+                  ) : (
+                    <>PDF 다운로드</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </header>
+
+          {/* 메인 컨텐츠 */}
+          <div className="max-w-[1600px] mx-auto p-4">
+            <div className="flex flex-col lg:flex-row gap-4">
+
+              {/* ========================================
+                  왼쪽 패널: 편집 영역
+                  ======================================== */}
+              <div className="w-full lg:w-[480px] lg:flex-shrink-0 space-y-4 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto lg:pr-1">
+
+                {/* [조건 분기] 모드별 상단 카드 */}
+                {initialMode === 'template' ? (
+                  /* 템플릿 모드: 템플릿 선택을 가장 먼저 */
+                  <Card title="템플릿 선택" icon="📑">
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* [반복문] map으로 템��릿 배열 렌더링 */}
+                      {TEMPLATES.map((tmpl, i) => (
+                        <button
+                          key={i}
+                          onClick={() => applyTemplate(i)}
+                          className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-200
+                            hover:border-blue-300 hover:bg-blue-50 transition-all text-left group"
+                        >
+                          <span className="text-xl">{tmpl.icon}</span>
+                          <div>
+                            <div className="text-sm font-medium text-gray-800 group-hover:text-blue-700">{tmpl.name}</div>
+                            <div className="text-xs text-gray-400">{tmpl.desc}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </Card>
+                ) : (
+                  /* 파일 모드: 파일 업로드를 가장 먼저 */
+                  <Card title={initialMode === 'word' ? '텍스트 파일 업로드' : '이미지 파일 업로드'} icon={initialMode === 'word' ? '📄' : '🖼️'}>
+                    <FileUploadZone onFilesUploaded={handleFileUpload} />
+                    <p className="text-xs text-gray-400 mt-2 text-center">
+                      {initialMode === 'word'
+                        ? '💡 .txt 파일을 업로드하면 본문에 자동 삽입됩니다'
+                        : '💡 이미지를 업로드하면 문서에 자동 삽입됩니다'}
+                    </p>
+                  </Card>
+                )}
+
+                {/* 문서 설정 */}
+                <Card title="문서 설정" icon="📋">
+                  <div className="space-y-3">
+                    <Input label="제목" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="문서 제목" />
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input label="작성자" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="작성자" />
+                      <Input label="날짜" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Select
+                        label="용지 크기"
+                        value={paperSize}
+                        onChange={(e) => setPaperSize(e.target.value)}
+                        options={PAPER_SIZES.map(p => ({ value: p.value, label: p.label }))}
+                      />
+                      <Select
+                        label="방향"
+                        value={orientation}
+                        onChange={(e) => setOrientation(e.target.value)}
+                        options={[
+                          { value: 'portrait', label: '세로' },
+                          { value: 'landscape', label: '가로' },
+                        ]}
+                      />
+                    </div>
+                    {/* 여백 슬라이더 */}
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 block mb-2">여백 (mm)</label>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                        {/* 배열 + map: 여백 방향 렌더링 */}
+                        {[
+                          { key: 'top', label: '상' },
+                          { key: 'bottom', label: '하' },
+                          { key: 'left', label: '좌' },
+                          { key: 'right', label: '우' },
+                        ].map(({ key, label }) => (
+                          <div key={key} className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500 w-4">{label}</span>
+                            <input
+                              type="range"
+                              min={10}
+                              max={40}
+                              value={margins[key]}
+                              onChange={(e) => setMargins(prev => ({ ...prev, [key]: parseInt(e.target.value) }))}
+                              className="flex-1"
+                            />
+                            <span className="text-xs text-gray-500 w-6 text-right">{margins[key]}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* [조건 분기] 템플릿 모드가 아닐 때 추가 파일 업로드 + 템플릿 접근 */}
+                {initialMode !== 'template' && (
+                  <Card title="템플릿 적용" icon="📑">
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {TEMPLATES.map((tmpl, i) => (
+                        <button
+                          key={i}
+                          onClick={() => applyTemplate(i)}
+                          className="flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-200
+                            hover:border-blue-300 hover:bg-blue-50 transition-all group"
+                        >
+                          <span className="text-lg">{tmpl.icon}</span>
+                          <span className="text-xs text-gray-500 group-hover:text-blue-700">{tmpl.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+
+                {/* 추가 파일 업로드 (모든 모드) */}
+                {initialMode === 'template' && (
+                  <Card title="파일 추가" icon="📎">
+                    <FileUploadZone onFilesUploaded={handleFileUpload} />
+                  </Card>
+                )}
+
+                {/* 본문 블록 편집 */}
+                <Card title="본문 블록" icon="📝">
+                  <div className="space-y-3">
+                    {/* 조건부 렌더링: 빈 상태 */}
+                    {blocks.length === 0 ? (
+                      <div className="text-center py-8 text-gray-400">
+                        <div className="text-3xl mb-2">📄</div>
+                        <p className="text-sm">블록을 추가하세요</p>
+                      </div>
+                    ) : (
+                      /* 반복문: map으로 블록 배열 렌더링 */
+                      blocks.map((block, index) => (
+                        <BlockEditor
+                          key={block.id}
+                          block={block}
+                          index={index}
+                          totalBlocks={blocks.length}
+                          onUpdate={updateBlock}
+                          onDelete={deleteBlock}
+                          onMoveUp={moveBlockUp}
+                          onMoveDown={moveBlockDown}
+                        />
+                      ))
+                    )}
+
+                    {/* 블록 추가 드롭다운 */}
+                    <div className="flex gap-2 pt-2 border-t border-gray-100">
+                      <select
+                        value={addBlockType}
+                        onChange={(e) => setAddBlockType(e.target.value)}
+                        className="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white
+                          focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      >
+                        {/* 배열 + map: 블록 타입 옵션 렌더링 (이미지 제외 - 파일 업로드로만 추가) */}
+                        {BLOCK_TYPES.filter(t => t.value !== 'image').map(t => (
+                          <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
+                        ))}
+                      </select>
+                      <Button variant="primary" size="md" onClick={() => addBlock(addBlockType)}>
+                        + 추가
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+
+              {/* ========================================
+                  오른쪽 패널: 실시간 미리보기
+                  ======================================== */}
+              <div className="flex-1 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto">
+                <div className="sticky top-0 bg-gradient-to-br from-blue-50/80 via-gray-50/80 to-indigo-50/80 backdrop-blur-sm z-10 pb-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-700">미리보기</h3>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-500">{zoom}%</span>
+                      <input
+                        type="range"
+                        min={50}
+                        max={150}
+                        value={zoom}
+                        onChange={(e) => setZoom(parseInt(e.target.value))}
+                        className="w-24"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-center pb-8">
+                  <div
+                    id="pdf-preview"
+                    ref={previewRef}
+                    className="bg-white paper-shadow rounded-sm"
+                    style={{
+                      ...previewStyle,
+                      fontFamily: "'Noto Sans KR', sans-serif",
+                    }}
+                  >
+                    {/* 반복문: map으로 블록 미리보기 렌더링 */}
+                    {blocks.map((block) => (
+                      <PreviewBlock key={block.id} block={block} />
+                    ))}
+
+                    {/* 조건부 렌더링: 블록이 없을 때 빈 상태 */}
+                    {blocks.length === 0 && (
+                      <div style={{ textAlign: 'center', color: '#CBD5E1', paddingTop: '80px' }}>
+                        <div style={{ fontSize: '48px', marginBottom: '12px' }}>📄</div>
+                        <div style={{ fontSize: '14px' }}>왼쪽에서 블록을 추가하세요</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* PDF 다운로드 버튼 (모바일용 하단) */}
+                <div className="flex justify-center lg:hidden pb-4">
+                  <Button
+                    variant="success"
+                    size="lg"
+                    onClick={generatePDF}
+                    disabled={isGenerating}
+                    className="w-full max-w-xs"
+                  >
+                    {isGenerating ? '생성 중...' : 'PDF 다운로드'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 8. Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

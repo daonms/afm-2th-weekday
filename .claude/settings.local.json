@@ -7,7 +7,14 @@
       "Bash(curl -sL \"https://static.wtable.co.kr/image/production/service/recipe/1067/520ba5e6-5495-4659-b065-09d6fa42352e.jpg\" -o \"D:/다온/DAON_AI - 문서/afm-2th-weekday/recipes/thumbnails/bunsik-tteokbokki.jpg\")",
       "WebFetch(domain:namu.wiki)",
       "WebFetch(domain:www.recipio.kr)",
-      "WebFetch(domain:www.gqkorea.co.kr)"
+      "WebFetch(domain:www.gqkorea.co.kr)",
+      "Bash(gh repo:*)",
+      "Bash(start:*)",
+      "WebFetch(domain:map.naver.com)",
+      "WebFetch(domain:pcmap.place.naver.com)",
+      "WebFetch(domain:search.naver.com)",
+      "WebFetch(domain:www.diningcode.com)",
+      "WebFetch(domain:1noon.kr)"
     ]
   }
 }

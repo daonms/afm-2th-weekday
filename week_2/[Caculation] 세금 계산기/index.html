@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>세금 계산기 - 종합소득세(개인/법인) & 부가가치세</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            gov: {
+              50: '#eef2f7', 100: '#d4dde8', 200: '#a9bbcf', 300: '#7e99b7',
+              400: '#54779e', 500: '#2a5586', 600: '#1e3f66', 700: '#162f4d',
+              800: '#0f2033', 900: '#07101a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .fade-in { animation: fadeIn 0.3s ease-out; }
+    @keyframes scaleIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
+    .scale-in { animation: scaleIn 0.4s ease-out; }
+    .slide-in { animation: fadeIn 0.35s ease-out; }
+    .bracket-bar { transition: width 0.5s ease-out; }
+    input[type="text"]:focus { box-shadow: 0 0 0 3px rgba(30,63,102,0.15); }
+    .tax-card { transition: all 0.3s cubic-bezier(0.4,0,0.2,1); }
+    .tax-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0,0,0,0.12); }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div id="root"></div>
+  <script type="text/babel">
+    // ========================================
+    // React Hooks
+    // ========================================
+    const { useState, useMemo, useCallback, useEffect } = React;
+
+    // ========================================
+    // Router
+    // ========================================
+    function useRouter() {
+      const [path, setPath] = useState(window.location.hash.slice(1) || '/');
+      useEffect(() => {
+        const onHashChange = () => setPath(window.location.hash.slice(1) || '/');
+        window.addEventListener('hashchange', onHashChange);
+        return () => window.removeEventListener('hashchange', onHashChange);
+      }, []);
+      const navigate = useCallback((to) => { window.location.hash = to; }, []);
+      return { path, navigate };
+    }
+
+    // ========================================
+    // Utilities
+    // ========================================
+    function formatNumber(num) {
+      if (num === 0) return '0';
+      if (!num && num !== 0) return '';
+      return Number(num).toLocaleString('ko-KR');
+    }
+
+    // ========================================
+    // Tax Data
+    // ========================================
+    const INCOME_TAX_BRACKETS = [
+      { min: 0,          max: 14000000,    rate: 0.06, deduction: 0,          label: '1,400만원 이하' },
+      { min: 14000000,   max: 50000000,    rate: 0.15, deduction: 1260000,    label: '1,400만원 ~ 5,000만원' },
+      { min: 50000000,   max: 88000000,    rate: 0.24, deduction: 5760000,    label: '5,000만원 ~ 8,800만원' },
+      { min: 88000000,   max: 150000000,   rate: 0.35, deduction: 15440000,   label: '8,800만원 ~ 1.5억원' },
+      { min: 150000000,  max: 300000000,   rate: 0.38, deduction: 19940000,   label: '1.5억원 ~ 3억원' },
+      { min: 300000000,  max: 500000000,   rate: 0.40, deduction: 25940000,   label: '3억원 ~ 5억원' },
+      { min: 500000000,  max: 1000000000,  rate: 0.42, deduction: 35940000,   label: '5억원 ~ 10억원' },
+      { min: 1000000000, max: Infinity,    rate: 0.45, deduction: 65940000,   label: '10억원 초과' },
+    ];
+
+    const CORP_TAX_BRACKETS = [
+      { min: 0,             max: 200000000,       rate: 0.09, deduction: 0,            label: '2억원 이하' },
+      { min: 200000000,     max: 20000000000,     rate: 0.19, deduction: 20000000,     label: '2억원 ~ 200억원' },
+      { min: 20000000000,   max: 300000000000,    rate: 0.21, deduction: 420000000,    label: '200억원 ~ 3,000억원' },
+      { min: 300000000000,  max: Infinity,        rate: 0.24, deduction: 9420000000,   label: '3,000억원 초과' },
+    ];
+
+    function calcProgressiveTax(taxableIncome, brackets) {
+      if (taxableIncome <= 0) return { tax: 0, bracketIndex: -1, breakdown: [] };
+      let bracketIndex = 0;
+      for (let i = 0; i < brackets.length; i++) {
+        if (taxableIncome > brackets[i].min) bracketIndex = i;
+      }
+      const b = brackets[bracketIndex];
+      const tax = Math.floor(taxableIncome * b.rate - b.deduction);
+
+      const breakdown = [];
+      let remaining = taxableIncome;
+      for (let i = 0; i <= bracketIndex; i++) {
+        const br = brackets[i];
+        const amount = i === 0 ? Math.min(remaining, br.max) : Math.min(remaining, br.max - br.min);
+        breakdown.push({ label: br.label, rate: br.rate, amount, tax: Math.floor(amount * br.rate) });
+        remaining -= amount;
+        if (remaining <= 0) break;
+      }
+      return { tax, bracketIndex, breakdown };
+    }
+
+    // ========================================
+    // 🎨 Design System
+    // ========================================
+    function Card({ children, className = '' }) {
+      return <div className={`bg-white rounded-xl shadow-sm border border-gray-100 p-5 md:p-6 ${className}`}>{children}</div>;
+    }
+
+    function NumberInput({ label, value, onChange, placeholder, sublabel }) {
+      const handleChange = (e) => {
+        const raw = e.target.value.replace(/[^0-9]/g, '');
+        onChange(raw ? parseInt(raw, 10) : 0);
+      };
+      return (
+        <div className="mb-4">
+          <label className="block text-sm font-semibold text-gov-700 mb-1.5">
+            {label}
+            {sublabel && <span className="text-xs font-normal text-gray-400 ml-2">{sublabel}</span>}
+          </label>
+          <div className="relative">
+            <input type="text" inputMode="numeric" value={value ? formatNumber(value) : ''} onChange={handleChange}
+              placeholder={placeholder || '0'}
+              className="w-full px-4 py-3 pr-10 border border-gray-200 rounded-lg text-right text-lg font-mono focus:outline-none focus:border-gov-400 transition-colors" />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">원</span>
+          </div>
+        </div>
+      );
+    }
+
+    function ResultRow({ label, value, highlight, large, negative, sub }) {
+      return (
+        <div className={`flex justify-between items-center py-2.5 ${highlight ? 'bg-gov-50 -mx-4 px-4 rounded-lg' : ''} ${sub ? 'ml-4 text-gray-500' : ''}`}>
+          <span className={large ? 'text-base font-bold text-gov-800' : sub ? 'text-sm' : 'text-sm font-medium text-gray-700'}>{label}</span>
+          <span className={`font-mono ${large ? 'text-xl font-bold' : 'text-base font-semibold'} ${negative ? 'text-red-500' : highlight ? 'text-gov-700' : 'text-gray-800'}`}>
+            {negative && value !== '0원' ? '-' : ''}{value}
+          </span>
+        </div>
+      );
+    }
+
+    function BackButton({ onClick }) {
+      return (
+        <button onClick={onClick} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+          홈으로
+        </button>
+      );
+    }
+
+    function ResetButton({ onClick }) {
+      return (
+        <button onClick={onClick} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          초기화
+        </button>
+      );
+    }
+
+    function PageHeader({ navigate, icon, iconBg, title, subtitle }) {
+      return (
+        <header className="bg-gradient-to-r from-gov-700 to-gov-600 text-white shadow-lg">
+          <div className="max-w-6xl mx-auto px-4 py-4 md:py-5">
+            <div className="flex items-center gap-3">
+              <BackButton onClick={() => navigate('/')} />
+              <div className="w-px h-8 bg-white/20"></div>
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 ${iconBg} rounded-xl flex items-center justify-center`}>{icon}</div>
+                <div>
+                  <h1 className="text-lg md:text-xl font-bold tracking-tight">{title}</h1>
+                  <p className="text-xs text-white/60">{subtitle}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+      );
+    }
+
+    function Footer() {
+      return (
+        <footer className="bg-gov-800 text-white/50 text-center py-4 text-xs">
+          <p>본 계산기는 참고용이며, 실제 세액은 세무사 상담을 권장합니다.</p>
+          <p className="mt-1">2025년 세법 기준 | 세금 계산기 v1.0</p>
+        </footer>
+      );
+    }
+
+    // ========================================
+    // Bracket Components
+    // ========================================
+    function BracketBarChart({ breakdown, totalTax }) {
+      if (!breakdown.length || totalTax <= 0) return null;
+      const maxTax = Math.max(...breakdown.map(b => b.tax));
+      const colors = ['bg-blue-200','bg-blue-300','bg-blue-400','bg-blue-500','bg-indigo-400','bg-indigo-500','bg-purple-500','bg-purple-600'];
+      return (
+        <div className="mt-5 slide-in">
+          <h4 className="text-sm font-semibold text-gov-700 mb-3">구간별 세액 시각화</h4>
+          <div className="space-y-2">
+            {breakdown.map((b, i) => {
+              const pct = maxTax > 0 ? (b.tax / maxTax) * 100 : 0;
+              return (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 w-20 shrink-0 text-right">{(b.rate*100).toFixed(0)}%</span>
+                  <div className="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden">
+                    <div className={`bracket-bar h-full ${colors[i % colors.length]} rounded-full flex items-center justify-end pr-2`} style={{width:`${Math.max(pct,2)}%`}}>
+                      {pct > 15 && <span className="text-xs text-white font-semibold whitespace-nowrap">{formatNumber(b.tax)}원</span>}
+                    </div>
+                  </div>
+                  {pct <= 15 && <span className="text-xs text-gray-600 font-mono whitespace-nowrap">{formatNumber(b.tax)}원</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    function BracketTable({ brackets, activeBracketIndex, title }) {
+      return (
+        <Card className="overflow-hidden">
+          <h3 className="text-sm font-bold text-gov-700 mb-3 flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            {title}
+          </h3>
+          <div className="overflow-x-auto -mx-5 md:-mx-6">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gov-600 text-white">
+                  <th className="px-3 py-2.5 text-left font-semibold">과세표준</th>
+                  <th className="px-3 py-2.5 text-center font-semibold">세율</th>
+                  <th className="px-3 py-2.5 text-right font-semibold">누진공제</th>
+                </tr>
+              </thead>
+              <tbody>
+                {brackets.map((b, i) => (
+                  <tr key={i} className={`border-b border-gray-100 transition-colors duration-300
+                    ${i === activeBracketIndex ? 'bg-yellow-50 border-l-4 border-l-yellow-400 font-bold' : i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                    <td className={`px-3 py-2.5 ${i === activeBracketIndex ? 'text-gov-800' : 'text-gray-700'}`}>{b.label}</td>
+                    <td className={`px-3 py-2.5 text-center font-mono ${i === activeBracketIndex ? 'text-gov-800' : 'text-gray-700'}`}>{(b.rate*100).toFixed(0)}%</td>
+                    <td className={`px-3 py-2.5 text-right font-mono ${i === activeBracketIndex ? 'text-gov-800' : 'text-gray-500'}`}>{b.deduction > 0 ? formatNumber(b.deduction)+'원' : '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {activeBracketIndex >= 0 && (
+            <div className="mt-3 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 flex items-center gap-1.5">
+              <span>&#9656;</span><span>노란색으로 표시된 구간이 현재 적용되는 최고 세율 구간입니다.</span>
+            </div>
+          )}
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 📄 Home Page
+    // ========================================
+    function HomePage({ navigate }) {
+      const cards = [
+        {
+          key: 'income', route: '/income',
+          iconBg: 'bg-blue-50 group-hover:bg-blue-100',
+          icon: <svg className="w-9 h-9 md:w-11 md:h-11 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>,
+          title: '종합소득세 (개인)',
+          desc: '사업소득, 근로소득 등 개인의 종합소득에 대한 세금을 누진세율로 계산합니다.',
+          tags: [
+            { text: '누진세율 6~45%', color: 'bg-blue-50 text-blue-600' },
+            { text: '지방소득세 포함', color: 'bg-gray-100 text-gray-500' },
+          ],
+        },
+        {
+          key: 'corp', route: '/corp',
+          iconBg: 'bg-purple-50 group-hover:bg-purple-100',
+          icon: <svg className="w-9 h-9 md:w-11 md:h-11 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>,
+          title: '종합소득세 (법인)',
+          desc: '법인의 각 사업연도 소득에 대한 법인세를 누진세율로 계산합니다.',
+          tags: [
+            { text: '누진세율 9~24%', color: 'bg-purple-50 text-purple-600' },
+            { text: '지방소득세 포함', color: 'bg-gray-100 text-gray-500' },
+          ],
+        },
+        {
+          key: 'vat', route: '/vat',
+          iconBg: 'bg-green-50 group-hover:bg-green-100',
+          icon: <svg className="w-9 h-9 md:w-11 md:h-11 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" /></svg>,
+          title: '부가가치세',
+          desc: '매출세액과 매입세액을 비교하여 납부 또는 환급 세액을 계산합니다.',
+          tags: [
+            { text: '세율 10%', color: 'bg-green-50 text-green-600' },
+            { text: '환급 자동 판별', color: 'bg-gray-100 text-gray-500' },
+          ],
+        },
+      ];
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-gov-50 to-gray-100 flex flex-col">
+          <header className="bg-gradient-to-r from-gov-700 to-gov-600 text-white shadow-lg">
+            <div className="max-w-5xl mx-auto px-4 py-8 md:py-12 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-white/15 rounded-2xl mb-4">
+                <svg className="w-9 h-9 md:w-11 md:h-11 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h1 className="text-2xl md:text-4xl font-bold tracking-tight">세금 계산기</h1>
+              <p className="text-sm md:text-base text-white/70 mt-2">2025년 세법 기준 | 원하는 세금 종류를 선택하세요</p>
+            </div>
+          </header>
+
+          <main className="flex-1 flex items-center justify-center px-4 py-10 md:py-16">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-7 max-w-5xl w-full scale-in">
+              {cards.map(c => (
+                <button key={c.key} onClick={() => navigate(c.route)}
+                  className="tax-card bg-white rounded-2xl shadow-lg border border-gray-100 p-7 md:p-8 text-left cursor-pointer group focus:outline-none focus:ring-4 focus:ring-gov-200">
+                  <div className={`w-16 h-16 md:w-20 md:h-20 ${c.iconBg} rounded-2xl flex items-center justify-center mb-5 transition-colors`}>
+                    {c.icon}
+                  </div>
+                  <h2 className="text-lg md:text-xl font-bold text-gov-800 mb-2">{c.title}</h2>
+                  <p className="text-sm text-gray-500 leading-relaxed mb-4">{c.desc}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {c.tags.map((t, i) => <span key={i} className={`text-xs ${t.color} px-2.5 py-1 rounded-full font-medium`}>{t.text}</span>)}
+                  </div>
+                  <div className="mt-5 flex items-center gap-1 text-gov-500 text-sm font-semibold group-hover:text-gov-700 transition-colors">
+                    계산하기
+                    <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </main>
+
+          <Footer />
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 Individual Income Tax Page (개인)
+    // ========================================
+    function IncomeTaxPage({ navigate }) {
+      const [revenue, setRevenue] = useState(0);
+      const [expenses, setExpenses] = useState(0);
+      const [deductions, setDeductions] = useState(1500000);
+
+      const results = useMemo(() => {
+        const totalIncome = Math.max(revenue - expenses, 0);
+        const taxableIncome = Math.max(totalIncome - deductions, 0);
+        const { tax, bracketIndex, breakdown } = calcProgressiveTax(taxableIncome, INCOME_TAX_BRACKETS);
+        const localTax = Math.floor(tax * 0.1);
+        const totalTax = tax + localTax;
+        const effectiveRate = revenue > 0 ? totalTax / revenue : 0;
+        return { totalIncome, taxableIncome, tax, localTax, totalTax, effectiveRate, bracketIndex, breakdown };
+      }, [revenue, expenses, deductions]);
+
+      const handleReset = () => { setRevenue(0); setExpenses(0); setDeductions(1500000); };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-gov-50 to-gray-100">
+          <PageHeader navigate={navigate} iconBg="bg-blue-500/30"
+            icon={<svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
+            title="종합소득세 계산기 (개인)" subtitle="2025년 누진세율 6~45% 기준" />
+
+          <div className="max-w-6xl mx-auto px-4 py-5 pb-12 fade-in">
+            <div className="grid lg:grid-cols-5 gap-5">
+              <div className="lg:col-span-3 space-y-5">
+                <Card>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-base font-bold text-gov-800">소득 정보 입력</h3>
+                    <ResetButton onClick={handleReset} />
+                  </div>
+                  <NumberInput label="총수입금액" sublabel="사업수입, 근로소득 등" value={revenue} onChange={setRevenue} />
+                  <NumberInput label="필요경비" sublabel="사업관련 비용" value={expenses} onChange={setExpenses} />
+                  <NumberInput label="소득공제" sublabel="기본공제 150만원 포함" value={deductions} onChange={setDeductions} />
+                </Card>
+
+                <Card>
+                  <h3 className="text-base font-bold text-gov-800 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-gov-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                    계산 결과
+                  </h3>
+                  <div className="divide-y divide-gray-100">
+                    <ResultRow label="종합소득금액" value={formatNumber(results.totalIncome)+'원'} />
+                    <ResultRow label="과세표준" value={formatNumber(results.taxableIncome)+'원'} />
+                    <div className="py-1"></div>
+                    <ResultRow label="산출세액" value={formatNumber(results.tax)+'원'} />
+                    <ResultRow label="지방소득세 (10%)" value={formatNumber(results.localTax)+'원'} sub />
+                    <div className="py-1"></div>
+                    <ResultRow label="총 납부세액" value={formatNumber(results.totalTax)+'원'} highlight large />
+                    <ResultRow label="실효세율" value={revenue > 0 ? (results.effectiveRate*100).toFixed(2)+'%' : '-'} />
+                    {results.bracketIndex >= 0 && <ResultRow label="적용 최고세율 구간" value={INCOME_TAX_BRACKETS[results.bracketIndex].label+' ('+(INCOME_TAX_BRACKETS[results.bracketIndex].rate*100).toFixed(0)+'%)'} />}
+                  </div>
+                  <BracketBarChart breakdown={results.breakdown} totalTax={results.tax} />
+                </Card>
+              </div>
+
+              <div className="lg:col-span-2">
+                <div className="lg:sticky lg:top-4">
+                  <BracketTable brackets={INCOME_TAX_BRACKETS} activeBracketIndex={results.bracketIndex} title="2025년 개인 종합소득세 세율표" />
+                  <Card className="mt-5">
+                    <h3 className="text-sm font-bold text-gov-700 mb-2">계산 공식</h3>
+                    <div className="text-xs text-gray-600 space-y-1.5 leading-relaxed">
+                      <p><span className="font-semibold text-gray-700">종합소득금액</span> = 총수입금액 - 필요경비</p>
+                      <p><span className="font-semibold text-gray-700">과세표준</span> = 종합소득금액 - 소득공제</p>
+                      <p><span className="font-semibold text-gray-700">산출세액</span> = 과세표준 × 세율 - 누진공제</p>
+                      <p><span className="font-semibold text-gray-700">지방소득세</span> = 산출세액 × 10%</p>
+                      <p className="pt-1 border-t border-gray-100 font-semibold text-gov-700">총 납부세액 = 산출세액 + 지방소득세</p>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+            </div>
+          </div>
+          <Footer />
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 Corporate Tax Page (법인)
+    // ========================================
+    function CorpTaxPage({ navigate }) {
+      const [revenue, setRevenue] = useState(0);
+      const [expenses, setExpenses] = useState(0);
+      const [carryover, setCarryover] = useState(0);
+
+      const results = useMemo(() => {
+        const totalIncome = Math.max(revenue - expenses, 0);
+        const taxableIncome = Math.max(totalIncome - carryover, 0);
+        const { tax, bracketIndex, breakdown } = calcProgressiveTax(taxableIncome, CORP_TAX_BRACKETS);
+        const localTax = Math.floor(tax * 0.1);
+        const totalTax = tax + localTax;
+        const effectiveRate = revenue > 0 ? totalTax / revenue : 0;
+        return { totalIncome, taxableIncome, tax, localTax, totalTax, effectiveRate, bracketIndex, breakdown };
+      }, [revenue, expenses, carryover]);
+
+      const handleReset = () => { setRevenue(0); setExpenses(0); setCarryover(0); };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-gov-50 to-gray-100">
+          <PageHeader navigate={navigate} iconBg="bg-purple-500/30"
+            icon={<svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>}
+            title="종합소득세 계산기 (법인)" subtitle="2025년 법인세율 9~24% 기준" />
+
+          <div className="max-w-6xl mx-auto px-4 py-5 pb-12 fade-in">
+            <div className="grid lg:grid-cols-5 gap-5">
+              <div className="lg:col-span-3 space-y-5">
+                <Card>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-base font-bold text-gov-800">법인 소득 정보 입력</h3>
+                    <ResetButton onClick={handleReset} />
+                  </div>
+                  <NumberInput label="각 사업연도 익금" sublabel="매출액, 영업수익 등" value={revenue} onChange={setRevenue} />
+                  <NumberInput label="각 사업연도 손금" sublabel="비용, 손실 등" value={expenses} onChange={setExpenses} />
+                  <NumberInput label="이월결손금 공제" sublabel="전기 이월 결손금" value={carryover} onChange={setCarryover} />
+                </Card>
+
+                <Card>
+                  <h3 className="text-base font-bold text-gov-800 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-gov-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                    계산 결과
+                  </h3>
+                  <div className="divide-y divide-gray-100">
+                    <ResultRow label="각 사업연도 소득" value={formatNumber(results.totalIncome)+'원'} />
+                    <ResultRow label="과세표준" value={formatNumber(results.taxableIncome)+'원'} />
+                    <div className="py-1"></div>
+                    <ResultRow label="산출세액 (법인세)" value={formatNumber(results.tax)+'원'} />
+                    <ResultRow label="지방소득세 (10%)" value={formatNumber(results.localTax)+'원'} sub />
+                    <div className="py-1"></div>
+                    <ResultRow label="총 납부세액" value={formatNumber(results.totalTax)+'원'} highlight large />
+                    <ResultRow label="실효세율" value={revenue > 0 ? (results.effectiveRate*100).toFixed(2)+'%' : '-'} />
+                    {results.bracketIndex >= 0 && <ResultRow label="적용 최고세율 구간" value={CORP_TAX_BRACKETS[results.bracketIndex].label+' ('+(CORP_TAX_BRACKETS[results.bracketIndex].rate*100).toFixed(0)+'%)'} />}
+                  </div>
+                  <BracketBarChart breakdown={results.breakdown} totalTax={results.tax} />
+                </Card>
+              </div>
+
+              <div className="lg:col-span-2">
+                <div className="lg:sticky lg:top-4">
+                  <BracketTable brackets={CORP_TAX_BRACKETS} activeBracketIndex={results.bracketIndex} title="2025년 법인세 세율표" />
+                  <Card className="mt-5">
+                    <h3 className="text-sm font-bold text-gov-700 mb-2">계산 공식</h3>
+                    <div className="text-xs text-gray-600 space-y-1.5 leading-relaxed">
+                      <p><span className="font-semibold text-gray-700">각 사업연도 소득</span> = 익금 - 손금</p>
+                      <p><span className="font-semibold text-gray-700">과세표준</span> = 각 사업연도 소득 - 이월결손금 등</p>
+                      <p><span className="font-semibold text-gray-700">산출세액</span> = 과세표준 × 세율 - 누진공제</p>
+                      <p><span className="font-semibold text-gray-700">지방소득세</span> = 산출세액 × 10%</p>
+                      <p className="pt-1 border-t border-gray-100 font-semibold text-gov-700">총 납부세액 = 산출세액 + 지방소득세</p>
+                    </div>
+                  </Card>
+                  <Card className="mt-5 bg-purple-50/50 border-purple-100">
+                    <h3 className="text-sm font-bold text-purple-700 mb-2">법인세 참고사항</h3>
+                    <div className="text-xs text-gray-600 space-y-1.5 leading-relaxed">
+                      <p>• 중소기업 특례세율(과세표준 5억 이하 분 특례) 미반영</p>
+                      <p>• 토지 등 양도소득 추가세, 미환류소득세 미반영</p>
+                      <p>• 세액공제·감면은 별도 확인 필요</p>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+            </div>
+          </div>
+          <Footer />
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 VAT Page
+    // ========================================
+    function VATPage({ navigate }) {
+      const [sales, setSales] = useState(0);
+      const [purchases, setPurchases] = useState(0);
+
+      const results = useMemo(() => {
+        const salesTax = Math.floor(sales * 0.1);
+        const purchaseTax = Math.floor(purchases * 0.1);
+        const netTax = salesTax - purchaseTax;
+        return { salesTax, purchaseTax, netTax, isRefund: netTax < 0, salesTotalWithVAT: sales+salesTax, purchasesTotalWithVAT: purchases+purchaseTax };
+      }, [sales, purchases]);
+
+      const handleReset = () => { setSales(0); setPurchases(0); };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-gov-50 to-gray-100">
+          <PageHeader navigate={navigate} iconBg="bg-green-500/30"
+            icon={<svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" /></svg>}
+            title="부가가치세 계산기" subtitle="세율 10% 기준" />
+
+          <div className="max-w-5xl mx-auto px-4 py-5 pb-12 fade-in">
+            <div className="grid lg:grid-cols-2 gap-5">
+              <div className="space-y-5">
+                <Card>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-base font-bold text-gov-800">매출/매입 정보 입력</h3>
+                    <ResetButton onClick={handleReset} />
+                  </div>
+                  <NumberInput label="매출액" sublabel="공급가액 (부가세 별도)" value={sales} onChange={setSales} />
+                  <NumberInput label="매입액" sublabel="공급가액 (부가세 별도)" value={purchases} onChange={setPurchases} />
+                </Card>
+                <Card>
+                  <h3 className="text-sm font-bold text-gov-700 mb-2">부가가치세 안내</h3>
+                  <div className="text-xs text-gray-600 space-y-1.5 leading-relaxed">
+                    <p><span className="font-semibold text-gray-700">부가가치세율</span>: 10% (고정)</p>
+                    <p><span className="font-semibold text-gray-700">매출세액</span> = 매출액(공급가액) × 10%</p>
+                    <p><span className="font-semibold text-gray-700">매입세액</span> = 매입액(공급가액) × 10%</p>
+                    <p className="pt-1 border-t border-gray-100 font-semibold text-gov-700">납부(환급)세액 = 매출세액 - 매입세액</p>
+                    <p className="text-gray-400 mt-2">* 매입세액이 매출세액보다 크면 환급 대상입니다.</p>
+                  </div>
+                </Card>
+              </div>
+
+              <div className="space-y-5">
+                <Card>
+                  <h3 className="text-sm font-bold text-blue-700 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                    매출 내역
+                  </h3>
+                  <div className="divide-y divide-gray-100">
+                    <ResultRow label="공급가액" value={formatNumber(sales)+'원'} />
+                    <ResultRow label="부가세 (10%)" value={formatNumber(results.salesTax)+'원'} />
+                    <ResultRow label="합계 (세금계산서 금액)" value={formatNumber(results.salesTotalWithVAT)+'원'} highlight />
+                  </div>
+                </Card>
+                <Card>
+                  <h3 className="text-sm font-bold text-green-700 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" /></svg>
+                    매입 내역
+                  </h3>
+                  <div className="divide-y divide-gray-100">
+                    <ResultRow label="공급가액" value={formatNumber(purchases)+'원'} />
+                    <ResultRow label="부가세 (10%)" value={formatNumber(results.purchaseTax)+'원'} />
+                    <ResultRow label="합계 (세금계산서 금액)" value={formatNumber(results.purchasesTotalWithVAT)+'원'} highlight />
+                  </div>
+                </Card>
+                <Card className={results.isRefund ? 'border-red-200 bg-red-50/30' : ''}>
+                  <h3 className="text-base font-bold text-gov-800 mb-3">부가가치세 납부(환급) 세액</h3>
+                  <div className="divide-y divide-gray-100">
+                    <ResultRow label="매출세액" value={formatNumber(results.salesTax)+'원'} />
+                    <ResultRow label="매입세액" value={formatNumber(results.purchaseTax)+'원'} />
+                    <div className="py-1"></div>
+                    {results.isRefund ? (
+                      <div>
+                        <ResultRow label="환급세액" value={formatNumber(Math.abs(results.netTax))+'원'} highlight large negative />
+                        <p className="text-xs text-red-500 mt-1 ml-1">* 매입세액이 매출세액보다 커서 환급 대상입니다.</p>
+                      </div>
+                    ) : (
+                      <ResultRow label="납부세액" value={formatNumber(results.netTax)+'원'} highlight large />
+                    )}
+                  </div>
+                </Card>
+              </div>
+            </div>
+          </div>
+          <Footer />
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🚀 App (Router)
+    // ========================================
+    function App() {
+      const { path, navigate } = useRouter();
+      if (path === '/income') return <IncomeTaxPage navigate={navigate} />;
+      if (path === '/corp') return <CorpTaxPage navigate={navigate} />;
+      if (path === '/vat') return <VATPage navigate={navigate} />;
+      return <HomePage navigate={navigate} />;
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
