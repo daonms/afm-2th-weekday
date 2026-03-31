@@ -19,7 +19,14 @@
       "Bash(ssh:*)",
       "Bash(tailscale status:*)",
       "Bash(tailscale ssh:*)",
-      "Bash(ssh-keyscan:*)"
+      "Bash(ssh-keyscan:*)",
+      "Skill(browse)",
+      "Bash(B=\"D:/다온/DAON_AI - 문서/afm-2th-weekday/.claude/skills/gstack/browse/dist/browse\")",
+      "Bash(\"$B\" goto:*)",
+      "Bash(\"$B\" restart:*)",
+      "Bash(\"$B\" stop:*)",
+      "Bash(pkill -f \"browse\")",
+      "Bash(xxd \"D:/다온/DAON_AI - 문서/afm-2th-weekday/week3/simple-server/secret.txt\")"
     ]
   }
 }

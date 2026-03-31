@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NASA APOD - 오늘의 우주 사진</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            space: {
+              900: '#050510',
+              800: '#0a0a20',
+              700: '#10102e',
+              600: '#1a1a40',
+            },
+            star: {
+              gold: '#ffd700',
+              light: '#fffbe6',
+              white: '#e8e8ff',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+    body { font-family: 'Noto Sans KR', sans-serif; }
+
+    /* 별 반짝이는 배경 */
+    .starfield {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .star {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle var(--duration) ease-in-out infinite;
+      animation-delay: var(--delay);
+      opacity: 0;
+    }
+    .star.large {
+      width: 3px;
+      height: 3px;
+      box-shadow: 0 0 4px 1px rgba(255, 255, 255, 0.3);
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.1; }
+      50% { opacity: 1; }
+    }
+
+    /* 로딩 스피너 - 궤도 회전 */
+    .orbit-spinner {
+      position: relative;
+      width: 60px;
+      height: 60px;
+    }
+    .orbit-spinner .orbit {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      border: 2px solid transparent;
+      border-top-color: #ffd700;
+      border-radius: 50%;
+      animation: orbit-spin 1.2s linear infinite;
+    }
+    .orbit-spinner .orbit:nth-child(2) {
+      width: 75%; height: 75%;
+      top: 12.5%; left: 12.5%;
+      border-top-color: #e8e8ff;
+      animation-duration: 1.8s;
+      animation-direction: reverse;
+    }
+    .orbit-spinner .orbit:nth-child(3) {
+      width: 50%; height: 50%;
+      top: 25%; left: 25%;
+      border-top-color: #fffbe6;
+      animation-duration: 2.4s;
+    }
+    .orbit-spinner .planet {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 8px; height: 8px;
+      background: #ffd700;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #ffd700;
+    }
+    @keyframes orbit-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* 스크롤바 커스텀 */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0a0a20; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+    /* 이미지 호버 글로우 */
+    .image-glow:hover {
+      box-shadow: 0 0 30px rgba(255, 215, 0, 0.15);
+    }
+
+    /* 날짜 선택 input 다크 테마 */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body class="bg-space-900 text-white min-h-screen">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // ========================================
+    // React Hooks Destructuring
+    // ========================================
+    const { useState, useEffect, useCallback, useMemo, useRef, createContext, useContext } = React;
+
+    // ========================================
+    // Constants
+    // ========================================
+    const API_KEY = '1EaDYUNtdidOdR4Xkxu9Sl09h8rDxqnkOv9UxUuO';
+    const API_BASE = 'https://api.nasa.gov/planetary/apod';
+    const MIN_DATE = '1995-06-16';
+    const TODAY = new Date().toISOString().split('T')[0];
+    const FAVORITES_KEY = 'nasa-apod-favorites';
+
+    // ========================================
+    // Starfield Background
+    // ========================================
+    function Starfield() {
+      const stars = useMemo(() => {
+        return Array.from({ length: 150 }, (_, i) => ({
+          id: i,
+          left: Math.random() * 100,
+          top: Math.random() * 100,
+          duration: 2 + Math.random() * 4,
+          delay: Math.random() * 5,
+          large: Math.random() > 0.85,
+        }));
+      }, []);
+
+      return (
+        <div className="starfield">
+          {stars.map(s => (
+            <div
+              key={s.id}
+              className={`star ${s.large ? 'large' : ''}`}
+              style={{
+                left: `${s.left}%`,
+                top: `${s.top}%`,
+                '--duration': `${s.duration}s`,
+                '--delay': `${s.delay}s`,
+              }}
+            />
+          ))}
+        </div>
+      );
+    }
+
+    // ========================================
+    // Design System Components
+    // ========================================
+    function Button({ children, onClick, variant = 'primary', size = 'md', disabled = false, className = '' }) {
+      const base = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-space-900';
+      const variants = {
+        primary: 'bg-gradient-to-r from-yellow-600 to-amber-500 hover:from-yellow-500 hover:to-amber-400 text-space-900 focus:ring-amber-500 shadow-lg shadow-amber-500/20',
+        secondary: 'bg-space-600 hover:bg-space-700 border border-gray-600 hover:border-gray-500 text-star-white focus:ring-gray-500',
+        ghost: 'bg-transparent hover:bg-white/10 text-star-white focus:ring-white/30',
+        danger: 'bg-red-600 hover:bg-red-500 text-white focus:ring-red-500',
+      };
+      const sizes = {
+        sm: 'px-3 py-1.5 text-sm gap-1.5',
+        md: 'px-4 py-2 text-sm gap-2',
+        lg: 'px-6 py-3 text-base gap-2',
+      };
+
+      return (
+        <button
+          onClick={onClick}
+          disabled={disabled}
+          className={`${base} ${variants[variant]} ${sizes[size]} ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    function Card({ children, className = '' }) {
+      return (
+        <div className={`bg-space-800/80 backdrop-blur-sm border border-gray-800 rounded-xl ${className}`}>
+          {children}
+        </div>
+      );
+    }
+
+    function Modal({ isOpen, onClose, title, children, size = 'lg' }) {
+      const sizes = {
+        md: 'max-w-2xl',
+        lg: 'max-w-4xl',
+        xl: 'max-w-6xl',
+        full: 'max-w-[95vw] max-h-[95vh]',
+      };
+
+      if (!isOpen) return null;
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+          <div
+            className={`relative ${sizes[size]} w-full bg-space-800 border border-gray-700 rounded-2xl shadow-2xl overflow-hidden`}
+            onClick={e => e.stopPropagation()}
+          >
+            {title && (
+              <div className="flex items-center justify-between p-4 border-b border-gray-700">
+                <h3 className="text-lg font-semibold text-star-gold">{title}</h3>
+                <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
+            <div className="overflow-auto max-h-[80vh]">{children}</div>
+          </div>
+        </div>
+      );
+    }
+
+    function Spinner() {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <div className="orbit-spinner">
+            <div className="orbit"></div>
+            <div className="orbit"></div>
+            <div className="orbit"></div>
+            <div className="planet"></div>
+          </div>
+          <p className="text-gray-400 text-sm animate-pulse">우주에서 사진을 가져오는 중...</p>
+        </div>
+      );
+    }
+
+    function ErrorMessage({ message, onRetry }) {
+      return (
+        <Card className="p-8 text-center mx-auto max-w-lg">
+          <div className="text-4xl mb-4">🛸</div>
+          <h3 className="text-lg font-semibold text-red-400 mb-2">오류 발생</h3>
+          <p className="text-gray-400 mb-4 text-sm">{message}</p>
+          {onRetry && (
+            <Button onClick={onRetry} variant="secondary" size="sm">다시 시도</Button>
+          )}
+        </Card>
+      );
+    }
+
+    // ========================================
+    // Favorites Context
+    // ========================================
+    const FavoritesContext = createContext();
+
+    function FavoritesProvider({ children }) {
+      const [favorites, setFavorites] = useState(() => {
+        try {
+          return JSON.parse(localStorage.getItem(FAVORITES_KEY)) || [];
+        } catch { return []; }
+      });
+
+      useEffect(() => {
+        localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+      }, [favorites]);
+
+      const addFavorite = useCallback((apod) => {
+        setFavorites(prev => {
+          if (prev.some(f => f.date === apod.date)) return prev;
+          return [{ date: apod.date, title: apod.title, url: apod.url, thumbnail_url: apod.thumbnail_url, media_type: apod.media_type }, ...prev];
+        });
+      }, []);
+
+      const removeFavorite = useCallback((date) => {
+        setFavorites(prev => prev.filter(f => f.date !== date));
+      }, []);
+
+      const isFavorite = useCallback((date) => {
+        return favorites.some(f => f.date === date);
+      }, [favorites]);
+
+      return (
+        <FavoritesContext.Provider value={{ favorites, addFavorite, removeFavorite, isFavorite }}>
+          {children}
+        </FavoritesContext.Provider>
+      );
+    }
+
+    function useFavorites() {
+      return useContext(FavoritesContext);
+    }
+
+    // ========================================
+    // API Hook
+    // ========================================
+    function useApod() {
+      const [data, setData] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const [error, setError] = useState(null);
+
+      const fetchApod = useCallback(async (params = {}) => {
+        setLoading(true);
+        setError(null);
+        try {
+          const url = new URL(API_BASE);
+          url.searchParams.set('api_key', API_KEY);
+          url.searchParams.set('thumbs', 'true');
+          Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+
+          const res = await fetch(url.toString());
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.msg || errData.error?.message || `HTTP ${res.status}`);
+          }
+          const json = await res.json();
+          setData(json);
+          return json;
+        } catch (err) {
+          setError(err.message || '알 수 없는 오류가 발생했습니다.');
+          return null;
+        } finally {
+          setLoading(false);
+        }
+      }, []);
+
+      const fetchByDate = useCallback((date) => fetchApod({ date }), [fetchApod]);
+      const fetchRandom = useCallback(() => fetchApod({ count: 1 }), [fetchApod]);
+      const fetchToday = useCallback(() => fetchApod(), [fetchApod]);
+
+      return { data, loading, error, fetchByDate, fetchRandom, fetchToday };
+    }
+
+    // ========================================
+    // Header Component
+    // ========================================
+    function Header({ onShowFavorites, favoriteCount }) {
+      return (
+        <header className="relative z-10 border-b border-gray-800/50">
+          <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">🌌</span>
+              <div>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-star-gold to-amber-300 bg-clip-text text-transparent">
+                  NASA APOD
+                </h1>
+                <p className="text-xs text-gray-500">오늘의 천문 사진</p>
+              </div>
+            </div>
+            <Button onClick={onShowFavorites} variant="ghost" size="sm">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-star-gold" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+              <span>즐겨찾기</span>
+              {favoriteCount > 0 && (
+                <span className="bg-star-gold text-space-900 text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                  {favoriteCount}
+                </span>
+              )}
+            </Button>
+          </div>
+        </header>
+      );
+    }
+
+    // ========================================
+    // Controls Component
+    // ========================================
+    function Controls({ selectedDate, onDateChange, onRandom, onToday, loading }) {
+      return (
+        <div className="relative z-10 max-w-6xl mx-auto px-4 py-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-400">날짜 선택</label>
+              <input
+                type="date"
+                value={selectedDate}
+                min={MIN_DATE}
+                max={TODAY}
+                onChange={e => onDateChange(e.target.value)}
+                disabled={loading}
+                className="bg-space-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:opacity-50"
+              />
+            </div>
+            <Button onClick={onToday} variant="secondary" size="md" disabled={loading}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              오늘
+            </Button>
+            <Button onClick={onRandom} variant="primary" size="md" disabled={loading}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              랜덤 사진
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // APOD Display Component
+    // ========================================
+    function ApodDisplay({ apod, onImageClick }) {
+      const { addFavorite, removeFavorite, isFavorite } = useFavorites();
+      const favorited = isFavorite(apod.date);
+
+      const toggleFavorite = () => {
+        if (favorited) {
+          removeFavorite(apod.date);
+        } else {
+          addFavorite(apod);
+        }
+      };
+
+      return (
+        <div className="relative z-10 max-w-6xl mx-auto px-4 pb-8">
+          {/* Media */}
+          <Card className="overflow-hidden mb-6">
+            {apod.media_type === 'video' ? (
+              <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                <iframe
+                  src={apod.url}
+                  className="absolute inset-0 w-full h-full"
+                  frameBorder="0"
+                  allow="autoplay; encrypted-media"
+                  allowFullScreen
+                  title={apod.title}
+                />
+              </div>
+            ) : (
+              <div className="relative group cursor-pointer" onClick={() => onImageClick(apod)}>
+                <img
+                  src={apod.url}
+                  alt={apod.title}
+                  className="w-full max-h-[75vh] object-contain bg-black image-glow transition-all duration-300"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full p-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            )}
+          </Card>
+
+          {/* Info */}
+          <Card className="p-6">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold text-star-gold mb-1">{apod.title}</h2>
+                <div className="flex flex-wrap items-center gap-3 text-sm text-gray-400">
+                  <span className="flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    {apod.date}
+                  </span>
+                  {apod.copyright && (
+                    <span className="flex items-center gap-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      {apod.copyright.trim()}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button onClick={toggleFavorite} variant={favorited ? 'primary' : 'ghost'} size="sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill={favorited ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                  {favorited ? '즐겨찾기 됨' : '즐겨찾기'}
+                </Button>
+                {apod.hdurl && apod.media_type === 'image' && (
+                  <a href={apod.hdurl} target="_blank" rel="noopener noreferrer">
+                    <Button variant="secondary" size="sm">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      HD 원본
+                    </Button>
+                  </a>
+                )}
+              </div>
+            </div>
+            <p className="text-gray-300 leading-relaxed text-sm">{apod.explanation}</p>
+          </Card>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Image Modal (Full Size)
+    // ========================================
+    function ImageModal({ isOpen, onClose, apod }) {
+      if (!isOpen || !apod) return null;
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm" onClick={onClose}>
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 z-10 p-2 bg-black/60 hover:bg-black/80 rounded-full transition-colors text-white"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <div className="absolute top-4 left-4 z-10 bg-black/60 rounded-lg px-3 py-1.5">
+            <p className="text-sm text-star-gold font-medium">{apod.title}</p>
+            <p className="text-xs text-gray-400">{apod.date}</p>
+          </div>
+          {apod.hdurl && (
+            <a
+              href={apod.hdurl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute bottom-4 right-4 z-10"
+              onClick={e => e.stopPropagation()}
+            >
+              <Button variant="primary" size="sm">HD 원본 열기</Button>
+            </a>
+          )}
+          <img
+            src={apod.hdurl || apod.url}
+            alt={apod.title}
+            className="max-w-[95vw] max-h-[95vh] object-contain"
+            onClick={e => e.stopPropagation()}
+          />
+        </div>
+      );
+    }
+
+    // ========================================
+    // Favorites Modal
+    // ========================================
+    function FavoritesModal({ isOpen, onClose, onSelectDate }) {
+      const { favorites, removeFavorite } = useFavorites();
+
+      return (
+        <Modal isOpen={isOpen} onClose={onClose} title="즐겨찾기 목록" size="lg">
+          {favorites.length === 0 ? (
+            <div className="p-12 text-center">
+              <div className="text-4xl mb-3">🌟</div>
+              <p className="text-gray-400">아직 즐겨찾기한 사진이 없습니다.</p>
+              <p className="text-gray-500 text-sm mt-1">마음에 드는 우주 사진에 별표를 눌러보세요!</p>
+            </div>
+          ) : (
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {favorites.map(fav => (
+                <div
+                  key={fav.date}
+                  className="group bg-space-700 rounded-lg overflow-hidden border border-gray-700 hover:border-star-gold/30 transition-colors cursor-pointer"
+                  onClick={() => { onSelectDate(fav.date); onClose(); }}
+                >
+                  <div className="aspect-video bg-black relative overflow-hidden">
+                    {fav.media_type === 'video' ? (
+                      <div className="w-full h-full flex items-center justify-center bg-space-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    ) : (
+                      <img
+                        src={fav.thumbnail_url || fav.url}
+                        alt={fav.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                    )}
+                  </div>
+                  <div className="p-3 flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{fav.title}</p>
+                      <p className="text-xs text-gray-500">{fav.date}</p>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); removeFavorite(fav.date); }}
+                      className="p-1 hover:bg-red-500/20 rounded transition-colors text-gray-500 hover:text-red-400 shrink-0"
+                      title="즐겨찾기 해제"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Modal>
+      );
+    }
+
+    // ========================================
+    // App Component
+    // ========================================
+    function App() {
+      const { data, loading, error, fetchByDate, fetchRandom, fetchToday } = useApod();
+      const [selectedDate, setSelectedDate] = useState(TODAY);
+      const [showFavorites, setShowFavorites] = useState(false);
+      const [imageModal, setImageModal] = useState(null);
+      const { favorites } = useFavorites();
+
+      // 현재 표시 중인 APOD (랜덤의 경우 배열로 옴)
+      const currentApod = useMemo(() => {
+        if (!data) return null;
+        return Array.isArray(data) ? data[0] : data;
+      }, [data]);
+
+      // 최초 로딩 시 오늘의 사진
+      useEffect(() => {
+        fetchToday();
+      }, []);
+
+      const handleDateChange = (date) => {
+        setSelectedDate(date);
+        fetchByDate(date);
+      };
+
+      const handleRandom = async () => {
+        const result = await fetchRandom();
+        if (result && Array.isArray(result) && result[0]) {
+          setSelectedDate(result[0].date);
+        }
+      };
+
+      const handleToday = () => {
+        setSelectedDate(TODAY);
+        fetchToday();
+      };
+
+      return (
+        <div className="min-h-screen relative">
+          <Starfield />
+
+          <Header
+            onShowFavorites={() => setShowFavorites(true)}
+            favoriteCount={favorites.length}
+          />
+
+          <Controls
+            selectedDate={selectedDate}
+            onDateChange={handleDateChange}
+            onRandom={handleRandom}
+            onToday={handleToday}
+            loading={loading}
+          />
+
+          <main className="relative z-10">
+            {loading && <Spinner />}
+            {error && !loading && (
+              <div className="max-w-6xl mx-auto px-4 pb-8">
+                <ErrorMessage message={error} onRetry={() => fetchByDate(selectedDate)} />
+              </div>
+            )}
+            {currentApod && !loading && !error && (
+              <ApodDisplay apod={currentApod} onImageClick={setImageModal} />
+            )}
+          </main>
+
+          {/* Footer */}
+          <footer className="relative z-10 border-t border-gray-800/50 mt-8">
+            <div className="max-w-6xl mx-auto px-4 py-6 text-center">
+              <p className="text-xs text-gray-600">
+                Powered by <a href="https://apod.nasa.gov/" target="_blank" rel="noopener noreferrer" className="text-star-gold/60 hover:text-star-gold transition-colors">NASA Astronomy Picture of the Day API</a>
+              </p>
+              <p className="text-xs text-gray-700 mt-1">1995년 6월 16일부터 매일 업데이트</p>
+            </div>
+          </footer>
+
+          {/* Modals */}
+          <ImageModal isOpen={!!imageModal} onClose={() => setImageModal(null)} apod={imageModal} />
+          <FavoritesModal
+            isOpen={showFavorites}
+            onClose={() => setShowFavorites(false)}
+            onSelectDate={handleDateChange}
+          />
+        </div>
+      );
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      <FavoritesProvider>
+        <App />
+      </FavoritesProvider>
+    );
+  </script>
+</body>
+</html>
