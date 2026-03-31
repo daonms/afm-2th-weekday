@@ -15,7 +15,11 @@
       "WebFetch(domain:search.naver.com)",
       "WebFetch(domain:www.diningcode.com)",
       "WebFetch(domain:1noon.kr)",
-      "Read(//d/다온/**)"
+      "Read(//d/다온/**)",
+      "Bash(ssh:*)",
+      "Bash(tailscale status:*)",
+      "Bash(tailscale ssh:*)",
+      "Bash(ssh-keyscan:*)"
     ]
   }
 }
