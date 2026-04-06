@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DAON AI - 나만의 ChatGPT</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- 마크다운 렌더링 -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- 코드 하이라이팅 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github-dark.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/highlight.js@11/highlight.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Noto Sans KR', 'sans-serif'] },
+        },
+      },
+    };
+  </script>
+  <style>
+    * { font-family: 'Noto Sans KR', sans-serif; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    .msg-enter { animation: fadeIn 0.3s ease-out; }
+    .cursor-blink::after { content: '|'; animation: blink 0.8s infinite; color: #10b981; font-weight: bold; }
+
+    /* 마크다운 스타일 */
+    .markdown-body { line-height: 1.7; }
+    .markdown-body p { margin-bottom: 0.75rem; }
+    .markdown-body p:last-child { margin-bottom: 0; }
+    .markdown-body pre { background: #1e1e2e; border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 0.75rem 0; position: relative; }
+    .markdown-body code { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.85em; }
+    .markdown-body :not(pre) > code { background: rgba(0,0,0,0.06); padding: 0.15em 0.4em; border-radius: 4px; }
+    .dark .markdown-body :not(pre) > code { background: rgba(255,255,255,0.1); }
+    .markdown-body pre code { background: none; padding: 0; font-size: 0.82em; }
+    .markdown-body ul, .markdown-body ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+    .markdown-body li { margin: 0.25rem 0; }
+    .markdown-body h1, .markdown-body h2, .markdown-body h3 { font-weight: 600; margin: 1rem 0 0.5rem; }
+    .markdown-body h1 { font-size: 1.3em; }
+    .markdown-body h2 { font-size: 1.15em; }
+    .markdown-body h3 { font-size: 1.05em; }
+    .markdown-body blockquote { border-left: 3px solid #10b981; padding-left: 1rem; margin: 0.5rem 0; opacity: 0.8; }
+    .markdown-body table { border-collapse: collapse; margin: 0.5rem 0; width: 100%; }
+    .markdown-body th, .markdown-body td { border: 1px solid #e5e7eb; padding: 0.4rem 0.75rem; text-align: left; }
+    .dark .markdown-body th, .dark .markdown-body td { border-color: #374151; }
+    .markdown-body th { background: rgba(0,0,0,0.04); font-weight: 600; }
+    .dark .markdown-body th { background: rgba(255,255,255,0.05); }
+
+    /* 코드 복사 버튼 */
+    .code-copy-btn { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.1); border: none; color: #a0a0a0; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; opacity: 0; transition: opacity 0.2s; }
+    .markdown-body pre:hover .code-copy-btn { opacity: 1; }
+    .code-copy-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+
+    /* 스크롤바 */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+
+    /* 사이드바 전환 */
+    .sidebar-open { transform: translateX(0); }
+    .sidebar-closed { transform: translateX(-100%); }
+    @media (min-width: 768px) {
+      .sidebar-closed { transform: translateX(0); }
+    }
+
+    textarea { field-sizing: content; min-height: 44px; max-height: 200px; }
+  </style>
+</head>
+<body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 transition-colors">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+    // ========================================
+    // 마크다운 설정
+    // ========================================
+    marked.setOptions({
+      highlight: (code, lang) => {
+        if (lang && hljs.getLanguage(lang)) {
+          return hljs.highlight(code, { language: lang }).value;
+        }
+        return hljs.highlightAuto(code).value;
+      },
+      breaks: true,
+    });
+
+    // ========================================
+    // 유틸리티
+    // ========================================
+    const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+    // ========================================
+    // 로그인 화면
+    // ========================================
+    function LoginScreen({ onLogin }) {
+      const [id, setId] = useState('');
+      const [pw, setPw] = useState('');
+      const [error, setError] = useState('');
+      const [loading, setLoading] = useState(false);
+      const [showPw, setShowPw] = useState(false);
+      const idRef = useRef(null);
+
+      useEffect(() => { idRef.current?.focus(); }, []);
+
+      const handleSubmit = async (e) => {
+        e?.preventDefault();
+        if (!id.trim() || !pw.trim()) { setError('아이디와 비밀번호를 입력해주세요.'); return; }
+        setLoading(true);
+        setError('');
+        try {
+          const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id.trim(), pw }),
+          });
+          const data = await res.json();
+          if (data.ok) {
+            localStorage.setItem('authToken', data.token);
+            localStorage.setItem('authId', data.id);
+            localStorage.setItem('authRole', data.role || 'user');
+            onLogin(data.token, data.id, data.role);
+          } else {
+            setError(data.error || '로그인 실패');
+          }
+        } catch {
+          setError('서버 연결 실패. 서버가 실행 중인지 확인해주세요.');
+        }
+        setLoading(false);
+      };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
+          <div className="w-full max-w-sm">
+            {/* 로고 */}
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-2xl mx-auto mb-4">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <rect x="3" y="8" width="18" height="12" rx="3"/>
+                  <circle cx="9" cy="14" r="1.5" fill="currentColor"/>
+                  <circle cx="15" cy="14" r="1.5" fill="currentColor"/>
+                  <path d="M12 2v4"/><circle cx="12" cy="2" r="1"/>
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold text-white">DAON AI</h1>
+              <p className="text-gray-400 text-sm mt-1">로그인하여 시작하세요</p>
+            </div>
+
+            {/* 폼 */}
+            <form onSubmit={handleSubmit} className="bg-gray-800 rounded-2xl p-6 shadow-2xl border border-gray-700">
+              <div className="space-y-4">
+                {/* 아이디 */}
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1.5 font-medium">아이디</label>
+                  <input
+                    ref={idRef}
+                    type="text"
+                    value={id}
+                    onChange={e => setId(e.target.value)}
+                    placeholder="아이디 입력"
+                    className="w-full bg-gray-700 border border-gray-600 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent placeholder-gray-500 transition-all"
+                    autoComplete="username"
+                  />
+                </div>
+
+                {/* 비밀번호 */}
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1.5 font-medium">비밀번호</label>
+                  <div className="relative">
+                    <input
+                      type={showPw ? 'text' : 'password'}
+                      value={pw}
+                      onChange={e => setPw(e.target.value)}
+                      placeholder="비밀번호 입력"
+                      className="w-full bg-gray-700 border border-gray-600 text-white rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent placeholder-gray-500 transition-all"
+                      autoComplete="current-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPw(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
+                    >
+                      {showPw
+                        ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      }
+                    </button>
+                  </div>
+                </div>
+
+                {/* 에러 */}
+                {error && (
+                  <div className="bg-red-900/40 border border-red-700/50 text-red-400 text-xs px-4 py-3 rounded-xl">
+                    {error}
+                  </div>
+                )}
+
+                {/* 로그인 버튼 */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-60 transition-all shadow-lg hover:shadow-emerald-500/25 mt-2"
+                >
+                  {loading ? '로그인 중...' : '로그인'}
+                </button>
+              </div>
+            </form>
+
+            <p className="text-center text-[10px] text-gray-600 mt-6">
+              DAON AI · Network + AI 학습 프로젝트
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    function getStorage(key, fallback) {
+      try { return JSON.parse(localStorage.getItem(key)) || fallback; }
+      catch { return fallback; }
+    }
+
+    function setStorage(key, value) {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+
+    // ========================================
+    // 아이콘 컴포넌트들
+    // ========================================
+    const Icons = {
+      Plus: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+      Send: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9Z"/></svg>,
+      Menu: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>,
+      Sun: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>,
+      Moon: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>,
+      Trash: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+      Settings: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+      Chat: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+      Stop: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>,
+      Copy: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>,
+      Check: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>,
+      Robot: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="8" width="18" height="12" rx="3"/><circle cx="9" cy="14" r="1.5" fill="currentColor"/><circle cx="15" cy="14" r="1.5" fill="currentColor"/><path d="M12 2v4"/><circle cx="12" cy="2" r="1"/></svg>,
+      X: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+      Code: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>,
+      ClipboardCheck: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 14l2 2 4-4"/></svg>,
+    };
+
+    // ========================================
+    // 토큰 요금 계산 (USD per 1M tokens)
+    // ========================================
+    const TOKEN_PRICING = {
+      'gpt-4o':            { input: 5.00,  output: 15.00 },
+      'gpt-4o-mini':       { input: 0.15,  output: 0.60  },
+      'gpt-4-turbo':       { input: 10.00, output: 30.00 },
+      'gpt-4':             { input: 30.00, output: 60.00 },
+      'gpt-3.5-turbo':     { input: 0.50,  output: 1.50  },
+    };
+
+    function calcCost(model, promptTokens, completionTokens) {
+      const key = Object.keys(TOKEN_PRICING).find(k => model?.includes(k)) || 'gpt-4o-mini';
+      const p = TOKEN_PRICING[key];
+      const inputCost  = (promptTokens     / 1_000_000) * p.input;
+      const outputCost = (completionTokens / 1_000_000) * p.output;
+      return { inputCost, outputCost, total: inputCost + outputCost };
+    }
+
+    function fmtCost(usd) {
+      if (usd < 0.0001) return `$${(usd * 1000).toFixed(4)}m` ; // millicents
+      return `$${usd.toFixed(6)}`;
+    }
+
+    function fmtKRW(usd) {
+      return `₩${(usd * 1380).toFixed(2)}`;
+    }
+
+    // ========================================
+    // 토큰 보고서 모달
+    // ========================================
+    function TokenReportModal({ show, onClose, report }) {
+      if (!show || !report) return null;
+
+      const { sessions, model } = report;
+      const totalPrompt     = sessions.reduce((s, r) => s + (r.prompt_tokens || 0), 0);
+      const totalCompletion = sessions.reduce((s, r) => s + (r.completion_tokens || 0), 0);
+      const totalTokens     = totalPrompt + totalCompletion;
+      const cost            = calcCost(model, totalPrompt, totalCompletion);
+      const turns           = sessions.length;
+
+      return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+            {/* 헤더 */}
+            <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
+              <div>
+                <h2 className="text-lg font-bold">토큰 사용 보고서</h2>
+                <p className="text-xs text-gray-400 mt-0.5">이 대화의 API 사용량 요약</p>
+              </div>
+              <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><Icons.X /></button>
+            </div>
+
+            {/* 요약 카드 */}
+            <div className="p-5 grid grid-cols-2 gap-3">
+              <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-4 col-span-2">
+                <p className="text-xs text-blue-500 font-semibold mb-1">총 사용 토큰</p>
+                <p className="text-3xl font-bold text-blue-700 dark:text-blue-300">{totalTokens.toLocaleString()}</p>
+                <p className="text-xs text-blue-400 mt-1">{turns}번의 대화 턴</p>
+              </div>
+
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
+                <p className="text-xs text-gray-500 font-semibold mb-1">입력 (Prompt)</p>
+                <p className="text-xl font-bold">{totalPrompt.toLocaleString()}</p>
+                <p className="text-xs text-gray-400">토큰</p>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
+                <p className="text-xs text-gray-500 font-semibold mb-1">출력 (Completion)</p>
+                <p className="text-xl font-bold">{totalCompletion.toLocaleString()}</p>
+                <p className="text-xs text-gray-400">토큰</p>
+              </div>
+            </div>
+
+            {/* 비용 계산 */}
+            <div className="px-5 pb-5">
+              <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded-xl p-4">
+                <p className="text-xs text-emerald-600 font-semibold mb-3">예상 비용 ({model})</p>
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">입력 비용</span>
+                    <span className="font-medium">{fmtCost(cost.inputCost)} <span className="text-gray-400 text-xs">({fmtKRW(cost.inputCost)})</span></span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">출력 비용</span>
+                    <span className="font-medium">{fmtCost(cost.outputCost)} <span className="text-gray-400 text-xs">({fmtKRW(cost.outputCost)})</span></span>
+                  </div>
+                  <div className="border-t border-emerald-200 dark:border-emerald-700 pt-1.5 flex justify-between font-bold">
+                    <span>합계</span>
+                    <span className="text-emerald-700 dark:text-emerald-300">{fmtCost(cost.total)} <span className="text-gray-400 font-normal text-xs">({fmtKRW(cost.total)})</span></span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 턴별 상세 */}
+              {sessions.length > 1 && (
+                <div className="mt-4">
+                  <p className="text-xs font-semibold text-gray-500 mb-2">턴별 상세</p>
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {sessions.map((s, i) => (
+                      <div key={i} className="flex items-center justify-between text-xs bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2">
+                        <span className="text-gray-500">턴 {i + 1}</span>
+                        <div className="flex gap-3">
+                          <span className="text-blue-500">↑{(s.prompt_tokens||0).toLocaleString()}</span>
+                          <span className="text-orange-500">↓{(s.completion_tokens||0).toLocaleString()}</span>
+                          <span className="font-medium">{(s.total_tokens||0).toLocaleString()} tok</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="px-5 pb-5">
+              <button onClick={onClose} className="w-full py-2.5 text-sm font-medium bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors">
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 마크다운 렌더링 컴포넌트
+    // ========================================
+    function MarkdownContent({ content, isStreaming }) {
+      const ref = useRef(null);
+
+      useEffect(() => {
+        if (!ref.current) return;
+        // 코드 블록에 복사 버튼 추가
+        ref.current.querySelectorAll('pre').forEach(pre => {
+          if (pre.querySelector('.code-copy-btn')) return;
+          const btn = document.createElement('button');
+          btn.className = 'code-copy-btn';
+          btn.textContent = '복사';
+          btn.onclick = () => {
+            const code = pre.querySelector('code')?.textContent || pre.textContent;
+            navigator.clipboard.writeText(code);
+            btn.textContent = '복사됨!';
+            setTimeout(() => { btn.textContent = '복사'; }, 1500);
+          };
+          pre.style.position = 'relative';
+          pre.appendChild(btn);
+        });
+      }, [content]);
+
+      const html = useMemo(() => {
+        try { return marked.parse(content || ''); }
+        catch { return content; }
+      }, [content]);
+
+      return (
+        <div
+          ref={ref}
+          className={`markdown-body ${isStreaming ? 'cursor-blink' : ''}`}
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      );
+    }
+
+    // ========================================
+    // 설정 모달
+    // ========================================
+    function SettingsModal({ show, onClose, systemPrompt, setSystemPrompt, model, setModel, models }) {
+      if (!show) return null;
+
+      return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold">설정</h2>
+              <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><Icons.X /></button>
+            </div>
+
+            {/* 모델 선택 */}
+            <div className="mb-5">
+              <label className="block text-sm font-semibold mb-2">AI 모델</label>
+              <select
+                value={model}
+                onChange={e => setModel(e.target.value)}
+                className="w-full border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                {models.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+
+            {/* 시스템 프롬프트 */}
+            <div className="mb-5">
+              <label className="block text-sm font-semibold mb-2">시스템 프롬프트</label>
+              <p className="text-xs text-gray-400 mb-2">AI의 성격과 행동 방식을 지정합니다. 비워두면 기본 ChatGPT처럼 동작합니다.</p>
+              <textarea
+                value={systemPrompt}
+                onChange={e => setSystemPrompt(e.target.value)}
+                placeholder="예: 당신은 친절한 한국어 튜터입니다. 항상 쉬운 예시와 함께 설명해주세요."
+                rows="5"
+                className="w-full border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 text-sm bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+              />
+            </div>
+
+            {/* 프리셋 */}
+            <div>
+              <label className="block text-sm font-semibold mb-2">프리셋</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { label: 'DAON AI (기본)', prompt: DEFAULT_PROMPT },
+                  { label: '일반 ChatGPT', prompt: '' },
+                  { label: '코딩 도우미', prompt: '당신은 숙련된 프로그래머입니다. 코드를 작성할 때 항상 주석으로 설명을 달고, 모범 사례를 따릅니다. 한국어로 답변합니다.' },
+                  { label: '영어 선생님', prompt: '당신은 친절한 영어 선생님입니다. 사용자의 영어 문장을 교정하고, 더 자연스러운 표현을 제안합니다. 한국어와 영어를 함께 사용하여 설명합니다.' },
+                  { label: '글쓰기 코치', prompt: '당신은 글쓰기 전문가입니다. 사용자의 글을 분석하고, 구조, 표현, 논리 흐름을 개선하는 제안을 합니다.' },
+                  { label: '요약 전문가', prompt: '당신은 요약 전문가입니다. 주어진 텍스트를 핵심만 간결하게 정리합니다. 불릿 포인트를 활용하고, 핵심 키워드를 강조합니다.' },
+                ].map(p => (
+                  <button
+                    key={p.label}
+                    onClick={() => setSystemPrompt(p.prompt)}
+                    className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
+                      systemPrompt === p.prompt
+                        ? 'bg-emerald-500 text-white border-emerald-500'
+                        : 'border-gray-200 dark:border-gray-600 hover:border-emerald-400 hover:text-emerald-600'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 코드 검수 시스템 프롬프트
+    // ========================================
+    const CODE_REVIEW_PROMPT = `당신은 수업 코드를 검수하는 시니어 개발자입니다. 학생이 수업 시간에 작성한 코드를 분석합니다.
+
+## 검수 항목 (각 항목 10점, 총 100점)
+1. **정상 작동 여부** — 코드가 의도대로 실행되는가
+2. **문법 정확성** — 문법 오류, 오타가 없는가
+3. **변수/함수 네이밍** — 이름이 명확하고 일관적인가
+4. **코드 구조** — 함수 분리, 모듈화가 적절한가
+5. **가독성** — 들여쓰기, 공백, 주석이 적절한가
+6. **에러 처리** — 예외 상황을 고려했는가
+7. **효율성** — 불필요한 반복이나 비효율은 없는가
+8. **보안** — XSS, 인젝션 등 보안 취약점은 없는가
+9. **모범 사례** — 해당 언어/프레임워크의 컨벤션을 따르는가
+10. **완성도** — 전체적으로 완성된 느낌인가
+
+## 응답 형식
+### 총점: OO/100점 ⭐
+
+### 잘한 점
+- (구체적으로 잘한 부분 나열)
+
+### 수정 필요
+| #  | 위치 | 문제 | 수정 제안 |
+|----|------|------|-----------|
+| 1  | 라인 N | 문제 설명 | 수정 코드 |
+
+### 항목별 점수
+| 항목 | 점수 | 코멘트 |
+|------|------|--------|
+| 정상 작동 | O/10 | ... |
+| ... | ... | ... |
+
+### 수정된 전체 코드
+(수정이 필요한 경우 완성된 코드 전체를 제공)
+
+### 한줄 총평
+(격려와 함께 핵심 피드백)
+
+## 말투
+- 학생을 격려하는 따뜻한 선배 개발자 톤
+- 구체적이고 실용적인 피드백
+- 잘한 점은 확실히 칭찬`;
+
+    // ========================================
+    // 코드 검수 모달
+    // ========================================
+    function CodeReviewModal({ show, onClose, onSubmit }) {
+      const [code, setCode] = useState('');
+      const [lang, setLang] = useState('javascript');
+      const [context, setContext] = useState('');
+      const textareaRef = useRef(null);
+
+      useEffect(() => {
+        if (show) setTimeout(() => textareaRef.current?.focus(), 100);
+      }, [show]);
+
+      if (!show) return null;
+
+      const languages = [
+        'javascript', 'python', 'html', 'css', 'react (jsx)',
+        'typescript', 'java', 'c', 'c++', 'node.js', '기타',
+      ];
+
+      const handleSubmit = () => {
+        if (!code.trim()) return;
+        const message = `## 코드 검수 요청
+
+**언어:** ${lang}
+${context ? `**수업 내용:** ${context}\n` : ''}
+\`\`\`${lang === 'react (jsx)' ? 'jsx' : lang === 'node.js' ? 'javascript' : lang}
+${code.trim()}
+\`\`\`
+
+위 코드를 검수해주세요.`;
+        onSubmit(message);
+        setCode('');
+        setContext('');
+        onClose();
+      };
+
+      const handlePaste = (e) => {
+        // 붙여넣기 시 자동으로 언어 감지 시도
+        const text = e.clipboardData?.getData('text') || '';
+        if (text.includes('<!DOCTYPE') || text.includes('<html')) setLang('html');
+        else if (text.includes('import React') || text.includes('useState')) setLang('react (jsx)');
+        else if (text.includes('def ') || text.includes('import ') && text.includes(':')) setLang('python');
+        else if (text.includes('require(') || text.includes('const ') || text.includes('let ')) setLang('javascript');
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            {/* 헤더 */}
+            <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white">
+                  <Icons.ClipboardCheck />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">코드 검수</h2>
+                  <p className="text-xs text-gray-400">수업 코드를 붙여넣으면 AI가 분석합니다</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><Icons.X /></button>
+            </div>
+
+            {/* 본문 */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {/* 언어 선택 */}
+              <div>
+                <label className="block text-sm font-semibold mb-2">프로그래밍 언어</label>
+                <div className="flex flex-wrap gap-2">
+                  {languages.map(l => (
+                    <button
+                      key={l}
+                      onClick={() => setLang(l)}
+                      className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
+                        lang === l
+                          ? 'bg-amber-500 text-white border-amber-500'
+                          : 'border-gray-200 dark:border-gray-600 hover:border-amber-400 hover:text-amber-600'
+                      }`}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 수업 내용 (선택) */}
+              <div>
+                <label className="block text-sm font-semibold mb-2">수업 내용 <span className="text-gray-400 font-normal">(선택)</span></label>
+                <input
+                  type="text"
+                  value={context}
+                  onChange={e => setContext(e.target.value)}
+                  placeholder="예: React useState 훅 배우기, Python 반복문 실습..."
+                  className="w-full border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              {/* 코드 입력 */}
+              <div>
+                <label className="block text-sm font-semibold mb-2">코드 붙여넣기</label>
+                <textarea
+                  ref={textareaRef}
+                  value={code}
+                  onChange={e => setCode(e.target.value)}
+                  onPaste={handlePaste}
+                  placeholder="여기에 수업 시간에 작성한 코드를 붙여넣으세요..."
+                  className="w-full h-64 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 text-sm bg-gray-950 text-green-400 focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                  style={{ fontFamily: "'Cascadia Code', 'Fira Code', monospace", fontSize: '13px', lineHeight: '1.6' }}
+                />
+                <p className="text-xs text-gray-400 mt-1 text-right">{code.split('\n').length}줄 | {code.length}자</p>
+              </div>
+            </div>
+
+            {/* 하단 버튼 */}
+            <div className="p-5 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <p className="text-[10px] text-gray-400">Ctrl+V로 코드를 붙여넣으세요</p>
+              <div className="flex gap-2">
+                <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors">
+                  취소
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={!code.trim()}
+                  className="px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:from-gray-300 disabled:to-gray-400 rounded-xl transition-all shadow-sm hover:shadow-md disabled:shadow-none"
+                >
+                  검수 요청
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 채팅 메시지 컴포넌트
+    // ========================================
+    function Message({ msg, isStreaming }) {
+      const [copied, setCopied] = useState(false);
+      const isUser = msg.role === 'user';
+
+      const handleCopy = () => {
+        navigator.clipboard.writeText(msg.content);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      };
+
+      return (
+        <div className={`msg-enter py-4 ${isUser ? '' : 'bg-gray-50/50 dark:bg-gray-800/50'}`}>
+          <div className="max-w-3xl mx-auto px-4 flex gap-4">
+            {/* 아바타 */}
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-sm ${
+              isUser ? 'bg-gradient-to-br from-violet-500 to-purple-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'
+            }`}>
+              {isUser ? '나' : <Icons.Robot />}
+            </div>
+
+            {/* 내용 */}
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm mb-1">{isUser ? '나' : 'DAON AI'}</div>
+              {isUser ? (
+                <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
+              ) : (
+                <div className="text-sm">
+                  <MarkdownContent content={msg.content} isStreaming={isStreaming} />
+                </div>
+              )}
+
+              {/* 복사 버튼 (AI 응답만) */}
+              {!isUser && !isStreaming && msg.content && (
+                <button
+                  onClick={handleCopy}
+                  className="mt-2 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                >
+                  {copied ? <><Icons.Check /> 복사됨</> : <><Icons.Copy /> 복사</>}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 웰컴 화면
+    // ========================================
+    function WelcomeScreen({ onSend }) {
+      const suggestions = [
+        { icon: '💻', text: 'React로 로그인 페이지 코드 작성해줘' },
+        { icon: '🔍', text: '2024년 AI 트렌드 분석 보고해줘' },
+        { icon: '🐍', text: 'Python 웹 크롤러 만들어줘' },
+        { icon: '📊', text: 'Node.js vs Deno vs Bun 비교해줘' },
+      ];
+
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center p-6">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-lg mb-6">
+            <Icons.Robot />
+          </div>
+          <h1 className="text-2xl font-bold mb-2">DAON AI</h1>
+          <p className="text-gray-400 text-sm mb-8">무엇이든 1초 안에 답변드리겠습니다.</p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl w-full">
+            {suggestions.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => onSend(s.text)}
+                className="text-left p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all hover:shadow-sm group"
+              >
+                <span className="text-lg">{s.icon}</span>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{s.text}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 모델 선택 드롭다운
+    // ========================================
+    const MODEL_LABELS = {
+      'gpt-4o':             { label: 'GPT-4o',         badge: '최고성능', color: 'purple' },
+      'gpt-4o-mini':        { label: 'GPT-4o mini',    badge: '추천',    color: 'emerald' },
+      'gpt-4-turbo':        { label: 'GPT-4 Turbo',    badge: '고성능',  color: 'blue' },
+      'gpt-4':              { label: 'GPT-4',           badge: '',        color: 'blue' },
+      'gpt-3.5-turbo':      { label: 'GPT-3.5 Turbo',  badge: '저렴',    color: 'gray' },
+    };
+
+    function ModelSelector({ model, setModel, models, disabled }) {
+      const [open, setOpen] = useState(false);
+      const ref = useRef(null);
+
+      useEffect(() => {
+        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+      }, []);
+
+      const info = MODEL_LABELS[Object.keys(MODEL_LABELS).find(k => model?.includes(k))] || { label: model, badge: '', color: 'gray' };
+      const colorMap = {
+        purple:  'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300',
+        emerald: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300',
+        blue:    'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300',
+        gray:    'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300',
+      };
+
+      return (
+        <div ref={ref} className="relative">
+          <button
+            onClick={() => !disabled && setOpen(o => !o)}
+            disabled={disabled}
+            className={`flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full font-medium transition-all ${colorMap[info.color]} ${disabled ? 'opacity-60 cursor-not-allowed' : 'hover:opacity-80 cursor-pointer'}`}
+          >
+            {info.label}
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform ${open ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+
+          {open && (
+            <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+              <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                <p className="text-[10px] text-gray-400 px-2 font-semibold uppercase tracking-wide">모델 선택</p>
+              </div>
+              <div className="p-2 space-y-0.5 max-h-72 overflow-y-auto">
+                {models.map(m => {
+                  const mi = MODEL_LABELS[Object.keys(MODEL_LABELS).find(k => m?.includes(k))] || { label: m, badge: '', color: 'gray' };
+                  const pricing = (() => {
+                    const key = Object.keys(TOKEN_PRICING).find(k => m?.includes(k));
+                    if (!key) return null;
+                    return TOKEN_PRICING[key];
+                  })();
+                  return (
+                    <button
+                      key={m}
+                      onClick={() => { setModel(m); setOpen(false); }}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg transition-all flex items-center justify-between gap-2 ${
+                        model === m
+                          ? 'bg-emerald-50 dark:bg-emerald-900/30'
+                          : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {model === m && <span className="text-emerald-500">✓</span>}
+                        {model !== m && <span className="w-4" />}
+                        <div>
+                          <div className="text-sm font-medium flex items-center gap-2">
+                            {mi.label}
+                            {mi.badge && <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${colorMap[mi.color]}`}>{mi.badge}</span>}
+                          </div>
+                          {pricing && (
+                            <div className="text-[10px] text-gray-400 mt-0.5">
+                              입력 ${pricing.input}/1M · 출력 ${pricing.output}/1M
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ========================================
+    // 사이드바 — 대화 목록
+    // ========================================
+    function Sidebar({ chats, activeId, onSelect, onNew, onDelete, onClose }) {
+      return (
+        <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-950">
+          {/* 새 대화 버튼 */}
+          <div className="p-3">
+            <button
+              onClick={() => { onNew(); onClose?.(); }}
+              className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 transition-all text-sm font-medium"
+            >
+              <Icons.Plus /> 새 대화
+            </button>
+          </div>
+
+          {/* 대화 목록 */}
+          <div className="flex-1 overflow-y-auto px-3 space-y-1">
+            {chats.map(chat => (
+              <div
+                key={chat.id}
+                className={`group flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-all text-sm ${
+                  chat.id === activeId
+                    ? 'bg-white dark:bg-gray-800 shadow-sm font-medium'
+                    : 'hover:bg-white/60 dark:hover:bg-gray-800/60'
+                }`}
+                onClick={() => { onSelect(chat.id); onClose?.(); }}
+              >
+                <Icons.Chat />
+                <span className="flex-1 truncate">{chat.title || '새 대화'}</span>
+                <button
+                  onClick={e => { e.stopPropagation(); onDelete(chat.id); }}
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-500 transition-all"
+                >
+                  <Icons.Trash />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* 하단 안내 */}
+          <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+            <p className="text-[10px] text-gray-400 text-center">
+              Network + AI 학습 프로젝트<br/>
+              OpenAI GPT API 활용
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 기본 시스템 프롬프트
+    // ========================================
+    const DEFAULT_PROMPT = `당신은 "DAON AI" — 대표님께 직접 보고하는 AI 코딩 전문 담당자입니다.
+
+## 핵심 원칙
+1. **1초 내 즉답**: 질문을 받으면 즉시 핵심부터 답변합니다. 서론/인사 없이 바로 본론.
+2. **거짓말 절대 금지**: 모르는 것은 "확인이 필요합니다"라고 솔직하게 말합니다. 추측을 사실처럼 말하지 않습니다.
+3. **웹검색 기반 최신 정보**: 가능한 한 최신 데이터와 공식 문서를 근거로 답변합니다. 출처가 있으면 반드시 명시합니다.
+
+## 성격: 완벽주의자
+- 답변의 정확도를 최우선으로 합니다
+- 코드는 오류 없는 무결점 코드만 제공합니다
+- 빠뜨린 부분이 없는지 한 번 더 검증 후 답변합니다
+- 애매한 답변보다 확실한 답변을 선호합니다
+
+## 말투: 전문 담당자 보고체
+- "~입니다", "~드리겠습니다" 존댓말 보고체
+- 간결하고 명확한 문장 (불필요한 수식어 제거)
+- 핵심 → 근거 → 실행방안 순서로 구조화
+- 중요 포인트는 **볼드**와 불릿으로 강조
+
+## AI 코딩 전문 역량
+- 모든 코드는 **즉시 실행 가능한 완성형**으로 제공
+- 에러 처리, 엣지 케이스까지 고려한 프로덕션 레벨 코드
+- 코드 블록에는 언어 태그 필수 (\`\`\`python, \`\`\`javascript 등)
+- 코드 설명은 주석이 아닌 별도 섹션으로 분리
+
+## 응답 포맷
+- **결론 먼저** → 상세 설명 → 코드/예시
+- 3줄 이상의 목록은 불릿 포인트 사용
+- 복잡한 비교는 표(table) 활용
+- 긴 답변은 ## 섹션으로 구분`;
+
+    // ========================================
+    // 메인 App
+    // ========================================
+    // ========================================
+    // 사용자 관리 모달 (admin 전용)
+    // ========================================
+    function UserManageModal({ show, onClose, token }) {
+      const [users, setUsers] = useState([]);
+      const [newId, setNewId] = useState('');
+      const [newPw, setNewPw] = useState('');
+      const [newRole, setNewRole] = useState('user');
+      const [msg, setMsg] = useState('');
+
+      useEffect(() => {
+        if (!show) return;
+        fetch('/api/users', { headers: { Authorization: `Bearer ${token}` } })
+          .then(r => r.json()).then(d => { if (d.ok) setUsers(d.users); });
+      }, [show]);
+
+      const addUser = async () => {
+        if (!newId || !newPw) return;
+        const r = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ id: newId, pw: newPw, role: newRole }),
+        }).then(r => r.json());
+        if (r.ok) {
+          setUsers(prev => [...prev, { id: newId, role: newRole }]);
+          setNewId(''); setNewPw(''); setMsg('계정이 추가되었습니다.');
+        } else { setMsg(r.error); }
+        setTimeout(() => setMsg(''), 2000);
+      };
+
+      const delUser = async (id) => {
+        if (!confirm(`"${id}" 계정을 삭제하시겠습니까?`)) return;
+        const r = await fetch(`/api/users/${encodeURIComponent(id)}`, {
+          method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+        }).then(r => r.json());
+        if (r.ok) setUsers(prev => prev.filter(u => u.id !== id));
+        else setMsg(r.error);
+        setTimeout(() => setMsg(''), 2000);
+      };
+
+      if (!show) return null;
+      return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-bold">사용자 관리</h2>
+              <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><Icons.X /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              {/* 현재 계정 목록 */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-2">계정 목록</p>
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {users.map(u => (
+                    <div key={u.id} className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-sm">
+                      <span className="font-medium">{u.id}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${u.role === 'admin' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>{u.role}</span>
+                        {u.id !== 'daon' && (
+                          <button onClick={() => delUser(u.id)} className="text-gray-400 hover:text-red-500 transition-colors"><Icons.Trash /></button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* 계정 추가 */}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                <p className="text-xs font-semibold text-gray-500 mb-2">새 계정 추가</p>
+                <div className="flex gap-2 mb-2">
+                  <input value={newId} onChange={e => setNewId(e.target.value)} placeholder="아이디" className="flex-1 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  <input value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="비밀번호" type="password" className="flex-1 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <div className="flex gap-2">
+                  <select value={newRole} onChange={e => setNewRole(e.target.value)} className="border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 focus:outline-none">
+                    <option value="user">user</option>
+                    <option value="admin">admin</option>
+                  </select>
+                  <button onClick={addUser} className="flex-1 py-2 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors">추가</button>
+                </div>
+                {msg && <p className="text-xs text-emerald-600 mt-2">{msg}</p>}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 메인 App — 훅 규칙 준수 (조건부 return 전에 모든 훅 선언)
+    // ========================================
+    function App() {
+      // ── 인증 ──
+      const [token, setToken]         = useState(() => localStorage.getItem('authToken') || '');
+      const [userId, setUserId]       = useState(() => localStorage.getItem('authId') || '');
+      const [userRole, setUserRole]   = useState(() => localStorage.getItem('authRole') || 'user');
+      const [authChecked, setAuthChecked] = useState(false);
+
+      // ── 채팅 ──
+      const [dark, setDark]           = useState(() => getStorage('darkMode', false));
+      const [chats, setChats]         = useState(() => getStorage('chats', []));
+      const [activeId, setActiveId]   = useState(() => getStorage('activeChat', null));
+      const [input, setInput]         = useState('');
+      const [streaming, setStreaming] = useState(false);
+      const [abortCtrl, setAbortCtrl] = useState(null);
+
+      // ── 설정 ──
+      const [showSettings, setShowSettings]     = useState(false);
+      const [systemPrompt, setSystemPrompt]     = useState(() => getStorage('systemPrompt', '') || DEFAULT_PROMPT);
+      const [model, setModel]                   = useState(() => getStorage('model', 'gpt-4o-mini'));
+      const [models, setModels]                 = useState(['gpt-4o-mini']);
+
+      // ── 추가 기능 ──
+      const [showCodeReview, setShowCodeReview]   = useState(false);
+      const [tokenMap, setTokenMap]               = useState({});
+      const [showTokenReport, setShowTokenReport] = useState(false);
+      const [sidebarOpen, setSidebarOpen]         = useState(false);
+      const [searchQuery, setSearchQuery]         = useState('');
+      const [showUserMgr, setShowUserMgr]         = useState(false);
+
+      const messagesEndRef = useRef(null);
+      const inputRef       = useRef(null);
+
+      // ── 토큰 유효성 검증 ──
+      useEffect(() => {
+        if (!token) { setAuthChecked(true); return; }
+        fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } })
+          .then(r => r.json())
+          .then(d => {
+            if (!d.ok) {
+              setToken(''); setUserId(''); setUserRole('user');
+              ['authToken','authId','authRole'].forEach(k => localStorage.removeItem(k));
+            }
+            setAuthChecked(true);
+          })
+          .catch(() => setAuthChecked(true));
+      }, []);
+
+      // ── 다크모드 ──
+      useEffect(() => {
+        document.documentElement.classList.toggle('dark', dark);
+        setStorage('darkMode', dark);
+      }, [dark]);
+
+      // ── 데이터 저장 ──
+      useEffect(() => { setStorage('chats', chats); }, [chats]);
+      useEffect(() => { setStorage('activeChat', activeId); }, [activeId]);
+      useEffect(() => { setStorage('systemPrompt', systemPrompt); }, [systemPrompt]);
+      useEffect(() => { setStorage('model', model); }, [model]);
+
+      // ── 모델 목록 로드 ──
+      useEffect(() => {
+        if (!token) return;
+        fetch('/api/models', { headers: { Authorization: `Bearer ${token}` } })
+          .then(r => r.json())
+          .then(d => { if (d.models?.length) setModels(d.models); })
+          .catch(() => {});
+      }, [token]);
+
+      // ── 스크롤 ──
+      const activeChat = chats.find(c => c.id === activeId);
+      const messages   = activeChat?.messages || [];
+      useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, [messages, streaming]);
+
+      // ── 인증 헬퍼 ──
+      const authHeaders = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+
+      const handleLogin = (t, id, role) => {
+        setToken(t); setUserId(id); setUserRole(role || 'user');
+      };
+
+      const handleLogout = async () => {
+        await fetch('/api/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+        ['authToken','authId','authRole'].forEach(k => localStorage.removeItem(k));
+        setToken(''); setUserId(''); setUserRole('user');
+      };
+
+      // ── 대화 관리 ──
+      const createChat = useCallback(() => {
+        const chat = { id: genId(), title: '', messages: [], createdAt: Date.now() };
+        setChats(prev => [chat, ...prev]);
+        setActiveId(chat.id);
+        setInput('');
+        setTimeout(() => inputRef.current?.focus(), 100);
+      }, []);
+
+      const deleteChat = useCallback((id) => {
+        setChats(prev => {
+          const next = prev.filter(c => c.id !== id);
+          if (id === activeId) setActiveId(next.length ? next[0].id : null);
+          return next;
+        });
+      }, [activeId]);
+
+      const updateChatMessages = useCallback((chatId, updater) => {
+        setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: updater(c.messages) } : c));
+      }, []);
+
+      const autoTitle = useCallback((chatId, firstMsg) => {
+        const title = firstMsg.length > 30 ? firstMsg.slice(0, 30) + '...' : firstMsg;
+        setChats(prev => prev.map(c => c.id === chatId ? { ...c, title } : c));
+      }, []);
+
+      // ── 스트리밍 공통 수신 함수 ──
+      const receiveStream = useCallback(async (response, chatId, ctrl) => {
+        const reader  = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullContent = '';
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            for (const line of decoder.decode(value, { stream: true }).split('\n')) {
+              const trimmed = line.trim();
+              if (!trimmed.startsWith('data: ')) continue;
+              const payload = trimmed.slice(6);
+              if (payload === '[DONE]') break;
+              try {
+                const data = JSON.parse(payload);
+                if (data.content) {
+                  fullContent += data.content;
+                  updateChatMessages(chatId, msgs => {
+                    const copy = [...msgs];
+                    copy[copy.length - 1] = { ...copy[copy.length - 1], content: fullContent };
+                    return copy;
+                  });
+                }
+                if (data.error) {
+                  fullContent += `\n\n> **오류:** ${data.error}`;
+                  updateChatMessages(chatId, msgs => {
+                    const copy = [...msgs];
+                    copy[copy.length - 1] = { ...copy[copy.length - 1], content: fullContent };
+                    return copy;
+                  });
+                }
+                if (data.usage) {
+                  setTokenMap(prev => ({
+                    ...prev,
+                    [chatId]: [...(prev[chatId] || []), { ...data.usage, model: data.model || model }],
+                  }));
+                }
+              } catch {}
+            }
+          }
+        } catch (e) {
+          if (e.name !== 'AbortError') {
+            updateChatMessages(chatId, msgs => {
+              const copy = [...msgs];
+              copy[copy.length - 1] = { ...copy[copy.length - 1], content: '네트워크 오류가 발생했습니다.' };
+              return copy;
+            });
+          }
+        }
+        setStreaming(false);
+        setAbortCtrl(null);
+        inputRef.current?.focus();
+      }, [model, updateChatMessages]);
+
+      // ── 메시지 전송 ──
+      const sendMessage = useCallback(async (text, overridePrompt) => {
+        const content = (text || input).trim();
+        if (!content || streaming) return;
+
+        let chatId = activeId;
+        if (!chatId) {
+          const chat = { id: genId(), title: '', messages: [], createdAt: Date.now() };
+          setChats(prev => [chat, ...prev]);
+          chatId = chat.id;
+          setActiveId(chat.id);
+        }
+
+        const userMsg = { role: 'user', content };
+        const isFirst = !chats.find(c => c.id === chatId)?.messages?.length;
+        if (isFirst) autoTitle(chatId, content);
+
+        updateChatMessages(chatId, msgs => [...msgs, userMsg, { role: 'assistant', content: '' }]);
+        setInput('');
+        setStreaming(true);
+
+        const ctrl = new AbortController();
+        setAbortCtrl(ctrl);
+
+        try {
+          const apiMessages = [...(chats.find(c => c.id === chatId)?.messages || []), userMsg]
+            .map(m => ({ role: m.role, content: m.content }));
+          const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: authHeaders,
+            body: JSON.stringify({ messages: apiMessages, model, systemPrompt: overridePrompt ?? systemPrompt }),
+            signal: ctrl.signal,
+          });
+          await receiveStream(res, chatId, ctrl);
+        } catch (e) {
+          if (e.name !== 'AbortError') {
+            updateChatMessages(chatId, msgs => {
+              const copy = [...msgs];
+              copy[copy.length - 1] = { ...copy[copy.length - 1], content: '네트워크 오류가 발생했습니다.' };
+              return copy;
+            });
+            setStreaming(false);
+          }
+        }
+      }, [input, streaming, activeId, chats, model, systemPrompt, authHeaders, updateChatMessages, autoTitle, receiveStream]);
+
+      // ── 코드 검수 ──
+      const handleCodeReview = useCallback(async (reviewMessage) => {
+        const chat = { id: genId(), title: '코드 검수', messages: [], createdAt: Date.now() };
+        setChats(prev => [chat, ...prev]);
+        setActiveId(chat.id);
+        updateChatMessages(chat.id, () => [
+          { role: 'user', content: reviewMessage },
+          { role: 'assistant', content: '' },
+        ]);
+        setStreaming(true);
+        const ctrl = new AbortController();
+        setAbortCtrl(ctrl);
+        try {
+          const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: authHeaders,
+            body: JSON.stringify({ messages: [{ role: 'user', content: reviewMessage }], model, systemPrompt: CODE_REVIEW_PROMPT }),
+            signal: ctrl.signal,
+          });
+          await receiveStream(res, chat.id, ctrl);
+        } catch { setStreaming(false); }
+      }, [model, authHeaders, updateChatMessages, receiveStream]);
+
+      // ── 대화 내보내기 ──
+      const exportChat = useCallback(() => {
+        if (!activeChat || !messages.length) return;
+        const lines = [`# ${activeChat.title || 'DAON AI 대화'}\n`, `모델: ${model} | 날짜: ${new Date().toLocaleString()}\n\n---\n`];
+        messages.forEach(m => {
+          lines.push(`## ${m.role === 'user' ? '나' : 'DAON AI'}\n${m.content}\n`);
+        });
+        const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = `daon-ai-${Date.now()}.md`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }, [activeChat, messages, model]);
+
+      const handleStop     = () => { abortCtrl?.abort(); setStreaming(false); };
+      const handleKeyDown  = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
+
+      // ── 검색 필터 ──
+      const filteredChats = searchQuery.trim()
+        ? chats.filter(c =>
+            c.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            c.messages?.some(m => m.content?.toLowerCase().includes(searchQuery.toLowerCase()))
+          )
+        : chats;
+
+      // ── 조건부 렌더링 (훅 선언 이후) ──
+      if (!authChecked) return (
+        <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+          <div className="text-gray-400 text-sm animate-pulse">로딩 중...</div>
+        </div>
+      );
+
+      if (!token) return <LoginScreen onLogin={handleLogin} />;
+
+      // ── 토큰 상태바 계산 ──
+      const tokenSessions = tokenMap[activeId] || [];
+      const tokenTotal    = tokenSessions.reduce((s, r) => s + (r.total_tokens || 0), 0);
+      const tokenCost     = calcCost(model,
+        tokenSessions.reduce((s, r) => s + (r.prompt_tokens || 0), 0),
+        tokenSessions.reduce((s, r) => s + (r.completion_tokens || 0), 0)
+      );
+
+      return (
+        <div className="h-screen flex overflow-hidden">
+          {sidebarOpen && <div className="fixed inset-0 bg-black/30 z-30 md:hidden" onClick={() => setSidebarOpen(false)} />}
+
+          {/* 사이드바 */}
+          <div className={`fixed md:relative z-40 w-72 h-full transition-transform duration-200 ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'} md:block`}>
+            <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-950">
+              {/* 새 대화 버튼 */}
+              <div className="p-3">
+                <button onClick={() => { createChat(); setSidebarOpen(false); }}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 transition-all text-sm font-medium">
+                  <Icons.Plus /> 새 대화
+                </button>
+              </div>
+              {/* 검색 */}
+              <div className="px-3 pb-2">
+                <div className="relative">
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="대화 검색..."
+                    className="w-full pl-8 pr-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+              {/* 대화 목록 */}
+              <div className="flex-1 overflow-y-auto px-3 space-y-1">
+                {filteredChats.map(chat => (
+                  <div key={chat.id}
+                    className={`group flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-all text-sm ${chat.id === activeId ? 'bg-white dark:bg-gray-800 shadow-sm font-medium' : 'hover:bg-white/60 dark:hover:bg-gray-800/60'}`}
+                    onClick={() => { setActiveId(chat.id); setSidebarOpen(false); }}>
+                    <Icons.Chat />
+                    <span className="flex-1 truncate">{chat.title || '새 대화'}</span>
+                    <button onClick={e => { e.stopPropagation(); deleteChat(chat.id); }}
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-500 transition-all"><Icons.Trash /></button>
+                  </div>
+                ))}
+                {filteredChats.length === 0 && searchQuery && (
+                  <p className="text-xs text-gray-400 text-center py-4">검색 결과 없음</p>
+                )}
+              </div>
+              {/* 하단 */}
+              <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+                {userRole === 'admin' && (
+                  <button onClick={() => setShowUserMgr(true)}
+                    className="w-full text-xs text-gray-500 hover:text-emerald-600 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors mb-1">
+                    사용자 관리
+                  </button>
+                )}
+                <p className="text-[10px] text-gray-400 text-center">Network + AI · OpenAI GPT</p>
+              </div>
+            </div>
+          </div>
+
+          {/* 메인 영역 */}
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* 헤더 */}
+            <header className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md">
+              <div className="flex items-center gap-3">
+                <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                  <Icons.Menu />
+                </button>
+                <h1 className="font-bold text-sm truncate max-w-[140px]">{activeChat?.title || 'DAON AI'}</h1>
+                <ModelSelector model={model} setModel={setModel} models={models} disabled={streaming} />
+              </div>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setShowCodeReview(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg hover:opacity-90 transition-all shadow-sm">
+                  <Icons.Code /> 코드 검수
+                </button>
+                {messages.length > 0 && (
+                  <button onClick={exportChat} title="대화 내보내기 (.md)"
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500"
+                    title="대화 내보내기">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  </button>
+                )}
+                <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"><Icons.Settings /></button>
+                <button onClick={() => setDark(!dark)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                  {dark ? <Icons.Sun /> : <Icons.Moon />}
+                </button>
+                <div className="flex items-center gap-1 ml-1 pl-2 border-l border-gray-200 dark:border-gray-700">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-[11px] font-bold">
+                    {userId.slice(0, 1).toUpperCase()}
+                  </div>
+                  <button onClick={handleLogout} title="로그아웃"
+                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            {/* 채팅 영역 */}
+            <div className="flex-1 overflow-y-auto">
+              {!activeId || !messages.length
+                ? <WelcomeScreen onSend={text => sendMessage(text)} />
+                : (
+                  <div>
+                    {messages.map((msg, i) => (
+                      <Message key={`${activeId}-${i}`} msg={msg}
+                        isStreaming={streaming && i === messages.length - 1 && msg.role === 'assistant'} />
+                    ))}
+                    <div ref={messagesEndRef} className="h-4" />
+                  </div>
+                )
+              }
+            </div>
+
+            {/* 입력 영역 */}
+            <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+              <div className="max-w-3xl mx-auto">
+                <div className="flex items-end gap-3 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-600 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all px-4 py-2">
+                  <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown} placeholder="메시지를 입력하세요... (Shift+Enter로 줄바꿈)"
+                    rows="1" className="flex-1 bg-transparent outline-none text-sm resize-none py-1.5" disabled={streaming} />
+                  {streaming
+                    ? <button onClick={handleStop} className="flex-shrink-0 w-9 h-9 rounded-xl bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-colors"><Icons.Stop /></button>
+                    : <button onClick={() => sendMessage()} disabled={!input.trim()} className="flex-shrink-0 w-9 h-9 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white flex items-center justify-center transition-colors disabled:cursor-not-allowed"><Icons.Send /></button>
+                  }
+                </div>
+                {/* 토큰 상태바 */}
+                {tokenTotal > 0
+                  ? <div className="flex items-center justify-between mt-2 px-1">
+                      <span className="text-[10px] text-gray-400">
+                        사용 토큰: <span className="font-medium text-blue-500">{tokenTotal.toLocaleString()}</span>
+                        {' · '}예상 비용: <span className="font-medium text-emerald-500">{fmtKRW(tokenCost.total)}</span>
+                      </span>
+                      <button onClick={() => setShowTokenReport(true)} className="text-[10px] text-gray-400 hover:text-blue-500 underline transition-colors">상세 보고서</button>
+                    </div>
+                  : <p className="text-center text-[10px] text-gray-400 mt-2">Network + AI | OpenAI API를 활용한 나만의 ChatGPT</p>
+                }
+              </div>
+            </div>
+          </div>
+
+          {/* 모달들 */}
+          <SettingsModal show={showSettings} onClose={() => setShowSettings(false)}
+            systemPrompt={systemPrompt} setSystemPrompt={setSystemPrompt} model={model} setModel={setModel} models={models} />
+          <CodeReviewModal show={showCodeReview} onClose={() => setShowCodeReview(false)} onSubmit={handleCodeReview} />
+          <TokenReportModal show={showTokenReport} onClose={() => setShowTokenReport(false)}
+            report={activeId ? { sessions: tokenMap[activeId] || [], model } : null} />
+          <UserManageModal show={showUserMgr} onClose={() => setShowUserMgr(false)} token={token} />
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

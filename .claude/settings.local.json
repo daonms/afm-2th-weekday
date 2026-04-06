@@ -26,7 +26,11 @@
       "Bash(\"$B\" restart:*)",
       "Bash(\"$B\" stop:*)",
       "Bash(pkill -f \"browse\")",
-      "Bash(xxd \"D:/다온/DAON_AI - 문서/afm-2th-weekday/week3/simple-server/secret.txt\")"
+      "Bash(xxd \"D:/다온/DAON_AI - 문서/afm-2th-weekday/week3/simple-server/secret.txt\")",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //PID 39920 //F)",
+      "Bash(xargs taskkill:*)",
+      "Bash(taskkill //PID 18524 //F)"
     ]
   }
 }

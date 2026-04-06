@@ -2,3 +2,7 @@
 .gstack/
 .claude/skills/browse/dist/
 .env
+
+# API keys - use environment variables instead
+config.js
+*.env

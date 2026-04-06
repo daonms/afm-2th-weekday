@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>나만의 Midjourney</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+    body { font-family: 'Noto Sans KR', sans-serif; }
+
+    .style-card {
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .style-card:hover { transform: translateY(-3px); }
+    .style-card.selected {
+      outline: 3px solid #7c3aed;
+      transform: translateY(-3px);
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .shimmer {
+      background: linear-gradient(90deg, #1e1b4b 25%, #312e81 50%, #1e1b4b 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.97); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .fade-in { animation: fadeIn 0.4s ease forwards; }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    .spin { animation: spin 1s linear infinite; }
+
+    .gallery-img {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      cursor: pointer;
+    }
+    .gallery-img:hover {
+      transform: scale(1.03);
+      box-shadow: 0 0 20px rgba(124, 58, 237, 0.5);
+    }
+  </style>
+</head>
+<body class="bg-gray-950 text-white min-h-screen">
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useRef, useCallback } = React;
+
+// ==============================
+// 스타일 프리셋 정의
+// ==============================
+const STYLES = [
+  { id: 'ghibli',       label: '지브리',        emoji: '🌿', desc: '따뜻한 애니메이션',   bg: 'from-green-900 to-teal-900'   },
+  { id: 'watercolor',   label: '수채화',        emoji: '🎨', desc: '부드러운 번짐 효과', bg: 'from-blue-900 to-cyan-900'    },
+  { id: 'cyberpunk',    label: '사이버펑크',    emoji: '🌆', desc: '네온 미래 도시',       bg: 'from-purple-900 to-pink-900'  },
+  { id: 'oilpaint',     label: '유화',          emoji: '🖼️', desc: '고전 회화 질감',       bg: 'from-amber-900 to-orange-900' },
+  { id: 'pixel',        label: '픽셀 아트',     emoji: '👾', desc: '레트로 8비트',         bg: 'from-yellow-900 to-lime-900'  },
+  { id: 'anime',        label: '애니메이션',    emoji: '⚡', desc: '선명한 일본 애니',     bg: 'from-red-900 to-pink-900'     },
+  { id: 'sketch',       label: '연필 스케치',   emoji: '✏️', desc: '흑백 드로잉',          bg: 'from-gray-800 to-gray-900'    },
+  { id: 'photorealistic', label: '실사',        emoji: '📷', desc: '8K 초현실적',          bg: 'from-slate-800 to-blue-900'   },
+  { id: 'fantasy',      label: '판타지',        emoji: '🔮', desc: '마법적 일러스트',      bg: 'from-violet-900 to-indigo-900'},
+  { id: 'minimal',      label: '미니멀',        emoji: '◾', desc: '깔끔한 모던 아트',     bg: 'from-zinc-800 to-zinc-900'    },
+];
+
+const SIZES = [
+  { id: '1024x1024', label: '정사각형', icon: '⬛', desc: '1024×1024' },
+  { id: '1792x1024', label: '가로형',   icon: '▬',  desc: '1792×1024' },
+  { id: '1024x1792', label: '세로형',   icon: '▮',  desc: '1024×1792' },
+];
+
+// ==============================
+// 컴포넌트
+// ==============================
+function StyleCard({ style, selected, onClick }) {
+  return (
+    <div
+      onClick={onClick}
+      className={`style-card rounded-xl p-3 bg-gradient-to-br ${style.bg} border border-white/10 ${selected ? 'selected' : ''}`}
+    >
+      <div className="text-2xl mb-1">{style.emoji}</div>
+      <div className="font-semibold text-sm">{style.label}</div>
+      <div className="text-xs text-white/50 mt-0.5">{style.desc}</div>
+    </div>
+  );
+}
+
+function GalleryItem({ item, onClick }) {
+  return (
+    <div className="relative group" onClick={() => onClick(item)}>
+      <img
+        src={item.url}
+        alt={item.prompt}
+        className="gallery-img w-full aspect-square object-cover rounded-xl"
+      />
+      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex flex-col justify-end p-3">
+        <div className="text-xs text-white/80 line-clamp-2">{item.prompt}</div>
+        <div className="text-xs text-purple-300 mt-1">
+          {STYLES.find(s => s.id === item.style)?.label || item.style}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Modal({ item, onClose }) {
+  if (!item) return null;
+  return (
+    <div
+      className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-gray-900 rounded-2xl max-w-2xl w-full overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        <img src={item.url} alt={item.prompt} className="w-full" />
+        <div className="p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{STYLES.find(s => s.id === item.style)?.emoji}</span>
+            <span className="text-purple-300 font-medium">
+              {STYLES.find(s => s.id === item.style)?.label}
+            </span>
+            <span className="text-white/30 text-sm ml-auto">{item.size}</span>
+          </div>
+          <p className="text-white/70 text-sm">{item.prompt}</p>
+          {item.revised && (
+            <p className="text-white/40 text-xs">AI 수정 프롬프트: {item.revised}</p>
+          )}
+          <div className="flex gap-2 pt-2">
+            <a
+              href={item.url}
+              download="midjourney.png"
+              target="_blank"
+              rel="noreferrer"
+              className="flex-1 text-center py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-sm font-medium transition-colors"
+            >
+              다운로드
+            </a>
+            <button
+              onClick={onClose}
+              className="flex-1 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm font-medium transition-colors"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// DALL-E 2: 이미지를 정사각형 PNG(RGBA)로 변환
+function toSquarePng(dataUrl, maxSize = 1024) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const size = Math.min(Math.max(img.width, img.height), maxSize);
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      // 투명 배경 (RGBA 필수)
+      ctx.clearRect(0, 0, size, size);
+      // 중앙 정렬
+      const sx = (size - img.width) / 2;
+      const sy = (size - img.height) / 2;
+      ctx.drawImage(img, sx, sy, img.width, img.height);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.src = dataUrl;
+  });
+}
+
+// ==============================
+// 이미지 업로드 영역
+// ==============================
+function UploadZone({ image, imageInfo, onImage, onClear }) {
+  const inputRef = useRef(null);
+  const [processing, setProcessing] = React.useState(false);
+
+  const handleFile = async (file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    if (file.size > 20 * 1024 * 1024) { alert('20MB 이하 이미지만 업로드 가능합니다.'); return; }
+    setProcessing(true);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const squared = await toSquarePng(e.target.result, 1024);
+      onImage(squared, { name: file.name, originalSize: file.size });
+      setProcessing(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    handleFile(e.dataTransfer.files[0]);
+  };
+
+  if (processing) {
+    return (
+      <div className="border-2 border-dashed border-purple-500/40 rounded-xl p-8 text-center">
+        <div className="text-2xl mb-2 spin inline-block">⚙️</div>
+        <p className="text-white/50 text-sm">정사각형 PNG로 변환 중...</p>
+      </div>
+    );
+  }
+
+  if (image) {
+    return (
+      <div className="relative rounded-xl overflow-hidden border border-purple-500/40">
+        <img src={image} alt="업로드된 이미지" className="w-full max-h-64 object-contain bg-black" />
+        <button
+          onClick={onClear}
+          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 hover:bg-red-600 text-white text-sm flex items-center justify-center transition-colors"
+        >
+          ✕
+        </button>
+        <div className="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/60 text-xs text-white/60">
+          ✅ 정사각형 PNG 변환 완료
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onDrop={handleDrop}
+      onDragOver={e => e.preventDefault()}
+      onClick={() => inputRef.current?.click()}
+      className="border-2 border-dashed border-white/20 hover:border-purple-500/50 rounded-xl p-8 text-center cursor-pointer transition-colors"
+    >
+      <div className="text-3xl mb-2">🖼️</div>
+      <p className="text-white/60 text-sm">클릭하거나 이미지를 드래그</p>
+      <p className="text-white/30 text-xs mt-1">PNG, JPG · 최대 4MB</p>
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={e => handleFile(e.target.files[0])} />
+    </div>
+  );
+}
+
+// ==============================
+// PPT 전용 상수
+// ==============================
+const PPT_SLIDE_TYPES = [
+  { id: 'cover',    label: '표지',    emoji: '📄', desc: '타이틀 슬라이드'  },
+  { id: 'toc',      label: '목차',    emoji: '📋', desc: '목차 페이지'     },
+  { id: 'content',  label: '내용',    emoji: '📝', desc: '본문 슬라이드'   },
+  { id: 'section',  label: '섹션',    emoji: '🔖', desc: '챕터 구분'       },
+  { id: 'data',     label: '데이터',  emoji: '📊', desc: '차트/그래프용'   },
+  { id: 'closing',  label: '마무리',  emoji: '🎯', desc: '마지막 슬라이드' },
+];
+
+const PPT_THEMES = [
+  { id: 'minimal',  label: '미니멀',        emoji: '⬜', desc: '깔끔한 화이트'   },
+  { id: 'business', label: '비즈니스',      emoji: '💼', desc: '전문 기업 스타일' },
+  { id: 'creative', label: '크리에이티브',  emoji: '🎨', desc: '감각적 디자인'    },
+  { id: 'dark',     label: '다크 모드',     emoji: '🌑', desc: '어두운 고급감'    },
+  { id: 'tech',     label: '테크',          emoji: '💻', desc: '첨단 기술 느낌'   },
+  { id: 'nature',   label: '내추럴',        emoji: '🌿', desc: '자연스러운 그린'  },
+  { id: 'bold',     label: '볼드',          emoji: '⚡', desc: '강렬한 임팩트'    },
+  { id: 'elegant',  label: '엘레건트',      emoji: '✨', desc: '우아한 고급감'    },
+];
+
+const PPT_LAYOUTS = [
+  { id: 'centered',   label: '중앙형',  emoji: '⊡', desc: '중심 집중'   },
+  { id: 'left',       label: '좌측형',  emoji: '◧', desc: '좌측 강조'   },
+  { id: 'split',      label: '분할형',  emoji: '⬛', desc: '좌우 분할'   },
+  { id: 'diagonal',   label: '대각선',  emoji: '◩', desc: '대각 레이아웃' },
+];
+
+const PPT_COLORS = [
+  { id: 'blue',     label: '블루',      colors: ['#1e3a8a','#3b82f6','#bfdbfe'] },
+  { id: 'green',    label: '그린',      colors: ['#064e3b','#10b981','#d1fae5'] },
+  { id: 'purple',   label: '퍼플',      colors: ['#4c1d95','#8b5cf6','#ede9fe'] },
+  { id: 'red',      label: '레드',      colors: ['#7f1d1d','#ef4444','#fee2e2'] },
+  { id: 'dark',     label: '다크',      colors: ['#111827','#374151','#9ca3af'] },
+  { id: 'gold',     label: '골드',      colors: ['#78350f','#f59e0b','#fef3c7'] },
+  { id: 'teal',     label: '틸',        colors: ['#134e4a','#14b8a6','#ccfbf1'] },
+  { id: 'gradient', label: '그라데이션', colors: ['#7c3aed','#2563eb','#06b6d4'] },
+];
+
+// ==============================
+// 로고 전용 상수
+// ==============================
+const LOGO_STYLES = [
+  { id: 'minimal',    label: '미니멀',   emoji: '◾', desc: '심플 + 모던'   },
+  { id: 'badge',      label: '뱃지',     emoji: '🏅', desc: '원형 엠블럼'   },
+  { id: 'wordmark',   label: '워드마크', emoji: '🔤', desc: '텍스트 중심'   },
+  { id: 'lettermark', label: '레터마크', emoji: '🔡', desc: '이니셜 로고'   },
+  { id: 'mascot',     label: '마스코트', emoji: '🐾', desc: '캐릭터 로고'   },
+  { id: 'abstract',   label: '추상형',   emoji: '🌀', desc: '추상 심볼'     },
+  { id: 'vintage',    label: '빈티지',   emoji: '📜', desc: '레트로 감성'   },
+  { id: 'flat',       label: '플랫',     emoji: '🎯', desc: '플랫 디자인'   },
+];
+
+const LOGO_INDUSTRIES = [
+  { id: 'tech',     label: '테크',    emoji: '💻' },
+  { id: 'food',     label: '음식',    emoji: '🍽️' },
+  { id: 'fashion',  label: '패션',    emoji: '👗' },
+  { id: 'health',   label: '헬스',    emoji: '💊' },
+  { id: 'finance',  label: '금융',    emoji: '💰' },
+  { id: 'edu',      label: '교육',    emoji: '📚' },
+  { id: 'sports',   label: '스포츠',  emoji: '⚽' },
+  { id: 'beauty',   label: '뷰티',    emoji: '💄' },
+  { id: 'travel',   label: '여행',    emoji: '✈️' },
+  { id: 'pet',      label: '펫',      emoji: '🐶' },
+];
+
+const LOGO_COLORS = [
+  { id: 'mono',     label: '흑백',    colors: ['#000','#fff']            },
+  { id: 'blue',     label: '블루',    colors: ['#1e40af','#60a5fa']      },
+  { id: 'green',    label: '그린',    colors: ['#065f46','#34d399']      },
+  { id: 'red',      label: '레드',    colors: ['#991b1b','#f87171']      },
+  { id: 'purple',   label: '퍼플',    colors: ['#5b21b6','#a78bfa']      },
+  { id: 'orange',   label: '오렌지',  colors: ['#92400e','#fbbf24']      },
+  { id: 'gradient', label: '그라데이션', colors: ['#7c3aed','#ec4899','#f97316'] },
+];
+
+// ==============================
+// 메인 앱
+// ==============================
+function App() {
+  const [mode, setMode]                   = useState('text'); // 'text' | 'image' | 'logo'
+  const [uploadMode, setUploadMode]       = useState('variation'); // 'variation' | 'edit'
+  const [uploadedImage, setUploadedImage] = useState(null);
+
+  // 로고 전용 상태
+  const [brandName, setBrandName]         = useState('');
+  const [tagline, setTagline]             = useState('');
+  const [logoStyle, setLogoStyle]         = useState('minimal');
+  const [industry, setIndustry]           = useState('tech');
+  const [colorTheme, setColorTheme]       = useState('blue');
+
+  // PPT 전용 상태
+  const [pptTopic, setPptTopic]           = useState('');
+  const [pptSubtitle, setPptSubtitle]     = useState('');
+  const [pptSlideType, setPptSlideType]   = useState('cover');
+  const [pptTheme, setPptTheme]           = useState('business');
+  const [pptLayout, setPptLayout]         = useState('centered');
+  const [pptColor, setPptColor]           = useState('blue');
+  const [pptRatio, setPptRatio]           = useState('1792x1024'); // 16:9
+
+  const [selectedStyle, setSelectedStyle] = useState('ghibli');
+  const [selectedSize, setSelectedSize]   = useState('1024x1024');
+  const [quality, setQuality]             = useState('standard');
+  const [prompt, setPrompt]               = useState('');
+  const [loading, setLoading]             = useState(false);
+  const [error, setError]                 = useState('');
+  const [gallery, setGallery]             = useState([]);
+  const [modalItem, setModalItem]         = useState(null);
+  const [currentImg, setCurrentImg]       = useState(null);
+
+  const textareaRef = useRef(null);
+
+  // 텍스트 → DALL-E 3 생성
+  const generateText = useCallback(async () => {
+    if (!prompt.trim()) { setError('프롬프트를 입력해주세요.'); textareaRef.current?.focus(); return; }
+    setLoading(true); setError(''); setCurrentImg(null);
+    try {
+      const res  = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt.trim(), style: selectedStyle, size: selectedSize, quality }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || '생성 실패');
+      const item = { id: Date.now(), url: data.url, prompt: prompt.trim(), style: selectedStyle, size: selectedSize, revised: data.revised_prompt, createdAt: new Date().toLocaleTimeString() };
+      setCurrentImg(item);
+      setGallery(prev => [item, ...prev].slice(0, 20));
+    } catch (e) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [prompt, selectedStyle, selectedSize, quality]);
+
+  // 이미지 업로드 → DALL-E 2 변형/편집
+  const generateFromImage = useCallback(async () => {
+    if (!uploadedImage) { setError('이미지를 업로드해주세요.'); return; }
+    if (uploadMode === 'edit' && !prompt.trim()) { setError('편집 프롬프트를 입력해주세요.'); return; }
+    setLoading(true); setError(''); setCurrentImg(null);
+
+    // 이미지 업로드 모드에서는 DALL-E 2만 지원 → 크기 제한
+    const safeSize = ['256x256','512x512','1024x1024'].includes(selectedSize) ? selectedSize : '1024x1024';
+
+    try {
+      const endpoint = uploadMode === 'edit' ? '/api/edit' : '/api/variation';
+      const body     = uploadMode === 'edit'
+        ? { image: uploadedImage, prompt: prompt.trim(), style: selectedStyle, size: safeSize }
+        : { image: uploadedImage, size: safeSize };
+
+      const res  = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || '생성 실패');
+
+      const item = { id: Date.now(), url: data.url, prompt: uploadMode === 'edit' ? prompt.trim() : '이미지 변형', style: selectedStyle, size: safeSize, uploadMode, createdAt: new Date().toLocaleTimeString() };
+      setCurrentImg(item);
+      setGallery(prev => [item, ...prev].slice(0, 20));
+    } catch (e) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [uploadedImage, uploadMode, prompt, selectedStyle, selectedSize]);
+
+  // 로고 → DALL-E 3 생성
+  const generateLogo = useCallback(async () => {
+    if (!brandName.trim()) { setError('브랜드 이름을 입력해주세요.'); return; }
+    setLoading(true); setError(''); setCurrentImg(null);
+
+    const styleMap = {
+      minimal:    'minimal flat vector logo, clean lines, simple geometric shapes',
+      badge:      'circular badge logo, emblem style, detailed border',
+      wordmark:   'wordmark logo, stylized typography, custom lettering',
+      lettermark: 'lettermark logo, bold initial letters, monogram style',
+      mascot:     'mascot logo, friendly character illustration, cartoon style',
+      abstract:   'abstract logo mark, geometric symbol, unique shape',
+      vintage:    'vintage retro logo, distressed texture, classic badge design',
+      flat:       'flat design logo, solid colors, no gradients, modern minimalist',
+    };
+    const industryMap = {
+      tech: 'technology company', food: 'food and beverage brand', fashion: 'fashion brand',
+      health: 'healthcare company', finance: 'financial services', edu: 'education platform',
+      sports: 'sports brand', beauty: 'beauty brand', travel: 'travel company', pet: 'pet brand',
+    };
+    const colorMap = {
+      mono: 'black and white monochrome color scheme',
+      blue: 'blue and navy color scheme',
+      green: 'green and emerald color scheme',
+      red: 'red and crimson color scheme',
+      purple: 'purple and violet color scheme',
+      orange: 'orange and amber color scheme',
+      gradient: 'vibrant purple to pink to orange gradient',
+    };
+
+    const prompt = [
+      `Professional logo design for "${brandName.trim()}"`,
+      tagline.trim() ? `with tagline "${tagline.trim()}"` : '',
+      `${industryMap[industry] || industry},`,
+      styleMap[logoStyle] || logoStyle,
+      colorMap[colorTheme] || '',
+      'white background, vector style, scalable, high quality, no text artifacts',
+    ].filter(Boolean).join(', ');
+
+    try {
+      const res  = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, style: '', size: '1024x1024', quality }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || '생성 실패');
+      const item = {
+        id: Date.now(), url: data.url,
+        prompt: `[로고] ${brandName}${tagline ? ' — ' + tagline : ''}`,
+        style: logoStyle, size: '1024x1024',
+        revised: data.revised_prompt, createdAt: new Date().toLocaleTimeString(),
+        isLogo: true,
+      };
+      setCurrentImg(item);
+      setGallery(prev => [item, ...prev].slice(0, 20));
+    } catch (e) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [brandName, tagline, logoStyle, industry, colorTheme, quality]);
+
+  // PPT → DALL-E 3 생성
+  const generatePPT = useCallback(async () => {
+    if (!pptTopic.trim()) { setError('발표 주제를 입력해주세요.'); return; }
+    setLoading(true); setError(''); setCurrentImg(null);
+
+    const slideTypeMap = {
+      cover:   'title cover slide with large headline area and decorative background',
+      toc:     'table of contents slide with numbered list sections layout',
+      content: 'content slide with title bar at top and large body area below',
+      section: 'section divider slide with bold chapter number and title',
+      data:    'data visualization slide with chart placeholder areas and clean grid',
+      closing:'closing slide with thank you message area and call to action',
+    };
+    const themeMap = {
+      minimal:  'clean minimal white design, plenty of whitespace, thin lines',
+      business: 'professional corporate design, structured layout, authoritative',
+      creative: 'creative colorful design, dynamic shapes, artistic composition',
+      dark:     'dark background, light text areas, premium luxury feel, glassmorphism',
+      tech:     'futuristic tech design, circuit patterns, digital grid overlay',
+      nature:   'organic natural design, soft curves, botanical elements',
+      bold:     'bold impactful design, strong typography areas, high contrast',
+      elegant:  'elegant sophisticated design, gold accents, refined typography',
+    };
+    const layoutMap = {
+      centered:  'centered symmetrical layout, content in the middle',
+      left:      'left-aligned layout, strong left column, right content area',
+      split:     'split layout, left half solid color block, right half white content',
+      diagonal:  'diagonal split layout, angled dividing line across the slide',
+    };
+    const colorMap = {
+      blue:     'deep navy and sky blue color palette',
+      green:    'forest green and mint color palette',
+      purple:   'deep purple and lavender color palette',
+      red:      'deep red and coral color palette',
+      dark:     'charcoal black and gray color palette',
+      gold:     'dark chocolate and golden amber color palette',
+      teal:     'dark teal and aqua color palette',
+      gradient: 'vibrant purple to blue to cyan gradient color palette',
+    };
+
+    const prompt = [
+      `Professional PowerPoint presentation slide background design`,
+      slideTypeMap[pptSlideType],
+      `topic: "${pptTopic.trim()}"`,
+      pptSubtitle.trim() ? `subtitle: "${pptSubtitle.trim()}"` : '',
+      themeMap[pptTheme],
+      layoutMap[pptLayout],
+      colorMap[pptColor],
+      'no actual text rendered, placeholder areas only, 16:9 widescreen format, high quality presentation template',
+    ].filter(Boolean).join(', ');
+
+    try {
+      const res  = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, style: '', size: pptRatio, quality }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || '생성 실패');
+      const slideLabel = PPT_SLIDE_TYPES.find(t => t.id === pptSlideType)?.label || pptSlideType;
+      const item = {
+        id: Date.now(), url: data.url,
+        prompt: `[PPT ${slideLabel}] ${pptTopic}`,
+        style: pptTheme, size: pptRatio,
+        revised: data.revised_prompt, createdAt: new Date().toLocaleTimeString(),
+        isPPT: true,
+      };
+      setCurrentImg(item);
+      setGallery(prev => [item, ...prev].slice(0, 20));
+    } catch (e) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [pptTopic, pptSubtitle, pptSlideType, pptTheme, pptLayout, pptColor, pptRatio, quality]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      if (mode === 'text') generateText();
+      else if (mode === 'image') generateFromImage();
+      else if (mode === 'logo') generateLogo();
+      else generatePPT();
+    }
+  };
+
+  const styleInfo = STYLES.find(s => s.id === selectedStyle);
+
+  // 이미지 업로드 모드는 DALL-E 2 → 세로/가로 불가
+  const availableSizes = mode === 'image'
+    ? [{ id: '256x256', label: '소형', icon: '◾', desc: '256×256' }, { id: '512x512', label: '중형', icon: '⬛', desc: '512×512' }, { id: '1024x1024', label: '대형', icon: '🟫', desc: '1024×1024' }]
+    : SIZES;
+  const logoStyleInfo   = LOGO_STYLES.find(s => s.id === logoStyle);
+  const logoColorInfo   = LOGO_COLORS.find(c => c.id === colorTheme);
+  const industryInfo    = LOGO_INDUSTRIES.find(i => i.id === industry);
+  const pptThemeInfo    = PPT_THEMES.find(t => t.id === pptTheme);
+  const pptColorInfo    = PPT_COLORS.find(c => c.id === pptColor);
+  const pptSlideInfo    = PPT_SLIDE_TYPES.find(t => t.id === pptSlideType);
+
+  return (
+    <div className="min-h-screen bg-gray-950">
+      {/* 헤더 */}
+      <header className="border-b border-white/10 px-6 py-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-lg">🎨</div>
+            <div>
+              <h1 className="text-lg font-bold">나만의 Midjourney</h1>
+              <p className="text-xs text-white/40">DALL-E 3 이미지 생성 서비스</p>
+            </div>
+          </div>
+          <div className="text-xs text-white/30">{gallery.length}장 생성됨</div>
+        </div>
+      </header>
+
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-8">
+
+          {/* 좌측 패널 — 설정 */}
+          <div className="space-y-6">
+
+            {/* ── PPT 모드 좌측 패널 ── */}
+            {mode === 'ppt' ? (<>
+
+              {/* 슬라이드 타입 */}
+              <section>
+                <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">슬라이드 타입</h2>
+                <div className="grid grid-cols-2 gap-2">
+                  {PPT_SLIDE_TYPES.map(t => (
+                    <button key={t.id} onClick={() => setPptSlideType(t.id)}
+                      className={`style-card rounded-xl p-3 text-left border transition-all ${pptSlideType === t.id ? 'selected border-blue-500 bg-blue-900/30' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
+                      <div className="text-2xl mb-1">{t.emoji}</div>
+                      <div className="text-sm font-semibold">{t.label}</div>
+                      <div className="text-xs text-white/40 mt-0.5">{t.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              {/* 디자인 테마 */}
+              <section>
+                <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">디자인 테마</h2>
+                <div className="grid grid-cols-2 gap-2">
+                  {PPT_THEMES.map(t => (
+                    <button key={t.id} onClick={() => setPptTheme(t.id)}
+                      className={`style-card rounded-xl p-3 text-left border transition-all ${pptTheme === t.id ? 'selected border-blue-500 bg-blue-900/30' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
+                      <div className="text-2xl mb-1">{t.emoji}</div>
+                      <div className="text-sm font-semibold">{t.label}</div>
+                      <div className="text-xs text-white/40 mt-0.5">{t.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              {/* 레이아웃 */}
+              <section>
+                <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">레이아웃</h2>
+                <div className="grid grid-cols-2 gap-2">
+                  {PPT_LAYOUTS.map(l => (
+                    <button key={l.id} onClick={() => setPptLayout(l.id)}
+                      className={`py-3 px-3 rounded-xl border text-left transition-all ${pptLayout === l.id ? 'border-blue-500 bg-blue-500/20' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
+                      <div className="text-xl">{l.emoji}</div>
+                      <div className="text-sm font-medium">{l.label}</div>
+                      <div className="text-xs text-white/40">{l.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              {/* 컬러 */}
+              <section>
+                <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">컬러 팔레트</h2>
+                <div className="grid grid-cols-2 gap-2">
+                  {PPT_COLORS.map(c => (
+                    <button key={c.id} onClick={() => setPptColor(c.id)}
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all ${pptColor === c.id ? 'border-blue-500 bg-blue-500/20' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
+                      <div className="flex gap-0.5">
+                        {c.colors.map((col, i) => <div key={i} className="w-4 h-4 rounded-full border border-white/20" style={{ background: col }} />)}
+                      </div>
+                      <span className="text-sm">{c.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              {/* 비율 + 품질 */}
+              <section>
+                <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">비율 / 품질</h2>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  {[{ id: '1792x1024', label: '16:9 (와이드)', icon: '▬' }, { id: '1024x1024', label: '1:1 (정방형)', icon: '⬛' }].map(r => (
+                    <button key={r.id} onClick={() => setPptRatio(r.id)}
+                      className={`py-2.5 px-3 rounded-xl border text-center text-sm transition-all ${pptRatio === r.id ? 'border-blue-500 bg-blue-500/20' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
+                      <div className="text-lg">{r.icon}</div>
+                      <div className="text-xs mt-0.5">{r.label}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[{ id: 'standard', label: 'Standard', icon: '⚡' }, { id: 'hd', label: 'HD', icon: '✨' }].map(q => (
+                    <button key={q.id} onClick={() => setQuality(q.id)}
+                      className={`py-2.5 px-3 rounded-xl border text-center text-sm transition-all ${quality === q.id ? 'border-blue-500 bg-blue-500/20' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
+                      <div className="text-lg">{q.icon}</div>
+                      <div className="text-xs mt-0.5">{q.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+            </>) : mode === 'logo' ? (<>
+
+              {/* 로고 스타일 */}
+              <section>
+                <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">로고 스타일</h2>
+                <div className="grid grid-cols-2 gap-2">
+                  {LOGO_STYLES.map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => setLogoStyle(s.id)}
+                      className={`style-card rounded-xl p-3 text-left border transition-all ${
+                        logoStyle === s.id
+                          ? 'selected border-purple-500 bg-purple-900/30'
+                          : 'border-white/10 bg-white/5 hover:border-white/30'
+                      }`}
+                    >
+                      <div className="text-2xl mb-1">{s.emoji}</div>
+                      <div className="text-sm font-semibold">{s.label}</div>
+                      <div className="text-xs text-white/40 mt-0.5">{s.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              {/* 업종 */}
+              <section>
+                <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">업종</h2>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {LOGO_INDUSTRIES.map(i => (
+                    <button
+                      key={i.id}
+                      onClick={() => setIndustry(i.id)}
+                      className={`py-2 rounded-xl border text-center text-xs transition-all ${
+                        industry === i.id
+                          ? 'border-purple-500 bg-purple-500/20 text-purple-300'
+                          : 'border-white/10 bg-white/5 text-white/50 hover:border-white/30'
+                      }`}
+                    >
+                      <div className="text-lg">{i.emoji}</div>
+                      <div className="mt-0.5">{i.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              {/* 컬러 테마 */}
+              <section>
+                <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">컬러 테마</h2>
+                <div className="grid grid-cols-2 gap-2">
+                  {LOGO_COLORS.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => setColorTheme(c.id)}
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all ${
+                        colorTheme === c.id
+                          ? 'border-purple-500 bg-purple-500/20'
+                          : 'border-white/10 bg-white/5 hover:border-white/30'
+                      }`}
+                    >
+                      <div className="flex gap-0.5">
+                        {c.colors.map((col, i) => (
+                          <div key={i} className="w-4 h-4 rounded-full border border-white/20" style={{ background: col }} />
+                        ))}
+                      </div>
+                      <span className="text-sm">{c.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              {/* 품질 */}
+              <section>
+                <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">품질</h2>
+                <div className="grid grid-cols-2 gap-2">
+                  {[{ id: 'standard', label: 'Standard', desc: '빠른 생성', icon: '⚡' }, { id: 'hd', label: 'HD', desc: '고품질', icon: '✨' }].map(q => (
+                    <button key={q.id} onClick={() => setQuality(q.id)}
+                      className={`py-3 px-4 rounded-xl border text-left transition-all ${quality === q.id ? 'border-purple-500 bg-purple-500/20' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
+                      <div className="text-lg">{q.icon}</div>
+                      <div className="text-sm font-medium">{q.label}</div>
+                      <div className="text-xs text-white/40">{q.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+            </>) : (<>
+
+              {/* 화풍 선택 */}
+              <section>
+                <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">화풍 선택</h2>
+                <div className="grid grid-cols-2 gap-2">
+                  {STYLES.map(style => (
+                    <StyleCard key={style.id} style={style} selected={selectedStyle === style.id} onClick={() => setSelectedStyle(style.id)} />
+                  ))}
+                </div>
+              </section>
+
+              {/* 이미지 크기 */}
+              <section>
+                <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">이미지 크기</h2>
+                <div className="grid grid-cols-3 gap-2">
+                  {availableSizes.map(s => (
+                    <button key={s.id} onClick={() => setSelectedSize(s.id)}
+                      className={`py-3 rounded-xl border text-center transition-all ${selectedSize === s.id ? 'border-purple-500 bg-purple-500/20 text-purple-300' : 'border-white/10 bg-white/5 text-white/60 hover:border-white/30'}`}>
+                      <div className="text-xl">{s.icon}</div>
+                      <div className="text-xs font-medium mt-1">{s.label}</div>
+                      <div className="text-xs text-white/30">{s.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              {/* 품질 (텍스트 모드만) */}
+              {mode === 'text' && (
+                <section>
+                  <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">품질</h2>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[{ id: 'standard', label: 'Standard', desc: '빠른 생성', icon: '⚡' }, { id: 'hd', label: 'HD', desc: '고품질', icon: '✨' }].map(q => (
+                      <button key={q.id} onClick={() => setQuality(q.id)}
+                        className={`py-3 px-4 rounded-xl border text-left transition-all ${quality === q.id ? 'border-purple-500 bg-purple-500/20' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
+                        <div className="text-lg">{q.icon}</div>
+                        <div className="text-sm font-medium">{q.label}</div>
+                        <div className="text-xs text-white/40">{q.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+            </>)}
+          </div>
+
+          {/* 우측 패널 */}
+          <div className="space-y-6">
+
+            {/* 모드 탭 */}
+            <div className="grid grid-cols-2 gap-1.5 bg-gray-900 rounded-2xl p-1.5 border border-white/10">
+              {[
+                { id: 'text',  label: '✏️ 텍스트 생성', color: 'bg-purple-600' },
+                { id: 'image', label: '🖼️ 이미지 변환', color: 'bg-indigo-600' },
+                { id: 'logo',  label: '🏷️ 로고 디자인', color: 'bg-orange-600' },
+                { id: 'ppt',   label: '📊 PPT 디자인',  color: 'bg-blue-600'   },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => { setMode(tab.id); setError(''); setCurrentImg(null); }}
+                  className={`py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    mode === tab.id ? `${tab.color} text-white` : 'text-white/50 hover:text-white/80'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* ── 텍스트 모드 ── */}
+            {mode === 'text' && (
+              <section className="bg-gray-900 rounded-2xl p-5 border border-white/10">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">{styleInfo?.emoji}</span>
+                  <h2 className="font-semibold">{styleInfo?.label} 스타일로 생성</h2>
+                </div>
+                <textarea
+                  ref={textareaRef}
+                  value={prompt}
+                  onChange={e => setPrompt(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={`어떤 이미지를 원하나요?\n예) 벚꽃 아래 걷는 소녀, 석양이 지는 바다 위 등대...`}
+                  rows={5}
+                  className="w-full bg-gray-800 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 border border-white/10 placeholder-white/30"
+                />
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-xs text-white/30">Ctrl+Enter 로 생성</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-white/30">{prompt.length}자</span>
+                    <button
+                      onClick={generateText}
+                      disabled={loading}
+                      className={`px-6 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center gap-2 ${
+                        loading ? 'bg-purple-800 cursor-not-allowed opacity-70'
+                               : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 active:scale-95'
+                      }`}
+                    >
+                      {loading ? (<><svg className="spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>생성 중...</>) : '✨ 이미지 생성'}
+                    </button>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* ── 이미지 업로드 모드 ── */}
+            {mode === 'image' && (
+              <section className="bg-gray-900 rounded-2xl p-5 border border-white/10 space-y-4">
+                {/* 변형 / 편집 서브 탭 */}
+                <div className="flex gap-2">
+                  {[
+                    { id: 'variation', label: '🔀 변형', desc: '유사 이미지 생성' },
+                    { id: 'edit',      label: '✏️ 편집', desc: '프롬프트로 변경' },
+                  ].map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => { setUploadMode(t.id); setError(''); }}
+                      className={`flex-1 py-2 rounded-xl text-sm border transition-all ${
+                        uploadMode === t.id
+                          ? 'border-purple-500 bg-purple-500/20 text-white'
+                          : 'border-white/10 text-white/50 hover:text-white/70'
+                      }`}
+                    >
+                      <span className="font-medium">{t.label}</span>
+                      <span className="block text-xs text-white/40 mt-0.5">{t.desc}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* 업로드 영역 */}
+                <UploadZone image={uploadedImage} onImage={(img) => setUploadedImage(img)} onClear={() => setUploadedImage(null)} />
+
+                {/* 편집 프롬프트 */}
+                {uploadMode === 'edit' && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg">{styleInfo?.emoji}</span>
+                      <span className="text-sm text-white/70">{styleInfo?.label} 스타일로 편집</span>
+                    </div>
+                    <textarea
+                      ref={textareaRef}
+                      value={prompt}
+                      onChange={e => setPrompt(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="어떻게 바꿀까요? 예) 배경을 눈 내리는 마을로, 고양이를 강아지로..."
+                      rows={3}
+                      className="w-full bg-gray-800 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 border border-white/10 placeholder-white/30"
+                    />
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-white/30">DALL-E 2 · PNG 권장</p>
+                  <button
+                    onClick={generateFromImage}
+                    disabled={loading || !uploadedImage}
+                    className={`px-6 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center gap-2 ${
+                      loading || !uploadedImage
+                        ? 'bg-gray-700 cursor-not-allowed opacity-60'
+                        : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 active:scale-95'
+                    }`}
+                  >
+                    {loading ? (<><svg className="spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>생성 중...</>) : (uploadMode === 'variation' ? '🔀 변형 생성' : '✏️ 편집 생성')}
+                  </button>
+                </div>
+              </section>
+            )}
+
+            {/* ── 로고 모드 ── */}
+            {mode === 'logo' && (
+              <section className="bg-gray-900 rounded-2xl p-5 border border-white/10 space-y-4">
+                {/* 브랜드 이름 */}
+                <div>
+                  <label className="text-xs text-white/50 uppercase tracking-wider mb-2 block">브랜드 이름 *</label>
+                  <input
+                    value={brandName}
+                    onChange={e => setBrandName(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="예) Daon, Nova, Spark..."
+                    className="w-full bg-gray-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 border border-white/10 placeholder-white/30"
+                  />
+                </div>
+
+                {/* 슬로건 */}
+                <div>
+                  <label className="text-xs text-white/50 uppercase tracking-wider mb-2 block">슬로건 / 태그라인 (선택)</label>
+                  <input
+                    value={tagline}
+                    onChange={e => setTagline(e.target.value)}
+                    placeholder="예) 연결이 미래다, Just Do It..."
+                    className="w-full bg-gray-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 border border-white/10 placeholder-white/30"
+                  />
+                </div>
+
+                {/* 선택 요약 */}
+                <div className="flex flex-wrap gap-2 py-3 px-4 bg-gray-800/60 rounded-xl">
+                  <span className="text-xs px-2 py-1 rounded-full bg-purple-900/60 text-purple-300">{logoStyleInfo?.emoji} {logoStyleInfo?.label}</span>
+                  <span className="text-xs px-2 py-1 rounded-full bg-blue-900/60 text-blue-300">{industryInfo?.emoji} {industryInfo?.label}</span>
+                  <div className="flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-gray-700">
+                    {logoColorInfo?.colors.map((c, i) => <div key={i} className="w-3 h-3 rounded-full" style={{ background: c }} />)}
+                    <span className="text-white/60 ml-1">{logoColorInfo?.label}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-white/30">Ctrl+Enter 로 생성</span>
+                  <button
+                    onClick={generateLogo}
+                    disabled={loading || !brandName.trim()}
+                    className={`px-6 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center gap-2 ${
+                      loading || !brandName.trim()
+                        ? 'bg-gray-700 cursor-not-allowed opacity-60'
+                        : 'bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 active:scale-95'
+                    }`}
+                  >
+                    {loading
+                      ? (<><svg className="spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>생성 중...</>)
+                      : '🏷️ 로고 생성'}
+                  </button>
+                </div>
+              </section>
+            )}
+
+            {/* ── PPT 모드 ── */}
+            {mode === 'ppt' && (
+              <section className="bg-gray-900 rounded-2xl p-5 border border-white/10 space-y-4">
+                {/* 발표 주제 */}
+                <div>
+                  <label className="text-xs text-white/50 uppercase tracking-wider mb-2 block">발표 주제 *</label>
+                  <input
+                    value={pptTopic}
+                    onChange={e => setPptTopic(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="예) AI 트렌드 2025, 분기별 매출 보고서, 신제품 론칭..."
+                    className="w-full bg-gray-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border border-white/10 placeholder-white/30"
+                  />
+                </div>
+
+                {/* 부제목 */}
+                <div>
+                  <label className="text-xs text-white/50 uppercase tracking-wider mb-2 block">부제목 / 발표자 (선택)</label>
+                  <input
+                    value={pptSubtitle}
+                    onChange={e => setPptSubtitle(e.target.value)}
+                    placeholder="예) 2025년 1분기 | 홍길동 팀장"
+                    className="w-full bg-gray-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border border-white/10 placeholder-white/30"
+                  />
+                </div>
+
+                {/* 선택 요약 뱃지 */}
+                <div className="flex flex-wrap gap-2 py-3 px-4 bg-gray-800/60 rounded-xl">
+                  <span className="text-xs px-2 py-1 rounded-full bg-blue-900/60 text-blue-300">{pptSlideInfo?.emoji} {pptSlideInfo?.label}</span>
+                  <span className="text-xs px-2 py-1 rounded-full bg-indigo-900/60 text-indigo-300">{pptThemeInfo?.emoji} {pptThemeInfo?.label}</span>
+                  <div className="flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-gray-700">
+                    {pptColorInfo?.colors.map((c, i) => <div key={i} className="w-3 h-3 rounded-full" style={{ background: c }} />)}
+                    <span className="text-white/60 ml-1">{pptColorInfo?.label}</span>
+                  </div>
+                  <span className="text-xs px-2 py-1 rounded-full bg-gray-700 text-white/50">
+                    {pptRatio === '1792x1024' ? '16:9' : '1:1'}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-white/30">Ctrl+Enter 로 생성</span>
+                  <button
+                    onClick={generatePPT}
+                    disabled={loading || !pptTopic.trim()}
+                    className={`px-6 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center gap-2 ${
+                      loading || !pptTopic.trim()
+                        ? 'bg-gray-700 cursor-not-allowed opacity-60'
+                        : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 active:scale-95'
+                    }`}
+                  >
+                    {loading
+                      ? (<><svg className="spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>생성 중...</>)
+                      : '📊 슬라이드 생성'}
+                  </button>
+                </div>
+              </section>
+            )}
+
+            {/* 에러 */}
+            {error && (
+              <div className="px-4 py-3 bg-red-900/30 border border-red-500/30 rounded-xl text-red-300 text-sm">
+                {error}
+              </div>
+            )}
+
+            {/* 로딩 */}
+            {loading && (
+              <div className="rounded-2xl overflow-hidden border border-white/10">
+                <div className="shimmer aspect-square w-full" />
+                <div className="p-4 bg-gray-900 text-center text-white/50 text-sm">
+                  {mode === 'text' ? 'DALL-E 3가 이미지를 생성 중...' : 'DALL-E 2가 이미지를 변환 중...'} (약 10~20초)
+                </div>
+              </div>
+            )}
+
+            {/* 생성 결과 */}
+            {currentImg && !loading && (
+              <div className="fade-in bg-gray-900 rounded-2xl overflow-hidden border border-purple-500/30">
+                <div className="relative">
+                  <img src={currentImg.url} alt={currentImg.prompt} className="w-full" />
+                  <div className="absolute top-3 right-3">
+                    <a
+                      href={currentImg.url}
+                      download="midjourney.png"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur text-xs hover:bg-black/80 transition-colors"
+                    >
+                      ⬇ 다운로드
+                    </a>
+                  </div>
+                </div>
+                <div className="p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span>{styleInfo?.emoji}</span>
+                    <span className="text-purple-300 text-sm font-medium">{styleInfo?.label}</span>
+                    {currentImg.uploadMode && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-900/50 text-indigo-300">
+                        {currentImg.uploadMode === 'variation' ? '변형' : '편집'}
+                      </span>
+                    )}
+                    <span className="text-white/30 text-xs ml-auto">{currentImg.size} · {currentImg.createdAt}</span>
+                  </div>
+                  <p className="text-white/60 text-sm">{currentImg.prompt}</p>
+                  {currentImg.revised && currentImg.revised !== currentImg.prompt && (
+                    <details className="text-xs text-white/30">
+                      <summary className="cursor-pointer hover:text-white/50">AI 수정 프롬프트 보기</summary>
+                      <p className="mt-1 leading-relaxed">{currentImg.revised}</p>
+                    </details>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 갤러리 */}
+            {gallery.length > 1 && (
+              <section>
+                <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">
+                  생성 기록 ({gallery.length})
+                </h2>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {gallery.map(item => (
+                    <GalleryItem key={item.id} item={item} onClick={setModalItem} />
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <Modal item={modalItem} onClose={() => setModalItem(null)} />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 별명 생성기</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 24px;
+      padding: 40px;
+      max-width: 560px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+
+    .header { text-align: center; margin-bottom: 32px; }
+    .header .emoji { font-size: 48px; margin-bottom: 8px; }
+    .header h1 { font-size: 26px; color: #1a1a2e; margin-bottom: 6px; }
+    .header p { color: #888; font-size: 14px; }
+
+    .form-group { margin-bottom: 18px; }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 6px;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e8e8e8;
+      border-radius: 12px;
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      resize: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus { border-color: #667eea; }
+    textarea { height: 80px; }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .loading { display: none; text-align: center; padding: 32px 0; color: #888; }
+    .loading.show { display: block; }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #e8e8e8;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error {
+      display: none;
+      background: #fff0f0;
+      border: 1px solid #ffcccc;
+      border-radius: 12px;
+      padding: 14px 18px;
+      color: #cc0000;
+      font-size: 14px;
+      margin-top: 20px;
+    }
+    .error.show { display: block; }
+
+    .results { display: none; margin-top: 28px; }
+    .results.show { display: block; }
+    .results-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #888;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .card {
+      background: #f8f7ff;
+      border: 2px solid #e8e5ff;
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .card:hover { border-color: #667eea; background: #eeebff; transform: translateX(3px); }
+    .card.selected { border-color: #764ba2; background: #ede8ff; }
+
+    .card-text .name {
+      font-size: 20px;
+      font-weight: 800;
+      color: #1a1a2e;
+      margin-bottom: 4px;
+    }
+    .card-text .reason { font-size: 13px; color: #888; }
+
+    .copy-btn {
+      padding: 7px 14px;
+      background: white;
+      border: 1.5px solid #667eea;
+      border-radius: 8px;
+      color: #667eea;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .copy-btn:hover { background: #667eea; color: white; }
+    .copy-btn.done { background: #22c55e; border-color: #22c55e; color: white; }
+
+    .picked {
+      display: none;
+      margin-top: 20px;
+      padding: 18px 20px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 14px;
+      color: white;
+      text-align: center;
+    }
+    .picked.show { display: block; }
+    .picked .label { font-size: 12px; opacity: 0.8; margin-bottom: 6px; }
+    .picked .name { font-size: 26px; font-weight: 900; margin-bottom: 12px; }
+    .picked-copy {
+      padding: 8px 20px;
+      background: rgba(255,255,255,0.2);
+      border: 1.5px solid rgba(255,255,255,0.5);
+      border-radius: 8px;
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .picked-copy:hover { background: rgba(255,255,255,0.35); }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="emoji">✨</div>
+    <h1>AI 별명 생성기</h1>
+    <p>이름·성격·취미를 입력하면 AI가 찰떡 별명을 만들어드려요</p>
+  </div>
+
+  <div class="form-group">
+    <label>이름</label>
+    <input id="name" type="text" placeholder="예: 김민준" maxlength="20">
+  </div>
+  <div class="form-group">
+    <label>성격</label>
+    <input id="personality" type="text" placeholder="예: 에너지 넘치고 웃음이 많음" maxlength="100">
+  </div>
+  <div class="form-group">
+    <label>취미 / 관심사</label>
+    <textarea id="hobbies" placeholder="예: 게임, 요리, 헬스, 강아지 키우기"></textarea>
+  </div>
+
+  <button class="btn" id="btn" onclick="generate()">별명 생성하기 🎲</button>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>AI가 별명을 만들고 있어요...</p>
+  </div>
+
+  <div class="error" id="error"></div>
+
+  <div class="results" id="results">
+    <div class="results-title">추천 별명 5개</div>
+    <div id="list"></div>
+    <div class="picked" id="picked">
+      <div class="label">내가 선택한 별명</div>
+      <div class="name" id="picked-name"></div>
+      <button class="picked-copy" onclick="copyPicked()">복사하기</button>
+    </div>
+  </div>
+
+</div>
+<script>
+  let chosen = '';
+
+  async function generate() {
+    const name = document.getElementById('name').value.trim();
+    const personality = document.getElementById('personality').value.trim();
+    const hobbies = document.getElementById('hobbies').value.trim();
+    if (!name || !personality || !hobbies) return showError('이름, 성격, 취미를 모두 입력해주세요!');
+
+    setLoading(true);
+    document.getElementById('error').classList.remove('show');
+    document.getElementById('results').classList.remove('show');
+
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, personality, hobbies }),
+      });
+      const data = await res.json();
+      if (data.error) return showError(data.error);
+      render(data.nicknames);
+    } catch {
+      showError('서버에 연결할 수 없습니다.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function render(items) {
+    const list = document.getElementById('list');
+    list.innerHTML = '';
+    chosen = '';
+    document.getElementById('picked').classList.remove('show');
+
+    items.forEach((item, i) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.id = 'c' + i;
+      card.innerHTML = `
+        <div class="card-text">
+          <div class="name">${esc(item.nickname)}</div>
+          <div class="reason">${esc(item.reason)}</div>
+        </div>
+        <button class="copy-btn" onclick="copyCard(event,'${esc(item.nickname)}',this)">복사</button>
+      `;
+      card.addEventListener('click', e => {
+        if (e.target.classList.contains('copy-btn')) return;
+        pick(i, item.nickname);
+      });
+      list.appendChild(card);
+    });
+    document.getElementById('results').classList.add('show');
+  }
+
+  function pick(i, name) {
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('c' + i).classList.add('selected');
+    chosen = name;
+    document.getElementById('picked-name').textContent = name;
+    document.getElementById('picked').classList.add('show');
+  }
+
+  function copyCard(e, name, btn) {
+    e.stopPropagation();
+    navigator.clipboard.writeText(name).then(() => {
+      btn.textContent = '복사됨!';
+      btn.classList.add('done');
+      setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('done'); }, 1800);
+    });
+  }
+
+  function copyPicked() {
+    if (!chosen) return;
+    navigator.clipboard.writeText(chosen).then(() => {
+      const btn = document.querySelector('.picked-copy');
+      btn.textContent = '복사됨! ✓';
+      setTimeout(() => { btn.textContent = '복사하기'; }, 1800);
+    });
+  }
+
+  function setLoading(on) {
+    document.getElementById('loading').classList.toggle('show', on);
+    document.getElementById('btn').disabled = on;
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error');
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+
+  function esc(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.activeElement.tagName !== 'TEXTAREA') generate();
+  });
+</script>
+</body>
+</html>
