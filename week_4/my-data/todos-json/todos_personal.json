@@ -1,0 +1,7 @@
+[
+  { "id": 1, "title": "운동 30분 하기", "done": false },
+  { "id": 2, "title": "독서 20페이지 읽기", "done": false },
+  { "id": 3, "title": "일기 쓰기", "done": false },
+  { "id": 4, "title": "가족에게 연락하기", "done": false },
+  { "id": 5, "title": "주간 식단 계획 세우기", "done": false }
+]

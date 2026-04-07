@@ -6,3 +6,5 @@
 # API keys - use environment variables instead
 config.js
 *.env
+node_modules/
+.env

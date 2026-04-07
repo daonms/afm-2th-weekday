@@ -1,0 +1,7 @@
+[
+  { "id": 1, "title": "정기 건강검진 예약하기", "done": false },
+  { "id": 2, "title": "물 하루 2리터 마시기", "done": false },
+  { "id": 3, "title": "스트레칭 루틴 10분 실천", "done": false },
+  { "id": 4, "title": "수면 시간 7시간 확보", "done": false },
+  { "id": 5, "title": "비타민 챙겨 먹기", "done": false }
+]
