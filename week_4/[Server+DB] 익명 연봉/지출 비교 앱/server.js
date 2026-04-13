@@ -7,6 +7,27 @@ const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3011;
+const RESET_API_KEY = (process.env.RESET_API_KEY || "").trim();
+const JOB_GROUP_ALIASES = {
+  dev: "dev",
+  "개발": "dev",
+  developer: "dev",
+  design: "design",
+  "디자인": "design",
+  pm: "pm",
+  plan: "pm",
+  planner: "pm",
+  "기획": "pm",
+  marketing: "marketing",
+  "마케팅": "marketing",
+  sales: "sales",
+  "영업": "sales",
+  ops: "ops",
+  operation: "ops",
+  "운영": "ops",
+  other: "other",
+  "기타": "other",
+};
 
 const DATABASE_URL = (
   process.env.DATABASE_URL ||
@@ -68,10 +89,11 @@ function toInt(value) {
 }
 
 function validatePayload(body) {
+  const normalizedJobGroup = normalizeJobGroup(body.job_group);
   const payload = {
     monthly_salary: toInt(body.monthly_salary),
     monthly_expense: toInt(body.monthly_expense),
-    job_group: String(body.job_group || "").trim(),
+    job_group: normalizedJobGroup,
     years_experience: toInt(body.years_experience),
     food_expense: toInt(body.food_expense ?? 0),
     housing_expense: toInt(body.housing_expense ?? 0),
@@ -95,21 +117,66 @@ function validatePayload(body) {
       return { ok: false, message: `${key} 값이 올바르지 않습니다.` };
     }
   }
-  if (!payload.job_group) return { ok: false, message: "job_group은 필수입니다." };
+  if (!payload.job_group) return { ok: false, message: "job_group 값이 올바르지 않습니다." };
 
   return { ok: true, payload };
 }
 
-async function buildStats(entryId) {
-  const overview = await pool.query(`
+function parseStatsFilters(query) {
+  return {
+    job_group: normalizeJobGroup(query.job_group),
+    min_years: query.min_years === undefined ? null : toInt(query.min_years),
+    max_years: query.max_years === undefined ? null : toInt(query.max_years),
+  };
+}
+
+function normalizeJobGroup(value) {
+  const key = String(value || "").trim().toLowerCase();
+  if (!key) return "";
+  return JOB_GROUP_ALIASES[key] || "";
+}
+
+function buildWhereClause(filters, startIndex = 1) {
+  const clauses = [];
+  const params = [];
+  let index = startIndex;
+
+  if (filters.job_group) {
+    clauses.push(`job_group = $${index++}`);
+    params.push(filters.job_group);
+  }
+  if (Number.isFinite(filters.min_years) && filters.min_years >= 0) {
+    clauses.push(`years_experience >= $${index++}`);
+    params.push(filters.min_years);
+  }
+  if (Number.isFinite(filters.max_years) && filters.max_years >= 0) {
+    clauses.push(`years_experience <= $${index++}`);
+    params.push(filters.max_years);
+  }
+
+  return {
+    whereSql: clauses.length ? `WHERE ${clauses.join(" AND ")}` : "",
+    params,
+    nextIndex: index,
+  };
+}
+
+async function buildStats(entryId, filters = {}) {
+  const { whereSql, params } = buildWhereClause(filters);
+  const overview = await pool.query(
+    `
     SELECT
       COUNT(*)::int AS total_count,
       COALESCE(ROUND(AVG(monthly_salary))::int, 0) AS avg_monthly_salary,
       COALESCE(ROUND(AVG(monthly_expense))::int, 0) AS avg_monthly_expense
     FROM salary_expense_entries
-  `);
+    ${whereSql}
+  `,
+    params
+  );
 
-  const distribution = await pool.query(`
+  const distribution = await pool.query(
+    `
     SELECT
       COALESCE(PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY monthly_salary), 0)::int AS salary_p25,
       COALESCE(PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY monthly_salary), 0)::int AS salary_p50,
@@ -118,9 +185,13 @@ async function buildStats(entryId) {
       COALESCE(PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY monthly_expense), 0)::int AS expense_p50,
       COALESCE(PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY monthly_expense), 0)::int AS expense_p75
     FROM salary_expense_entries
-  `);
+    ${whereSql}
+  `,
+    params
+  );
 
-  const categoryAvg = await pool.query(`
+  const categoryAvg = await pool.query(
+    `
     SELECT
       COALESCE(ROUND(AVG(food_expense))::int, 0) AS food_avg,
       COALESCE(ROUND(AVG(housing_expense))::int, 0) AS housing_avg,
@@ -128,7 +199,10 @@ async function buildStats(entryId) {
       COALESCE(ROUND(AVG(subscription_expense))::int, 0) AS subscription_avg,
       COALESCE(ROUND(AVG(etc_expense))::int, 0) AS etc_avg
     FROM salary_expense_entries
-  `);
+    ${whereSql}
+  `,
+    params
+  );
 
   const result = {
     overview: overview.rows[0],
@@ -137,23 +211,31 @@ async function buildStats(entryId) {
     my_position: null,
   };
 
-  if (entryId) {
+  if (entryId && result.overview.total_count > 0) {
+    const idFilter = buildWhereClause(filters, 2);
+    const idWhere = idFilter.whereSql ? `WHERE id = $1 AND ${idFilter.whereSql.replace(/^WHERE\s+/i, "")}` : "WHERE id = $1";
     const myEntryResult = await pool.query(
       `SELECT id, monthly_salary, monthly_expense
        FROM salary_expense_entries
-       WHERE id = $1`,
-      [entryId]
+       ${idWhere}`,
+      [entryId, ...idFilter.params]
     );
     if (myEntryResult.rowCount > 0) {
       const mine = myEntryResult.rows[0];
       const total = result.overview.total_count || 1;
+      const salaryCompareWhere = whereSql
+        ? `${whereSql} AND monthly_salary > $${params.length + 1}`
+        : `WHERE monthly_salary > $${params.length + 1}`;
+      const expenseCompareWhere = whereSql
+        ? `${whereSql} AND monthly_expense < $${params.length + 1}`
+        : `WHERE monthly_expense < $${params.length + 1}`;
       const higherSalary = await pool.query(
-        "SELECT COUNT(*)::int AS count FROM salary_expense_entries WHERE monthly_salary > $1",
-        [mine.monthly_salary]
+        `SELECT COUNT(*)::int AS count FROM salary_expense_entries ${salaryCompareWhere}`,
+        [...params, mine.monthly_salary]
       );
       const lowerExpense = await pool.query(
-        "SELECT COUNT(*)::int AS count FROM salary_expense_entries WHERE monthly_expense < $1",
-        [mine.monthly_expense]
+        `SELECT COUNT(*)::int AS count FROM salary_expense_entries ${expenseCompareWhere}`,
+        [...params, mine.monthly_expense]
       );
 
       const topSalaryPercent = Math.round((higherSalary.rows[0].count / total) * 100);
@@ -214,10 +296,26 @@ app.post("/api/submissions", async (req, res) => {
   }
 });
 
+app.delete("/api/submissions", async (req, res) => {
+  try {
+    const key = String(req.headers["x-reset-key"] || "").trim();
+    if (!RESET_API_KEY || key !== RESET_API_KEY) {
+      return res.status(403).json({ error: "초기화 권한이 없습니다." });
+    }
+    const countResult = await pool.query("SELECT COUNT(*)::int AS count FROM salary_expense_entries");
+    await pool.query("TRUNCATE TABLE salary_expense_entries RESTART IDENTITY");
+    res.json({ ok: true, deleted_count: countResult.rows[0].count });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "초기화 실패" });
+  }
+});
+
 app.get("/api/stats", async (req, res) => {
   try {
     const entryId = req.query.entry_id ? Number(req.query.entry_id) : null;
-    const stats = await buildStats(Number.isFinite(entryId) ? entryId : null);
+    const filters = parseStatsFilters(req.query);
+    const stats = await buildStats(Number.isFinite(entryId) ? entryId : null, filters);
     res.json(stats);
   } catch (error) {
     console.error(error);

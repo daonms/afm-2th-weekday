@@ -34,6 +34,10 @@ ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "allow_all_questions" ON questions FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "allow_all_votes" ON votes FOR ALL TO anon USING (true) WITH CHECK (true);
 
+-- Realtime 활성화 (votes, questions 테이블 변경 이벤트 구독)
+ALTER PUBLICATION supabase_realtime ADD TABLE votes;
+ALTER PUBLICATION supabase_realtime ADD TABLE questions;
+
 -- 샘플 데이터 (선택사항)
 INSERT INTO questions (title, option_a, option_b) VALUES
   ('당신의 선택은?', '월급 500만원 + 주7일 출근', '월급 300만원 + 주4일 출근'),

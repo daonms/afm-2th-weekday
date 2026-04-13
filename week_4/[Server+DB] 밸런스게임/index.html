@@ -3,113 +3,361 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>밸런스 게임</title>
+  <title>밸런스 게임 — 나는 어떤 사람?</title>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;900&display=swap');
-    body { font-family: 'Noto Sans KR', sans-serif; }
-    .bar-transition { transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
-    .vote-btn:hover { transform: scale(1.02); }
-    .vote-btn { transition: all 0.2s ease; }
-    .voted-a { border-color: #6366f1 !important; background: #eef2ff !important; }
-    .voted-b { border-color: #ec4899 !important; background: #fdf2f8 !important; }
-    .pulse-dot { animation: pulse 2s infinite; }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
+    body { font-family: 'Noto Sans KR', sans-serif; background: #030712; }
+    .bar-t { transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+    .btn-hover { transition: all 0.18s ease; }
+    .btn-hover:hover { transform: scale(1.02); }
+    .voted-a { border-color: #6366f1 !important; background: rgba(99,102,241,0.12) !important; }
+    .voted-b { border-color: #ec4899 !important; background: rgba(236,72,153,0.12) !important; }
+    .fade-in { animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+    .pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .slide-in { animation: slideIn 0.35s cubic-bezier(0.4,0,0.2,1); }
+    @keyframes slideIn { from { opacity:0; transform:translateX(30px); } to { opacity:1; transform:none; } }
+    ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #111; } ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
   </style>
 </head>
-<body class="bg-gray-950 min-h-screen">
+<body>
 <div id="root"></div>
-
 <script type="text/babel">
-const { useState, useEffect, useCallback } = React;
-
+const { useState, useEffect, useCallback, useRef } = React;
 const API = '';
 
-function AddQuestionModal({ onClose, onAdded }) {
-  const [title, setTitle] = useState('');
-  const [optionA, setOptionA] = useState('');
-  const [optionB, setOptionB] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+// ══════════════════════════════════════════════════
+// 성향 진단 데이터 (클라이언트 하드코딩)
+// ══════════════════════════════════════════════════
+const PQ = [
+  { id:1, q:'주말에 갑자기 자유 시간이 생겼다!', a:'처음 가보는 낯선 곳 즉흥 탐험', b:'자주 가는 단골 카페에서 여유롭게', aS:{C:1,O:1}, bS:{S:1,I:1} },
+  { id:2, q:'새로운 프로젝트 제안이 들어왔다', a:'일단 시작! 문제는 하면서 해결', b:'충분히 검토 후 완벽히 준비', aS:{C:1}, bS:{S:1} },
+  { id:3, q:'친구가 힘들다고 연락이 왔다', a:'공감하며 함께 슬퍼해준다', b:'원인 분석해 실용적 해결책 제시', aS:{E:1}, bS:{R:1} },
+  { id:4, q:'중요한 결정을 내려야 할 때', a:'직관과 느낌을 믿고 결정', b:'데이터와 논리로 분석 후 결정', aS:{E:1}, bS:{R:1} },
+  { id:5, q:'처음 가는 파티/모임에서 나는?', a:'새로운 사람들과 적극적으로 어울림', b:'아는 사람과 조용히 깊은 대화', aS:{O:1}, bS:{I:1} },
+  { id:6, q:'지친 하루 후 에너지 충전법은?', a:'친구들과 신나게 떠들며 회복', b:'혼자 집에서 조용히 쉬며 회복', aS:{O:1}, bS:{I:1} },
+  { id:7, q:'실패나 실수를 했을 때 나는?', a:'빠르게 털고 다음 도전으로 전진', b:'충분히 반성하고 천천히 회복', aS:{C:1}, bS:{S:1} },
+  { id:8, q:'영화를 고를 때 선호하는 장르는?', a:'감동적인 감성 멜로/드라마', b:'치밀한 논리의 스릴러/범죄', aS:{E:1}, bS:{R:1} },
+];
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+const TYPES = {
+  CEO:{ name:'열정적 탐험가', emoji:'🌋', color:'from-orange-500 to-red-500',
+    desc:'도전을 즐기고 감성이 풍부하며 사람과 함께 에너지를 나누는 유형. 새로운 경험을 두려워하지 않는 진취적인 리더!',
+    traits:['새로운 것을 사랑해','사람과 함께할 때 빛나','직감으로 결정','실패해도 금방 일어나'] },
+  CEI:{ name:'창의적 몽상가', emoji:'🎨', color:'from-purple-500 to-pink-500',
+    desc:'도전적이고 감성 풍부하지만 혼자만의 세계가 있는 유형. 독창적인 아이디어로 세상을 놀라게 합니다.',
+    traits:['풍부한 상상력','감정이입 능력자','혼자 깊이 생각해','예술적 감각'] },
+  CRO:{ name:'냉철한 개척자', emoji:'⚡', color:'from-yellow-500 to-orange-500',
+    desc:'이성적으로 분석하고 과감히 실행하는 유형. 리더십과 전략적 사고로 목표를 달성합니다.',
+    traits:['논리적 사고','강한 추진력','목표 지향적','팀을 이끄는 능력'] },
+  CRI:{ name:'독립적 혁신가', emoji:'🔬', color:'from-cyan-500 to-blue-500',
+    desc:'혼자서 깊이 생각하고 새로운 방식을 개척하는 유형. 기존 틀을 깨는 혁신적 사고의 소유자!',
+    traits:['독창적 문제해결','깊은 집중력','논리와 창의의 조화','자기 주도적'] },
+  SEO:{ name:'따뜻한 연결자', emoji:'🌻', color:'from-green-500 to-teal-500',
+    desc:'안정을 추구하며 감성적이고 사람을 좋아하는 유형. 주변 사람들을 따뜻하게 이어주는 허브 같은 존재.',
+    traits:['공감 능력 최강','관계를 소중히 여겨','분위기 메이커','배려가 몸에 배어'] },
+  SEI:{ name:'감성적 치유자', emoji:'🌸', color:'from-pink-400 to-rose-500',
+    desc:'안정적이고 감성이 풍부하며 깊은 관계를 소중히 여기는 유형. 조용하지만 큰 위로를 주는 존재.',
+    traits:['섬세한 감수성','1:1 깊은 관계','조용한 공감자','내면이 풍부해'] },
+  SRO:{ name:'신뢰받는 조율가', emoji:'🎯', color:'from-blue-500 to-indigo-500',
+    desc:'이성적 판단으로 안정을 추구하며 사람들 사이를 조율하는 유형. 믿음직하고 체계적인 팀의 기둥!',
+    traits:['체계적 계획가','갈등 해결사','신뢰도 최상','논리적 소통'] },
+  SRI:{ name:'신중한 완벽주의자', emoji:'📐', color:'from-slate-500 to-gray-600',
+    desc:'혼자서 꼼꼼하게 분석하고 완벽을 추구하는 유형. 디테일에 강하고 실수가 거의 없는 정밀함의 달인.',
+    traits:['완벽한 디테일','신중한 의사결정','높은 기준','혼자서도 강해'] },
+};
+
+function calcType(answers) {
+  const s = { C:0, S:0, E:0, R:0, O:0, I:0 };
+  PQ.forEach((q, i) => {
+    const sc = answers[i] === 'A' ? q.aS : q.bS;
+    Object.keys(sc).forEach(k => s[k] = (s[k]||0) + sc[k]);
+  });
+  return (s.C>=s.S?'C':'S') + (s.E>=s.R?'E':'R') + (s.O>=s.I?'O':'I');
+}
+
+// ══════════════════════════════════════════════════
+// VoteBar
+// ══════════════════════════════════════════════════
+function VoteBar({ pA, pB, vA, vB, total }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex justify-between text-sm font-bold">
+        <span className="text-indigo-400">{pA}%</span>
+        <span className="text-gray-500 text-xs font-normal">총 {total.toLocaleString()}명</span>
+        <span className="text-pink-400">{pB}%</span>
+      </div>
+      <div className="h-2.5 bg-gray-800 rounded-full overflow-hidden flex">
+        <div className="bar-t bg-gradient-to-r from-indigo-600 to-indigo-400 rounded-l-full" style={{width:`${pA}%`}} />
+        <div className="bar-t bg-gradient-to-r from-pink-400 to-pink-600 rounded-r-full" style={{width:`${pB}%`}} />
+      </div>
+      <div className="flex justify-between text-xs text-gray-600">
+        <span>{vA.toLocaleString()}명</span>
+        <span>{vB.toLocaleString()}명</span>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════
+// QuestionCard (공통)
+// ══════════════════════════════════════════════════
+function QuestionCard({ q, voteEndpoint, storageKey }) {
+  const [myVote, setMyVote] = useState(null);
+  const [data, setData] = useState(q);
+  const [voting, setVoting] = useState(false);
+
+  useEffect(() => {
+    setData(q);
+    const saved = localStorage.getItem(`${storageKey}_${q.id}`);
+    if (saved) setMyVote(saved);
+  }, [q]);
+
+  const vote = async (choice) => {
+    if (voting) return;
+    setVoting(true);
     try {
-      const res = await fetch(`${API}/api/questions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, option_a: optionA, option_b: optionB }),
+      const res = await fetch(`${API}${voteEndpoint}`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ question_id: q.id, choice }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '등록 실패');
-      onAdded();
-      onClose();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      const json = await res.json();
+      if (res.ok || json.already_voted) {
+        localStorage.setItem(`${storageKey}_${q.id}`, choice);
+        setMyVote(choice);
+      }
+    } finally { setVoting(false); }
+  };
+
+  const hasVotes = data.total_votes > 0;
+  const pA = hasVotes ? data.percent_a : 50;
+  const pB = hasVotes ? data.percent_b : 50;
+
+  return (
+    <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden shadow-xl hover:border-gray-700 transition fade-in">
+      <div className="p-5">
+        <p className="text-gray-400 text-xs mb-2 font-semibold uppercase tracking-wide">{data.title}</p>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {['A','B'].map(ch => (
+            <button key={ch}
+              onClick={() => vote(ch)} disabled={voting}
+              className={`btn-hover p-4 rounded-xl border-2 text-left transition ${
+                myVote===ch ? (ch==='A'?'voted-a':'voted-b')
+                  : 'border-gray-700 bg-gray-800 hover:border-gray-500'
+              }`}>
+              <span className={`block font-black text-xl mb-1 ${ch==='A'?'text-indigo-400':'text-pink-400'}`}>{ch}</span>
+              <span className="text-white text-sm font-medium leading-snug">{ch==='A'?data.option_a:data.option_b}</span>
+              {myVote===ch && <span className={`block mt-2 text-xs font-semibold ${ch==='A'?'text-indigo-400':'text-pink-400'}`}>✓ 내 선택</span>}
+            </button>
+          ))}
+        </div>
+        <VoteBar pA={pA} pB={pB} vA={data.votes_a} vB={data.votes_b} total={data.total_votes} />
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════
+// 성향 진단 퀴즈
+// ══════════════════════════════════════════════════
+function PersonalityQuiz({ onDone }) {
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState([]);
+  const [result, setResult] = useState(null);
+  const [animating, setAnimating] = useState(false);
+
+  const choose = (choice) => {
+    if (animating) return;
+    const next = [...answers, choice];
+    setAnswers(next);
+    if (next.length === PQ.length) {
+      const typeKey = calcType(next);
+      setResult(TYPES[typeKey] ? { key: typeKey, ...TYPES[typeKey] } : null);
+    } else {
+      setAnimating(true);
+      setTimeout(() => { setStep(s => s+1); setAnimating(false); }, 300);
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-gray-700 shadow-2xl">
-        <h2 className="text-xl font-bold text-white mb-5">새 밸런스 게임 등록</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-gray-400 text-sm mb-1">질문 제목</label>
-            <input
-              className="w-full bg-gray-800 text-white rounded-xl px-4 py-3 border border-gray-600 focus:outline-none focus:border-indigo-500"
-              placeholder="예: 당신의 선택은?"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              required
-            />
+  const saveAndContinue = () => {
+    if (result) {
+      localStorage.setItem('mbti_type', result.key);
+      localStorage.setItem('mbti_name', result.name);
+      localStorage.setItem('mbti_emoji', result.emoji);
+      onDone(result);
+    }
+  };
+
+  if (result) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-950">
+        <div className="w-full max-w-md fade-in">
+          <div className={`rounded-3xl p-8 bg-gradient-to-br ${result.color} text-white text-center mb-6 shadow-2xl`}>
+            <div className="text-7xl mb-4">{result.emoji}</div>
+            <h2 className="text-3xl font-black mb-2">{result.name}</h2>
+            <p className="text-white/80 text-sm leading-relaxed">{result.desc}</p>
           </div>
+          <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800 mb-6">
+            <p className="text-gray-400 text-xs font-semibold mb-3 uppercase tracking-wide">나의 특징</p>
+            <div className="flex flex-wrap gap-2">
+              {result.traits.map(t => (
+                <span key={t} className="bg-gray-800 text-gray-300 px-3 py-1 rounded-full text-sm">{t}</span>
+              ))}
+            </div>
+          </div>
+          <button onClick={saveAndContinue}
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-black text-lg hover:opacity-90 transition shadow-lg">
+            밸런스 게임 시작하기 →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const q = PQ[step];
+  const progress = ((step) / PQ.length) * 100;
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-950">
+      <div className="w-full max-w-md">
+        {/* 헤더 */}
+        <div className="text-center mb-8">
+          <p className="text-gray-500 text-sm mb-2">나는 어떤 사람일까? 성향 진단</p>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
+              <div className="bar-t h-full bg-gradient-to-r from-indigo-500 to-pink-500 rounded-full" style={{width:`${progress}%`}} />
+            </div>
+            <span className="text-gray-400 text-sm font-bold whitespace-nowrap">{step+1} / {PQ.length}</span>
+          </div>
+        </div>
+
+        {/* 질문 */}
+        <div className={`fade-in ${animating ? 'opacity-0' : ''}`} key={step}>
+          <h2 className="text-white text-2xl font-black text-center mb-8 leading-tight">{q.q}</h2>
+          <div className="space-y-4">
+            {['A','B'].map(ch => (
+              <button key={ch} onClick={() => choose(ch)}
+                className={`w-full p-5 rounded-2xl border-2 border-gray-700 bg-gray-900 text-left btn-hover hover:border-gray-500`}>
+                <div className="flex items-start gap-4">
+                  <span className={`font-black text-2xl ${ch==='A'?'text-indigo-400':'text-pink-400'}`}>{ch}</span>
+                  <span className="text-white font-semibold text-lg leading-snug">{ch==='A'?q.a:q.b}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {step > 0 && (
+          <button onClick={() => { setStep(s=>s-1); setAnswers(a=>a.slice(0,-1)); }}
+            className="mt-6 w-full py-3 rounded-xl text-gray-500 text-sm hover:text-gray-300 transition">
+            ← 이전 질문
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════
+// 오늘의 질문 탭
+// ══════════════════════════════════════════════════
+function TodayTab({ personality }) {
+  const [questions, setQuestions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetch_ = useCallback(async () => {
+    try {
+      const r = await fetch(`${API}/api/daily-questions`);
+      setQuestions(await r.json());
+    } catch(e){} finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetch_(); const t = setInterval(fetch_, 5000); return ()=>clearInterval(t); }, [fetch_]);
+
+  const answered = questions.filter(q => localStorage.getItem(`daily_${q.id}`)).length;
+
+  if (loading) return <div className="text-center py-24 text-gray-500">로딩 중...</div>;
+
+  return (
+    <div className="space-y-5">
+      {/* 진행률 */}
+      <div className="bg-gray-900 rounded-2xl p-4 border border-gray-800">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <p className="text-white font-bold">오늘의 밸런스 게임</p>
+            {personality && <p className="text-gray-400 text-xs">{personality.emoji} {personality.name} 맞춤 추천</p>}
+          </div>
+          <span className="text-indigo-400 font-black text-xl">{answered}<span className="text-gray-600 font-normal text-base">/{questions.length}</span></span>
+        </div>
+        <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+          <div className="bar-t h-full bg-gradient-to-r from-indigo-500 to-pink-500 rounded-full"
+            style={{width: questions.length ? `${(answered/questions.length)*100}%` : '0%'}} />
+        </div>
+        {answered === questions.length && questions.length > 0 && (
+          <p className="text-green-400 text-sm font-semibold mt-2 text-center">🎉 오늘 질문 모두 완료!</p>
+        )}
+      </div>
+      {/* 질문 목록 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {questions.map(q => (
+          <QuestionCard key={q.id} q={q} voteEndpoint="/api/daily-votes" storageKey="daily" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════
+// 전체 게임 탭 (커뮤니티)
+// ══════════════════════════════════════════════════
+function AddModal({ onClose, onAdded }) {
+  const [title, setTitle] = useState('');
+  const [a, setA] = useState('');
+  const [b, setB] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+
+  const submit = async (e) => {
+    e.preventDefault(); setLoading(true); setErr('');
+    try {
+      const r = await fetch(`${API}/api/questions`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ title, option_a: a, option_b: b }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '등록 실패');
+      onAdded(); onClose();
+    } catch(e){ setErr(e.message); } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-gray-700 shadow-2xl fade-in">
+        <h2 className="text-xl font-bold text-white mb-5">새 밸런스 게임 등록</h2>
+        <form onSubmit={submit} className="space-y-4">
+          <input className="w-full bg-gray-800 text-white rounded-xl px-4 py-3 border border-gray-600 focus:outline-none focus:border-indigo-500"
+            placeholder="주제 / 상황 설명" value={title} onChange={e=>setTitle(e.target.value)} required />
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-indigo-400 text-sm mb-1 font-semibold">A 선택지</label>
-              <textarea
-                className="w-full bg-gray-800 text-white rounded-xl px-4 py-3 border border-indigo-700 focus:outline-none focus:border-indigo-400 resize-none h-24"
-                placeholder="A 선택지 내용"
-                value={optionA}
-                onChange={e => setOptionA(e.target.value)}
-                required
-              />
+              <label className="block text-indigo-400 text-xs mb-1 font-semibold">A 선택지</label>
+              <textarea className="w-full bg-gray-800 text-white rounded-xl px-4 py-3 border border-indigo-800 focus:outline-none focus:border-indigo-400 resize-none h-24"
+                placeholder="A 선택지" value={a} onChange={e=>setA(e.target.value)} required />
             </div>
             <div>
-              <label className="block text-pink-400 text-sm mb-1 font-semibold">B 선택지</label>
-              <textarea
-                className="w-full bg-gray-800 text-white rounded-xl px-4 py-3 border border-pink-700 focus:outline-none focus:border-pink-400 resize-none h-24"
-                placeholder="B 선택지 내용"
-                value={optionB}
-                onChange={e => setOptionB(e.target.value)}
-                required
-              />
+              <label className="block text-pink-400 text-xs mb-1 font-semibold">B 선택지</label>
+              <textarea className="w-full bg-gray-800 text-white rounded-xl px-4 py-3 border border-pink-900 focus:outline-none focus:border-pink-400 resize-none h-24"
+                placeholder="B 선택지" value={b} onChange={e=>setB(e.target.value)} required />
             </div>
           </div>
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-3 rounded-xl bg-gray-700 text-gray-300 font-semibold hover:bg-gray-600 transition"
-            >
-              취소
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-bold hover:opacity-90 transition disabled:opacity-50"
-            >
+          {err && <p className="text-red-400 text-sm">{err}</p>}
+          <div className="flex gap-3">
+            <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl bg-gray-700 text-gray-300 font-semibold hover:bg-gray-600 transition">취소</button>
+            <button type="submit" disabled={loading} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-bold hover:opacity-90 transition disabled:opacity-50">
               {loading ? '등록 중...' : '등록하기'}
             </button>
           </div>
@@ -119,205 +367,165 @@ function AddQuestionModal({ onClose, onAdded }) {
   );
 }
 
-function QuestionCard({ question, onVote }) {
-  const [voting, setVoting] = useState(false);
-  const [myVote, setMyVote] = useState(null);
-  const [localData, setLocalData] = useState(question);
+function CommunityTab() {
+  const [questions, setQuestions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
 
-  useEffect(() => {
-    setLocalData(question);
-    const saved = localStorage.getItem(`vote_${question.id}`);
-    if (saved) setMyVote(saved);
-  }, [question]);
+  const fetch_ = useCallback(async () => {
+    try { const r = await fetch(`${API}/api/questions`); setQuestions(await r.json()); }
+    catch(e){} finally { setLoading(false); }
+  }, []);
 
-  const vote = async (choice) => {
-    if (voting) return;
-    setVoting(true);
-    try {
-      const res = await fetch(`${API}/api/votes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question_id: question.id, choice }),
-      });
-      const data = await res.json();
-      if (res.ok || data.already_voted) {
-        localStorage.setItem(`vote_${question.id}`, choice);
-        setMyVote(choice);
-        onVote();
-      }
-    } finally {
-      setVoting(false);
-    }
-  };
-
-  const pA = localData.percent_a;
-  const pB = localData.percent_b;
-  const total = localData.total_votes;
-  const hasVotes = total > 0;
+  useEffect(() => { fetch_(); const t = setInterval(fetch_, 5000); return ()=>clearInterval(t); }, [fetch_]);
 
   return (
-    <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden shadow-xl hover:border-gray-600 transition">
-      <div className="p-5">
-        <h3 className="text-white font-bold text-lg mb-4 leading-tight">{localData.title}</h3>
-
-        {/* 선택 버튼 */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <button
-            onClick={() => vote('A')}
-            disabled={voting}
-            className={`vote-btn p-4 rounded-xl border-2 text-left transition ${
-              myVote === 'A'
-                ? 'voted-a border-indigo-500'
-                : 'border-gray-700 bg-gray-800 hover:border-indigo-500 hover:bg-gray-750'
-            }`}
-          >
-            <span className="block text-indigo-400 font-black text-xl mb-1">A</span>
-            <span className="text-white text-sm font-medium leading-snug">{localData.option_a}</span>
-            {myVote === 'A' && (
-              <span className="block mt-2 text-indigo-400 text-xs font-semibold">✓ 내 선택</span>
-            )}
-          </button>
-
-          <button
-            onClick={() => vote('B')}
-            disabled={voting}
-            className={`vote-btn p-4 rounded-xl border-2 text-left transition ${
-              myVote === 'B'
-                ? 'voted-b border-pink-500'
-                : 'border-gray-700 bg-gray-800 hover:border-pink-500 hover:bg-gray-750'
-            }`}
-          >
-            <span className="block text-pink-400 font-black text-xl mb-1">B</span>
-            <span className="text-white text-sm font-medium leading-snug">{localData.option_b}</span>
-            {myVote === 'B' && (
-              <span className="block mt-2 text-pink-400 text-xs font-semibold">✓ 내 선택</span>
-            )}
-          </button>
+    <div>
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <p className="text-white font-bold">커뮤니티 질문</p>
+          <p className="text-gray-500 text-xs">누구나 등록하는 밸런스 게임</p>
         </div>
-
-        {/* 퍼센티지 바 */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm font-bold">
-            <span className="text-indigo-400">{pA}%</span>
-            <span className="text-gray-500 text-xs font-normal">총 {total.toLocaleString()}명 참여</span>
-            <span className="text-pink-400">{pB}%</span>
-          </div>
-          <div className="h-3 bg-gray-800 rounded-full overflow-hidden flex">
-            <div
-              className="bar-transition bg-gradient-to-r from-indigo-600 to-indigo-400 rounded-l-full"
-              style={{ width: hasVotes ? `${pA}%` : '50%' }}
-            />
-            <div
-              className="bar-transition bg-gradient-to-r from-pink-400 to-pink-600 rounded-r-full"
-              style={{ width: hasVotes ? `${pB}%` : '50%' }}
-            />
-          </div>
-          <div className="flex justify-between text-xs text-gray-500">
-            <span>{localData.votes_a.toLocaleString()}명</span>
-            <span>{localData.votes_b.toLocaleString()}명</span>
-          </div>
-        </div>
+        <button onClick={() => setShowModal(true)}
+          className="bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-bold px-4 py-2 rounded-xl hover:opacity-90 transition text-sm">
+          + 등록
+        </button>
       </div>
+      {loading ? <div className="text-center py-20 text-gray-500">로딩 중...</div>
+        : questions.length === 0
+          ? <div className="text-center py-20">
+              <div className="text-5xl mb-3">🤔</div>
+              <p className="text-gray-400 mb-4">아직 질문이 없어요</p>
+              <button onClick={() => setShowModal(true)} className="bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-bold px-6 py-3 rounded-xl">첫 질문 등록하기</button>
+            </div>
+          : <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {questions.map(q => <QuestionCard key={q.id} q={q} voteEndpoint="/api/votes" storageKey="community" />)}
+            </div>
+      }
+      {showModal && <AddModal onClose={() => setShowModal(false)} onAdded={fetch_} />}
     </div>
   );
 }
 
-function App() {
-  const [questions, setQuestions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(null);
+// ══════════════════════════════════════════════════
+// 내 성향 탭
+// ══════════════════════════════════════════════════
+function ProfileTab({ personality, onRetake }) {
+  if (!personality) return (
+    <div className="text-center py-20">
+      <div className="text-5xl mb-3">🧬</div>
+      <p className="text-gray-400 mb-4">아직 성향 진단을 하지 않았어요</p>
+      <button onClick={onRetake} className="bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-bold px-6 py-3 rounded-xl">성향 진단 시작</button>
+    </div>
+  );
+  const t = personality;
+  return (
+    <div className="space-y-5 fade-in">
+      <div className={`rounded-3xl p-8 bg-gradient-to-br ${t.color} text-white text-center shadow-2xl`}>
+        <div className="text-6xl mb-3">{t.emoji}</div>
+        <h2 className="text-2xl font-black mb-1">{t.name}</h2>
+        <p className="text-white/80 text-sm leading-relaxed">{t.desc}</p>
+      </div>
+      <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
+        <p className="text-gray-400 text-xs font-semibold mb-3 uppercase tracking-wide">나의 특징</p>
+        <div className="flex flex-wrap gap-2">
+          {t.traits.map(tr => <span key={tr} className="bg-gray-800 text-gray-300 px-3 py-1.5 rounded-full text-sm">{tr}</span>)}
+        </div>
+      </div>
+      <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
+        <p className="text-gray-400 text-xs font-semibold mb-3 uppercase tracking-wide">성향 코드</p>
+        <p className="text-white font-mono text-lg">{t.key}</p>
+        <p className="text-gray-500 text-xs mt-1">도전(C)/안정(S) · 감성(E)/이성(R) · 사교(O)/개인(I)</p>
+      </div>
+      <button onClick={onRetake} className="w-full py-3 rounded-xl border border-gray-700 text-gray-400 text-sm hover:border-gray-500 hover:text-gray-300 transition">다시 진단하기</button>
+    </div>
+  );
+}
 
-  const fetchQuestions = useCallback(async () => {
-    try {
-      const res = await fetch(`${API}/api/questions`);
-      const data = await res.json();
-      setQuestions(data);
-      setLastUpdated(new Date());
-    } catch (err) {
-      console.error('데이터 로드 실패:', err);
-    } finally {
-      setLoading(false);
+// ══════════════════════════════════════════════════
+// 메인 앱
+// ══════════════════════════════════════════════════
+function App() {
+  const [phase, setPhase] = useState('loading'); // loading | quiz | main
+  const [activeTab, setActiveTab] = useState('today');
+  const [personality, setPersonality] = useState(null);
+
+  useEffect(() => {
+    const key = localStorage.getItem('mbti_type');
+    if (key && TYPES[key]) {
+      setPersonality({ key, ...TYPES[key] });
+      setPhase('main');
+    } else {
+      setPhase('quiz');
     }
   }, []);
 
-  useEffect(() => {
-    fetchQuestions();
-    const interval = setInterval(fetchQuestions, 5000);
-    return () => clearInterval(interval);
-  }, [fetchQuestions]);
+  const onQuizDone = (result) => {
+    setPersonality(result);
+    setPhase('main');
+  };
 
-  const totalParticipants = questions.reduce((sum, q) => sum + q.total_votes, 0);
+  const retake = () => {
+    localStorage.removeItem('mbti_type');
+    localStorage.removeItem('mbti_name');
+    localStorage.removeItem('mbti_emoji');
+    setPersonality(null);
+    setPhase('quiz');
+  };
+
+  if (phase === 'loading') return <div className="min-h-screen bg-gray-950 flex items-center justify-center"><div className="text-gray-600">로딩 중...</div></div>;
+  if (phase === 'quiz') return <PersonalityQuiz onDone={onQuizDone} />;
+
+  const TABS = [
+    { id:'today',     label:'오늘의 질문', icon:'📅' },
+    { id:'community', label:'전체 게임',   icon:'🌐' },
+    { id:'profile',   label:'내 성향',     icon: personality ? personality.emoji : '🧬' },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-950">
       {/* 헤더 */}
-      <header className="bg-gray-900 border-b border-gray-800 sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-black text-white">
-              <span className="text-indigo-400">A</span>
-              <span className="text-gray-400 mx-2">vs</span>
-              <span className="text-pink-400">B</span>
-              <span className="text-white ml-3">밸런스 게임</span>
-            </h1>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="pulse-dot w-2 h-2 bg-green-400 rounded-full inline-block" />
-              <span className="text-gray-400 text-xs">
-                실시간 업데이트 중 · 총 {totalParticipants.toLocaleString()}명 참여
-              </span>
+      <header className="bg-gray-900/80 backdrop-blur border-b border-gray-800 sticky top-0 z-40">
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-lg font-black text-white leading-tight">
+                <span className="text-indigo-400">A</span><span className="text-gray-500 mx-1">vs</span><span className="text-pink-400">B</span>
+              </h1>
+              <div className="flex items-center gap-1.5">
+                <span className="pulse w-1.5 h-1.5 bg-green-400 rounded-full inline-block" />
+                <span className="text-gray-500 text-xs">실시간 업데이트</span>
+              </div>
             </div>
           </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-bold px-5 py-2.5 rounded-xl hover:opacity-90 transition text-sm shadow-lg"
-          >
-            + 새 게임 등록
-          </button>
+          {personality && (
+            <button onClick={() => setActiveTab('profile')} className="flex items-center gap-2 bg-gray-800 px-3 py-1.5 rounded-xl border border-gray-700 hover:border-gray-500 transition">
+              <span className="text-lg">{personality.emoji}</span>
+              <span className="text-white text-xs font-semibold">{personality.name}</span>
+            </button>
+          )}
+        </div>
+        {/* 탭 */}
+        <div className="max-w-3xl mx-auto px-4 flex border-t border-gray-800">
+          {TABS.map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 py-3 text-sm font-semibold transition border-b-2 ${
+                activeTab === tab.id
+                  ? 'text-white border-indigo-500'
+                  : 'text-gray-500 border-transparent hover:text-gray-300'
+              }`}>
+              <span className="mr-1">{tab.icon}</span>{tab.label}
+            </button>
+          ))}
         </div>
       </header>
 
       {/* 본문 */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        {loading ? (
-          <div className="text-center py-24">
-            <div className="text-4xl mb-4">⚖️</div>
-            <p className="text-gray-400">로딩 중...</p>
-          </div>
-        ) : questions.length === 0 ? (
-          <div className="text-center py-24">
-            <div className="text-6xl mb-4">🤔</div>
-            <h2 className="text-white text-2xl font-bold mb-2">아직 게임이 없어요</h2>
-            <p className="text-gray-400 mb-6">첫 번째 밸런스 게임을 등록해보세요!</p>
-            <button
-              onClick={() => setShowModal(true)}
-              className="bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-bold px-8 py-3 rounded-xl hover:opacity-90 transition"
-            >
-              게임 등록하기
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {questions.map(q => (
-                <QuestionCard key={q.id} question={q} onVote={fetchQuestions} />
-              ))}
-            </div>
-            {lastUpdated && (
-              <p className="text-center text-gray-600 text-xs mt-6">
-                마지막 갱신: {lastUpdated.toLocaleTimeString('ko-KR')} · 5초마다 자동 갱신
-              </p>
-            )}
-          </>
-        )}
+      <main className="max-w-3xl mx-auto px-4 py-6">
+        {activeTab === 'today'     && <TodayTab personality={personality} />}
+        {activeTab === 'community' && <CommunityTab />}
+        {activeTab === 'profile'   && <ProfileTab personality={personality} onRetake={retake} />}
       </main>
-
-      {showModal && (
-        <AddQuestionModal
-          onClose={() => setShowModal(false)}
-          onAdded={fetchQuestions}
-        />
-      )}
     </div>
   );
 }

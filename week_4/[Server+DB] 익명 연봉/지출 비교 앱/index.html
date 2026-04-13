@@ -113,13 +113,13 @@
             <label>직군</label>
             <select id="job_group" required>
               <option value="">선택</option>
-              <option>개발</option>
-              <option>디자인</option>
-              <option>기획</option>
-              <option>마케팅</option>
-              <option>영업</option>
-              <option>운영</option>
-              <option>기타</option>
+              <option value="dev">개발</option>
+              <option value="design">디자인</option>
+              <option value="pm">기획</option>
+              <option value="marketing">마케팅</option>
+              <option value="sales">영업</option>
+              <option value="ops">운영</option>
+              <option value="other">기타</option>
             </select>
           </div>
           <div>
@@ -153,6 +153,35 @@
         <p class="muted" id="msg"></p>
       </form>
 
+      <section class="card" style="margin-bottom:12px;">
+        <div class="title">통계 필터 (직군/연차)</div>
+        <div class="row" style="margin-bottom:8px;">
+          <div>
+            <label>직군 필터</label>
+            <select id="filter_job_group">
+              <option value="">전체</option>
+              <option value="dev">개발</option>
+              <option value="design">디자인</option>
+              <option value="pm">기획</option>
+              <option value="marketing">마케팅</option>
+              <option value="sales">영업</option>
+              <option value="ops">운영</option>
+              <option value="other">기타</option>
+            </select>
+          </div>
+          <div>
+            <label>최소 연차</label>
+            <input type="number" id="filter_min_years" min="0" />
+          </div>
+          <div>
+            <label>최대 연차</label>
+            <input type="number" id="filter_max_years" min="0" />
+          </div>
+        </div>
+        <button type="button" id="apply-filter">필터 적용</button>
+        <button type="button" id="clear-filter" style="margin-left:8px;background:#6b7280;">필터 초기화</button>
+      </section>
+
       <section class="grid" id="overview"></section>
 
       <section class="card" style="margin-top:12px;">
@@ -177,6 +206,8 @@
       const overview = document.getElementById("overview");
       const distributionBody = document.getElementById("distribution-body");
       const categoryBars = document.getElementById("category-bars");
+      const applyFilterBtn = document.getElementById("apply-filter");
+      const clearFilterBtn = document.getElementById("clear-filter");
 
       const currency = (n) => `${Number(n || 0).toLocaleString()}원`;
 
@@ -234,8 +265,21 @@
         `).join("");
       }
 
-      async function loadStats() {
-        const res = await fetch("/api/stats");
+      function readFilters() {
+        const filters = {};
+        const jobGroup = document.getElementById("filter_job_group").value.trim();
+        const minYears = document.getElementById("filter_min_years").value.trim();
+        const maxYears = document.getElementById("filter_max_years").value.trim();
+        if (jobGroup) filters.job_group = jobGroup;
+        if (minYears !== "") filters.min_years = Number(minYears);
+        if (maxYears !== "") filters.max_years = Number(maxYears);
+        return filters;
+      }
+
+      async function loadStats(extraParams = {}) {
+        const params = new URLSearchParams({ ...readFilters(), ...extraParams });
+        const url = params.toString() ? `/api/stats?${params.toString()}` : "/api/stats";
+        const res = await fetch(url);
         if (!res.ok) throw new Error("통계 불러오기 실패");
         const stats = await res.json();
         renderOverview(stats);
@@ -254,10 +298,30 @@
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || "제출 실패");
-          renderOverview(data.stats);
-          renderDistribution(data.stats);
-          renderCategory(data.stats);
+          await loadStats({ entry_id: data.saved.id });
           msg.textContent = "저장 완료! 현재 통계와 내 위치를 반영했습니다.";
+        } catch (err) {
+          msg.textContent = err.message;
+        }
+      });
+
+      applyFilterBtn.addEventListener("click", async () => {
+        try {
+          msg.textContent = "필터 통계를 조회 중입니다...";
+          await loadStats();
+          msg.textContent = "필터 통계를 반영했습니다.";
+        } catch (err) {
+          msg.textContent = err.message;
+        }
+      });
+
+      clearFilterBtn.addEventListener("click", async () => {
+        document.getElementById("filter_job_group").value = "";
+        document.getElementById("filter_min_years").value = "";
+        document.getElementById("filter_max_years").value = "";
+        try {
+          msg.textContent = "필터를 초기화했습니다.";
+          await loadStats();
         } catch (err) {
           msg.textContent = err.message;
         }
