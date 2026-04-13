@@ -1,0 +1,22 @@
+initialized: 2026-04-13
+version: 1.0.0
+agents:
+  - quick-recipe-creator
+  - k-drama-expert
+  - single-react-dev
+  - daon-erp-remote
+  - erp-db
+  - erp-analyst
+  - erp-n8n
+  - erp-webapp
+  - server
+  - 기획자
+  - AI-개발자
+  - 검토자
+  - 배포자
+skills:
+  - harness-kr
+  - parallel
+  - daon-erp
+  - recipe
+  - gstack (full suite)

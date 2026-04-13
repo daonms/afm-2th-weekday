@@ -1,0 +1,57 @@
+---
+description: Claude Code와 Cursor AI의 병렬 작업 통합 규칙. Claude Code가 /ide cursor로 연결된 상태에서 Cursor가 해야 할 역할과 협업 패턴을 정의한다.
+alwaysApply: true
+---
+
+> 프로젝트 공통 지침: `@CLAUDE.md` 참조 | 공통 규칙: `@project-guidelines.mdc`
+
+
+# Claude Code ↔ Cursor 통합 규칙
+
+## Cursor의 역할 (채팅창)
+
+Claude Code가 터미널에서 큰 작업을 처리하는 동안, Cursor 채팅창은 **세밀한 작업**을 담당합니다:
+
+- **단일 파일 편집**: 코드 선택 → `Ctrl+L` → 채팅에 추가 → 수정 요청
+- **빠른 버그 수정**: 에러 메시지를 채팅에 붙여넣고 수정 요청
+- **코드 설명**: 이해 안 되는 코드 선택 → 설명 요청
+- **UI/스타일 수정**: 시각적 요소 빠른 조정
+
+## Claude Code가 변경한 파일 검토
+
+`/ide cursor`로 연결된 Claude Code가 파일을 수정하면 Cursor 탭에 **diff로 표시**됩니다:
+
+1. 변경된 파일 탭이 열림
+2. diff를 검토하여 수락/거절 결정
+3. 마음에 안 드는 부분은 `Ctrl+L`로 채팅에 올려 수정 요청
+
+## 병렬 작업 시 파일 충돌 방지
+
+Claude Code가 수정 중인 파일을 동시에 Cursor 채팅으로 수정하면 충돌 발생.
+
+**규칙**: Claude Code가 `server.js` 수정 중이면, Cursor 채팅은 `index.html` 담당.
+
+파일 담당이 불명확하면 Claude Code 터미널에서 확인:
+```
+"지금 어느 파일 수정 중이야?"
+```
+
+## 자주 쓰는 Cursor 단축키
+
+| 단축키 | 기능 |
+|--------|------|
+| `Ctrl+L` | 선택 코드를 채팅에 추가 |
+| `Ctrl+K` | 인라인 편집 (코드 선택 후) |
+| `Ctrl+Shift+L` | 현재 파일 전체를 채팅에 추가 |
+| `Ctrl+Shift+`` ` | 새 터미널 열기 |
+| `Ctrl+Shift+P` | Command Palette |
+
+## Claude Code 연결 확인
+
+Cursor 터미널에서:
+```bash
+claude   # Claude Code 실행
+/ide     # IDE 목록 확인 → cursor 선택
+```
+
+연결 성공 시: Claude Code가 Cursor 탭에 파일을 직접 열고 편집 가능.

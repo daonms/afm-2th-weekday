@@ -1,0 +1,13 @@
+{
+  "name": "parallel-coordinator",
+  "version": "1.0.0",
+  "description": "Claude Code ↔ Cursor AI 병렬 작업 조율 MCP 서버",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

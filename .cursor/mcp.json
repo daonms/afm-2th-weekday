@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "parallel-coordinator": {
+      "command": "node",
+      "args": [".claude/parallel-coordinator/server.js"],
+      "env": {}
+    }
+  }
+}

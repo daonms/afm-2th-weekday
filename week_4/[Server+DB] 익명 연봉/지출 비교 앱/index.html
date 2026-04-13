@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>익명 연봉/지출 비교 앱</title>
+    <style>
+      :root {
+        --bg: #f6f8fc;
+        --card: #ffffff;
+        --text: #111827;
+        --muted: #6b7280;
+        --primary: #2563eb;
+        --line: #e5e7eb;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .wrap {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 24px 16px 48px;
+      }
+      h1 { margin: 0 0 8px; font-size: 28px; }
+      .desc { margin: 0 0 24px; color: var(--muted); }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 12px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+      }
+      .title { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+      .value { font-size: 24px; font-weight: 700; }
+      .value.small { font-size: 16px; }
+      form {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 4px; }
+      input, select {
+        width: 100%;
+        padding: 9px 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+      }
+      button {
+        border: 0;
+        background: var(--primary);
+        color: white;
+        padding: 10px 14px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .muted { color: var(--muted); font-size: 13px; }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th, td {
+        text-align: left;
+        font-size: 13px;
+        padding: 8px 6px;
+        border-bottom: 1px solid var(--line);
+      }
+      .bar {
+        height: 8px;
+        border-radius: 999px;
+        background: #e5e7eb;
+        overflow: hidden;
+      }
+      .bar > span {
+        display: block;
+        height: 100%;
+        background: #2563eb;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>익명 연봉/지출 비교</h1>
+      <p class="desc">개인정보 없이 월급/지출 데이터를 제출하고 전체 통계에서 내 위치를 확인하세요.</p>
+
+      <form id="entry-form">
+        <div class="row">
+          <div>
+            <label>월급(세후, 원)</label>
+            <input type="number" id="monthly_salary" min="0" required />
+          </div>
+          <div>
+            <label>월 지출 총액(원)</label>
+            <input type="number" id="monthly_expense" min="0" required />
+          </div>
+          <div>
+            <label>직군</label>
+            <select id="job_group" required>
+              <option value="">선택</option>
+              <option>개발</option>
+              <option>디자인</option>
+              <option>기획</option>
+              <option>마케팅</option>
+              <option>영업</option>
+              <option>운영</option>
+              <option>기타</option>
+            </select>
+          </div>
+          <div>
+            <label>연차(년)</label>
+            <input type="number" id="years_experience" min="0" required />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>식비</label>
+            <input type="number" id="food_expense" min="0" value="0" />
+          </div>
+          <div>
+            <label>주거</label>
+            <input type="number" id="housing_expense" min="0" value="0" />
+          </div>
+          <div>
+            <label>교통</label>
+            <input type="number" id="transport_expense" min="0" value="0" />
+          </div>
+          <div>
+            <label>구독료</label>
+            <input type="number" id="subscription_expense" min="0" value="0" />
+          </div>
+          <div>
+            <label>기타</label>
+            <input type="number" id="etc_expense" min="0" value="0" />
+          </div>
+        </div>
+        <button type="submit">익명 제출 후 비교하기</button>
+        <p class="muted" id="msg"></p>
+      </form>
+
+      <section class="grid" id="overview"></section>
+
+      <section class="card" style="margin-top:12px;">
+        <div class="title">분포 (Q1 / 중앙값 / Q3)</div>
+        <table>
+          <thead>
+            <tr><th>항목</th><th>Q1</th><th>중앙값</th><th>Q3</th></tr>
+          </thead>
+          <tbody id="distribution-body"></tbody>
+        </table>
+      </section>
+
+      <section class="card" style="margin-top:12px;">
+        <div class="title">카테고리별 평균 지출</div>
+        <div id="category-bars"></div>
+      </section>
+    </div>
+
+    <script>
+      const form = document.getElementById("entry-form");
+      const msg = document.getElementById("msg");
+      const overview = document.getElementById("overview");
+      const distributionBody = document.getElementById("distribution-body");
+      const categoryBars = document.getElementById("category-bars");
+
+      const currency = (n) => `${Number(n || 0).toLocaleString()}원`;
+
+      function getPayload() {
+        return {
+          monthly_salary: Number(document.getElementById("monthly_salary").value),
+          monthly_expense: Number(document.getElementById("monthly_expense").value),
+          job_group: document.getElementById("job_group").value,
+          years_experience: Number(document.getElementById("years_experience").value),
+          food_expense: Number(document.getElementById("food_expense").value || 0),
+          housing_expense: Number(document.getElementById("housing_expense").value || 0),
+          transport_expense: Number(document.getElementById("transport_expense").value || 0),
+          subscription_expense: Number(document.getElementById("subscription_expense").value || 0),
+          etc_expense: Number(document.getElementById("etc_expense").value || 0),
+        };
+      }
+
+      function renderOverview(stats) {
+        const o = stats.overview || {};
+        const p = stats.my_position || {};
+        overview.innerHTML = `
+          <div class="card"><div class="title">전체 응답 수</div><div class="value">${o.total_count || 0}명</div></div>
+          <div class="card"><div class="title">평균 월급</div><div class="value">${currency(o.avg_monthly_salary)}</div></div>
+          <div class="card"><div class="title">평균 월 지출</div><div class="value">${currency(o.avg_monthly_expense)}</div></div>
+          <div class="card"><div class="title">내 월급 위치</div><div class="value small">상위 ${p.salary_top_percent ?? "-"}%</div></div>
+          <div class="card"><div class="title">내 지출 백분위</div><div class="value small">${p.spending_percentile ?? "-"} 백분위</div></div>
+        `;
+      }
+
+      function renderDistribution(stats) {
+        const d = stats.distribution || {};
+        distributionBody.innerHTML = `
+          <tr><td>월급</td><td>${currency(d.salary_p25)}</td><td>${currency(d.salary_p50)}</td><td>${currency(d.salary_p75)}</td></tr>
+          <tr><td>월 지출</td><td>${currency(d.expense_p25)}</td><td>${currency(d.expense_p50)}</td><td>${currency(d.expense_p75)}</td></tr>
+        `;
+      }
+
+      function renderCategory(stats) {
+        const c = stats.category_avg || {};
+        const rows = [
+          ["식비", c.food_avg || 0],
+          ["주거", c.housing_avg || 0],
+          ["교통", c.transport_avg || 0],
+          ["구독료", c.subscription_avg || 0],
+          ["기타", c.etc_avg || 0],
+        ];
+        const max = Math.max(...rows.map((r) => r[1]), 1);
+        categoryBars.innerHTML = rows.map(([label, value]) => `
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+              <span>${label}</span><span>${currency(value)}</span>
+            </div>
+            <div class="bar"><span style="width:${Math.round((value / max) * 100)}%"></span></div>
+          </div>
+        `).join("");
+      }
+
+      async function loadStats() {
+        const res = await fetch("/api/stats");
+        if (!res.ok) throw new Error("통계 불러오기 실패");
+        const stats = await res.json();
+        renderOverview(stats);
+        renderDistribution(stats);
+        renderCategory(stats);
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        msg.textContent = "제출 중...";
+        try {
+          const res = await fetch("/api/submissions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(getPayload()),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "제출 실패");
+          renderOverview(data.stats);
+          renderDistribution(data.stats);
+          renderCategory(data.stats);
+          msg.textContent = "저장 완료! 현재 통계와 내 위치를 반영했습니다.";
+        } catch (err) {
+          msg.textContent = err.message;
+        }
+      });
+
+      loadStats().catch((err) => {
+        msg.textContent = err.message;
+      });
+    </script>
+  </body>
+  </html>

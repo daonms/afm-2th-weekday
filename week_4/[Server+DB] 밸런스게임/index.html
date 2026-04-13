@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>밸런스 게임</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;900&display=swap');
+    body { font-family: 'Noto Sans KR', sans-serif; }
+    .bar-transition { transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+    .vote-btn:hover { transform: scale(1.02); }
+    .vote-btn { transition: all 0.2s ease; }
+    .voted-a { border-color: #6366f1 !important; background: #eef2ff !important; }
+    .voted-b { border-color: #ec4899 !important; background: #fdf2f8 !important; }
+    .pulse-dot { animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+  </style>
+</head>
+<body class="bg-gray-950 min-h-screen">
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+const API = '';
+
+function AddQuestionModal({ onClose, onAdded }) {
+  const [title, setTitle] = useState('');
+  const [optionA, setOptionA] = useState('');
+  const [optionB, setOptionB] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API}/api/questions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, option_a: optionA, option_b: optionB }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '등록 실패');
+      onAdded();
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-gray-700 shadow-2xl">
+        <h2 className="text-xl font-bold text-white mb-5">새 밸런스 게임 등록</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-gray-400 text-sm mb-1">질문 제목</label>
+            <input
+              className="w-full bg-gray-800 text-white rounded-xl px-4 py-3 border border-gray-600 focus:outline-none focus:border-indigo-500"
+              placeholder="예: 당신의 선택은?"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              required
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-indigo-400 text-sm mb-1 font-semibold">A 선택지</label>
+              <textarea
+                className="w-full bg-gray-800 text-white rounded-xl px-4 py-3 border border-indigo-700 focus:outline-none focus:border-indigo-400 resize-none h-24"
+                placeholder="A 선택지 내용"
+                value={optionA}
+                onChange={e => setOptionA(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-pink-400 text-sm mb-1 font-semibold">B 선택지</label>
+              <textarea
+                className="w-full bg-gray-800 text-white rounded-xl px-4 py-3 border border-pink-700 focus:outline-none focus:border-pink-400 resize-none h-24"
+                placeholder="B 선택지 내용"
+                value={optionB}
+                onChange={e => setOptionB(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          {error && <p className="text-red-400 text-sm">{error}</p>}
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3 rounded-xl bg-gray-700 text-gray-300 font-semibold hover:bg-gray-600 transition"
+            >
+              취소
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-bold hover:opacity-90 transition disabled:opacity-50"
+            >
+              {loading ? '등록 중...' : '등록하기'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function QuestionCard({ question, onVote }) {
+  const [voting, setVoting] = useState(false);
+  const [myVote, setMyVote] = useState(null);
+  const [localData, setLocalData] = useState(question);
+
+  useEffect(() => {
+    setLocalData(question);
+    const saved = localStorage.getItem(`vote_${question.id}`);
+    if (saved) setMyVote(saved);
+  }, [question]);
+
+  const vote = async (choice) => {
+    if (voting) return;
+    setVoting(true);
+    try {
+      const res = await fetch(`${API}/api/votes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question_id: question.id, choice }),
+      });
+      const data = await res.json();
+      if (res.ok || data.already_voted) {
+        localStorage.setItem(`vote_${question.id}`, choice);
+        setMyVote(choice);
+        onVote();
+      }
+    } finally {
+      setVoting(false);
+    }
+  };
+
+  const pA = localData.percent_a;
+  const pB = localData.percent_b;
+  const total = localData.total_votes;
+  const hasVotes = total > 0;
+
+  return (
+    <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden shadow-xl hover:border-gray-600 transition">
+      <div className="p-5">
+        <h3 className="text-white font-bold text-lg mb-4 leading-tight">{localData.title}</h3>
+
+        {/* 선택 버튼 */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <button
+            onClick={() => vote('A')}
+            disabled={voting}
+            className={`vote-btn p-4 rounded-xl border-2 text-left transition ${
+              myVote === 'A'
+                ? 'voted-a border-indigo-500'
+                : 'border-gray-700 bg-gray-800 hover:border-indigo-500 hover:bg-gray-750'
+            }`}
+          >
+            <span className="block text-indigo-400 font-black text-xl mb-1">A</span>
+            <span className="text-white text-sm font-medium leading-snug">{localData.option_a}</span>
+            {myVote === 'A' && (
+              <span className="block mt-2 text-indigo-400 text-xs font-semibold">✓ 내 선택</span>
+            )}
+          </button>
+
+          <button
+            onClick={() => vote('B')}
+            disabled={voting}
+            className={`vote-btn p-4 rounded-xl border-2 text-left transition ${
+              myVote === 'B'
+                ? 'voted-b border-pink-500'
+                : 'border-gray-700 bg-gray-800 hover:border-pink-500 hover:bg-gray-750'
+            }`}
+          >
+            <span className="block text-pink-400 font-black text-xl mb-1">B</span>
+            <span className="text-white text-sm font-medium leading-snug">{localData.option_b}</span>
+            {myVote === 'B' && (
+              <span className="block mt-2 text-pink-400 text-xs font-semibold">✓ 내 선택</span>
+            )}
+          </button>
+        </div>
+
+        {/* 퍼센티지 바 */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm font-bold">
+            <span className="text-indigo-400">{pA}%</span>
+            <span className="text-gray-500 text-xs font-normal">총 {total.toLocaleString()}명 참여</span>
+            <span className="text-pink-400">{pB}%</span>
+          </div>
+          <div className="h-3 bg-gray-800 rounded-full overflow-hidden flex">
+            <div
+              className="bar-transition bg-gradient-to-r from-indigo-600 to-indigo-400 rounded-l-full"
+              style={{ width: hasVotes ? `${pA}%` : '50%' }}
+            />
+            <div
+              className="bar-transition bg-gradient-to-r from-pink-400 to-pink-600 rounded-r-full"
+              style={{ width: hasVotes ? `${pB}%` : '50%' }}
+            />
+          </div>
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>{localData.votes_a.toLocaleString()}명</span>
+            <span>{localData.votes_b.toLocaleString()}명</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [questions, setQuestions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
+
+  const fetchQuestions = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/api/questions`);
+      const data = await res.json();
+      setQuestions(data);
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error('데이터 로드 실패:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchQuestions();
+    const interval = setInterval(fetchQuestions, 5000);
+    return () => clearInterval(interval);
+  }, [fetchQuestions]);
+
+  const totalParticipants = questions.reduce((sum, q) => sum + q.total_votes, 0);
+
+  return (
+    <div className="min-h-screen bg-gray-950">
+      {/* 헤더 */}
+      <header className="bg-gray-900 border-b border-gray-800 sticky top-0 z-40">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-black text-white">
+              <span className="text-indigo-400">A</span>
+              <span className="text-gray-400 mx-2">vs</span>
+              <span className="text-pink-400">B</span>
+              <span className="text-white ml-3">밸런스 게임</span>
+            </h1>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="pulse-dot w-2 h-2 bg-green-400 rounded-full inline-block" />
+              <span className="text-gray-400 text-xs">
+                실시간 업데이트 중 · 총 {totalParticipants.toLocaleString()}명 참여
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-bold px-5 py-2.5 rounded-xl hover:opacity-90 transition text-sm shadow-lg"
+          >
+            + 새 게임 등록
+          </button>
+        </div>
+      </header>
+
+      {/* 본문 */}
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        {loading ? (
+          <div className="text-center py-24">
+            <div className="text-4xl mb-4">⚖️</div>
+            <p className="text-gray-400">로딩 중...</p>
+          </div>
+        ) : questions.length === 0 ? (
+          <div className="text-center py-24">
+            <div className="text-6xl mb-4">🤔</div>
+            <h2 className="text-white text-2xl font-bold mb-2">아직 게임이 없어요</h2>
+            <p className="text-gray-400 mb-6">첫 번째 밸런스 게임을 등록해보세요!</p>
+            <button
+              onClick={() => setShowModal(true)}
+              className="bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-bold px-8 py-3 rounded-xl hover:opacity-90 transition"
+            >
+              게임 등록하기
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {questions.map(q => (
+                <QuestionCard key={q.id} question={q} onVote={fetchQuestions} />
+              ))}
+            </div>
+            {lastUpdated && (
+              <p className="text-center text-gray-600 text-xs mt-6">
+                마지막 갱신: {lastUpdated.toLocaleTimeString('ko-KR')} · 5초마다 자동 갱신
+              </p>
+            )}
+          </>
+        )}
+      </main>
+
+      {showModal && (
+        <AddQuestionModal
+          onClose={() => setShowModal(false)}
+          onAdded={fetchQuestions}
+        />
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>냉장고 재료 기반 AI 레시피 제작앱</title>
+    <style>
+      :root {
+        --bg: #f3f6fb;
+        --card: #ffffff;
+        --line: #dde4ef;
+        --text: #172033;
+        --muted: #66758f;
+        --primary: #2f6df5;
+        --primary-soft: #eaf1ff;
+        --green: #16a34a;
+        --red: #dc2626;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", "Noto Sans KR", sans-serif;
+        background: radial-gradient(circle at 12% 0%, #eaf1ff 0%, var(--bg) 40%);
+        color: var(--text);
+      }
+
+      .container {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 28px 20px 40px;
+      }
+
+      .hero {
+        background: linear-gradient(130deg, #0f1f3c 0%, #1f4da8 100%);
+        color: #fff;
+        border-radius: 18px;
+        padding: 24px;
+        margin-bottom: 18px;
+        box-shadow: 0 12px 24px rgba(22, 42, 84, 0.2);
+      }
+
+      .hero h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+      }
+
+      .hero p {
+        margin: 0;
+        opacity: 0.92;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+
+      .stack {
+        display: grid;
+        gap: 16px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 16px;
+        box-shadow: 0 6px 18px rgba(20, 31, 56, 0.05);
+      }
+
+      .card h2 {
+        margin: 0 0 12px;
+        font-size: 18px;
+      }
+
+      .subtitle {
+        color: var(--muted);
+        font-size: 13px;
+        margin: 0 0 10px;
+      }
+
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .row.compact > * {
+        height: 34px;
+        font-size: 13px;
+      }
+
+      input,
+      select,
+      button {
+        height: 40px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        font-size: 14px;
+      }
+
+      input,
+      select {
+        padding: 0 12px;
+        background: #fff;
+        color: var(--text);
+      }
+
+      input:focus,
+      select:focus {
+        outline: 2px solid var(--primary-soft);
+        border-color: var(--primary);
+      }
+
+      button {
+        cursor: pointer;
+        padding: 0 14px;
+        background: #fff;
+      }
+
+      .btn-primary {
+        background: var(--primary);
+        color: #fff;
+        border-color: var(--primary);
+        font-weight: 600;
+      }
+
+      .btn-primary:hover {
+        filter: brightness(0.96);
+      }
+
+      .btn-ghost {
+        background: #fff;
+        color: var(--text);
+      }
+
+      .btn-danger {
+        background: #fff0f0;
+        color: var(--red);
+        border-color: #fecaca;
+      }
+
+      ul {
+        list-style: none;
+        padding: 0;
+        margin: 10px 0 0;
+        display: grid;
+        gap: 10px;
+      }
+
+      .list-item {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: #fff;
+      }
+
+      .list-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        background: var(--primary-soft);
+        color: #2b52ad;
+        border-radius: 999px;
+        padding: 2px 10px;
+        font-size: 12px;
+        margin-left: 6px;
+      }
+
+      .qty-btn {
+        background: #eef4ff;
+        color: #355da8;
+        border: 1px solid #d6e3ff;
+        border-radius: 999px;
+        font-size: 12px;
+        padding: 2px 10px;
+        height: auto;
+      }
+
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .recipe-box {
+        white-space: pre-wrap;
+        background: #f8fbff;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px;
+        margin-top: 8px;
+        line-height: 1.45;
+      }
+
+      .empty {
+        border: 1px dashed var(--line);
+        border-radius: 10px;
+        padding: 14px;
+        text-align: center;
+        color: var(--muted);
+        background: #fbfdff;
+      }
+
+      .table-wrap {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+
+      .data-table th,
+      .data-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: middle;
+      }
+
+      .data-table thead th {
+        background: #f8fbff;
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .data-table tbody tr:last-child td {
+        border-bottom: none;
+      }
+
+      .data-table td.actions {
+        width: 84px;
+        text-align: right;
+      }
+
+      #toast {
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        background: #0f1f3c;
+        color: #fff;
+        border-radius: 10px;
+        padding: 10px 12px;
+        box-shadow: 0 10px 20px rgba(15, 31, 60, 0.25);
+        font-size: 13px;
+        opacity: 0;
+        transform: translateY(8px);
+        pointer-events: none;
+        transition: all 0.2s ease;
+        max-width: 320px;
+      }
+
+      #toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      #generated-area {
+        margin-top: 12px;
+        padding: 12px;
+        border: 1px solid #d6e3ff;
+        border-radius: 12px;
+        background: #f8fbff;
+      }
+
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header class="hero">
+        <h1>냉장고 재료 기반 AI 레시피 제작앱</h1>
+        <p>재료를 등록하면 AI가 즉시 레시피를 만들고, 마음에 들면 DB에 저장해 관리합니다.</p>
+      </header>
+
+      <main class="grid">
+        <div class="stack">
+          <section class="card">
+            <h2>재료 관리</h2>
+            <p class="subtitle">한 줄로 입력하고(예: 두부 1/2모), 수량은 클릭해서 바로 수정할 수 있습니다.</p>
+            <form id="ingredient-form" class="row">
+              <input id="ingredient-line" placeholder="재료명 + 수량 (예: 계란 2개)" required />
+              <select id="category">
+                <option>채소</option>
+                <option>육류</option>
+                <option>유제품</option>
+                <option>곡물</option>
+                <option>기타</option>
+              </select>
+              <button type="submit" class="btn-primary">재료 추가</button>
+            </form>
+            <div class="row compact" style="margin-top: 10px">
+              <input id="ingredient-search" placeholder="재료명 검색" />
+              <select id="ingredient-filter">
+                <option value="">전체 카테고리</option>
+                <option value="채소">채소</option>
+                <option value="육류">육류</option>
+                <option value="유제품">유제품</option>
+                <option value="곡물">곡물</option>
+                <option value="기타">기타</option>
+                <option value="양념">양념</option>
+              </select>
+              <select id="ingredient-sort">
+                <option value="name-asc">이름 오름차순</option>
+                <option value="name-desc">이름 내림차순</option>
+                <option value="newest">최근 추가순</option>
+              </select>
+            </div>
+            <div id="ingredients"></div>
+          </section>
+
+          <section class="card">
+            <h2>AI 레시피 생성</h2>
+            <p class="subtitle">현재 냉장고 재료를 기반으로 1인분 레시피를 생성합니다.</p>
+            <button id="generate-btn" class="btn-primary">AI 레시피 생성하기</button>
+            <div id="generated-area" style="display: none">
+              <h3 id="generated-title"></h3>
+              <p id="generated-notice" class="muted" style="display: none"></p>
+              <p><strong>재료</strong> <span id="generated-ingredients"></span></p>
+              <p><strong>조리법</strong></p>
+              <div id="generated-instructions" class="recipe-box"></div>
+              <button id="save-btn" class="btn-primary" style="margin-top: 10px">
+                DB에 저장
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <section class="card">
+          <div class="list-head">
+            <h2 style="margin: 0">저장된 레시피 목록</h2>
+            <button id="refresh-recipes-btn" class="btn-ghost">새로고침</button>
+          </div>
+          <p class="subtitle">AI로 생성해 저장한 레시피를 시간순으로 확인합니다.</p>
+          <ul id="recipes"></ul>
+        </section>
+      </main>
+    </div>
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      const API = "/api";
+      let generatedRecipe = null;
+      let ingredientsCache = [];
+      let toastTimer = null;
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function formatDate(iso) {
+        const date = new Date(iso);
+        return date.toLocaleString("ko-KR");
+      }
+
+      function showToast(message, isError = false) {
+        const toast = document.getElementById("toast");
+        toast.textContent = message;
+        toast.style.background = isError ? "#8b1d1d" : "#0f1f3c";
+        toast.classList.add("show");
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
+      }
+
+      function parseIngredientLine(line) {
+        const text = String(line || "").trim();
+        if (!text) return { name: "", quantity: "" };
+
+        if (text.includes(",")) {
+          const [namePart, ...rest] = text.split(",");
+          return {
+            name: namePart.trim(),
+            quantity: rest.join(",").trim(),
+          };
+        }
+
+        const parts = text.split(/\s+/).filter(Boolean);
+        if (parts.length === 1) return { name: parts[0], quantity: "" };
+        const last = parts[parts.length - 1];
+        const looksLikeQty = /[0-9]|개|g|kg|ml|L|모|봉|컵|스푼|큰술|작은술/i.test(last);
+        if (looksLikeQty) {
+          return {
+            name: parts.slice(0, -1).join(" "),
+            quantity: last,
+          };
+        }
+        return {
+          name: text,
+          quantity: "",
+        };
+      }
+
+      function getFilteredIngredients() {
+        const keyword = document.getElementById("ingredient-search").value.trim().toLowerCase();
+        const filter = document.getElementById("ingredient-filter").value;
+        const sort = document.getElementById("ingredient-sort").value;
+
+        let list = [...ingredientsCache];
+        if (keyword) {
+          list = list.filter((item) => String(item.name || "").toLowerCase().includes(keyword));
+        }
+        if (filter) {
+          list = list.filter((item) => item.category === filter);
+        }
+
+        if (sort === "name-asc") {
+          list.sort((a, b) => String(a.name).localeCompare(String(b.name), "ko"));
+        } else if (sort === "name-desc") {
+          list.sort((a, b) => String(b.name).localeCompare(String(a.name), "ko"));
+        } else if (sort === "newest") {
+          list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        }
+        return list;
+      }
+
+      function renderIngredients() {
+        const wrap = document.getElementById("ingredients");
+        wrap.innerHTML = "";
+        const data = getFilteredIngredients();
+        if (data.length === 0) {
+          wrap.innerHTML = '<div class="empty">조건에 맞는 재료가 없습니다.</div>';
+          return;
+        }
+        const rows = data
+          .map(
+            (item) => `
+              <tr>
+                <td><strong>${escapeHtml(item.name)}</strong></td>
+                <td><span class="chip">${escapeHtml(item.category)}</span></td>
+                <td>
+                  <button
+                    type="button"
+                    class="qty-btn"
+                    data-role="edit-qty"
+                    data-id="${item.id}"
+                    data-name="${escapeHtml(item.name)}"
+                    data-qty="${escapeHtml(item.quantity || "")}"
+                  >
+                    ${escapeHtml(item.quantity || "수량 없음")}
+                  </button>
+                </td>
+                <td class="actions">
+                  <button data-id="${item.id}" class="btn-danger">삭제</button>
+                </td>
+              </tr>
+            `
+          )
+          .join("");
+
+        wrap.innerHTML = `
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>재료명</th>
+                  <th>카테고리</th>
+                  <th>수량 (클릭 수정)</th>
+                  <th style="text-align: right">관리</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      async function fetchIngredients() {
+        const res = await fetch(`${API}/ingredients`);
+        ingredientsCache = await res.json();
+        renderIngredients();
+      }
+
+      async function fetchRecipes() {
+        const res = await fetch(`${API}/recipes`);
+        const data = await res.json();
+        const ul = document.getElementById("recipes");
+        ul.innerHTML = "";
+        if (data.length === 0) {
+          ul.innerHTML = '<li class="empty">저장된 레시피가 아직 없습니다.</li>';
+          return;
+        }
+        data.forEach((recipe) => {
+          const li = document.createElement("li");
+          li.className = "list-item";
+          li.innerHTML = `
+            <div class="list-head">
+              <strong>${escapeHtml(recipe.title)}</strong>
+              <span class="chip">${escapeHtml(recipe.source || "ai")}</span>
+            </div>
+            <div class="muted" style="margin-top: 6px;">${formatDate(
+              recipe.created_at
+            )}</div>
+            <div style="margin-top: 8px;"><strong>재료</strong> ${escapeHtml(
+              recipe.ingredients_text
+            )}</div>
+            <div class="recipe-box">${escapeHtml(recipe.instructions_text)}</div>
+          `;
+          ul.appendChild(li);
+        });
+      }
+
+      document
+        .getElementById("ingredient-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const parsed = parseIngredientLine(
+            document.getElementById("ingredient-line").value
+          );
+          if (!parsed.name) {
+            showToast("재료명을 입력하세요.", true);
+            return;
+          }
+          const body = {
+            name: parsed.name,
+            quantity: parsed.quantity,
+            category: document.getElementById("category").value,
+          };
+          const res = await fetch(`${API}/ingredients`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          if (!res.ok) {
+            const err = await res.json();
+            showToast(err.error || "재료 추가 실패", true);
+            return;
+          }
+          e.target.reset();
+          await fetchIngredients();
+          showToast("재료를 추가했습니다.");
+        });
+
+      document.getElementById("ingredients").addEventListener("click", async (e) => {
+        if (e.target.tagName !== "BUTTON" || !e.target.hasAttribute("data-id")) return;
+        const id = e.target.getAttribute("data-id");
+
+        if (e.target.dataset.role === "edit-qty") {
+          const currentQty = e.target.getAttribute("data-qty") || "";
+          const name = e.target.getAttribute("data-name") || "재료";
+          const nextQty = prompt(`${name} 수량 수정`, currentQty);
+          if (nextQty === null) return;
+
+          const patchRes = await fetch(`${API}/ingredients/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ quantity: nextQty }),
+          });
+          if (!patchRes.ok) {
+            const err = await patchRes.json();
+            showToast(err.error || "수량 수정 실패", true);
+            return;
+          }
+          await fetchIngredients();
+          showToast("수량을 수정했습니다.");
+          return;
+        }
+
+        const res = await fetch(`${API}/ingredients/${id}`, { method: "DELETE" });
+        if (!res.ok) {
+          const err = await res.json();
+          showToast(err.error || "삭제 실패", true);
+          return;
+        }
+        await fetchIngredients();
+        showToast("재료를 삭제했습니다.");
+      });
+
+      document.getElementById("generate-btn").addEventListener("click", async () => {
+        const res = await fetch(`${API}/recipes/generate`, { method: "POST" });
+        const data = await res.json();
+        if (!res.ok) {
+          showToast(data.error || "AI 레시피 생성 실패", true);
+          return;
+        }
+
+        generatedRecipe = data;
+        document.getElementById("generated-area").style.display = "block";
+        document.getElementById("generated-title").textContent = data.title;
+        const noticeEl = document.getElementById("generated-notice");
+        if (data.notice) {
+          noticeEl.style.display = "block";
+          noticeEl.textContent = data.notice;
+        } else {
+          noticeEl.style.display = "none";
+          noticeEl.textContent = "";
+        }
+        document.getElementById("generated-ingredients").textContent =
+          data.ingredients_text;
+        document.getElementById("generated-instructions").textContent =
+          data.instructions_text;
+        showToast("레시피를 생성했습니다.");
+      });
+
+      document.getElementById("save-btn").addEventListener("click", async () => {
+        if (!generatedRecipe) return;
+        const res = await fetch(`${API}/recipes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...generatedRecipe,
+            source: generatedRecipe.source || "ai",
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showToast(data.error || "저장 실패", true);
+          return;
+        }
+        showToast("AI 레시피를 DB에 저장했습니다.");
+        await fetchRecipes();
+      });
+
+      document
+        .getElementById("refresh-recipes-btn")
+        .addEventListener("click", async () => {
+          await fetchRecipes();
+          showToast("레시피 목록을 새로고침했습니다.");
+        });
+
+      document.getElementById("ingredient-search").addEventListener("input", renderIngredients);
+      document.getElementById("ingredient-filter").addEventListener("change", renderIngredients);
+      document.getElementById("ingredient-sort").addEventListener("change", renderIngredients);
+
+      fetchIngredients();
+      fetchRecipes();
+    </script>
+  </body>
+</html>
