@@ -64,7 +64,11 @@
       "WebFetch(domain:cursor.com)",
       "WebFetch(domain:forum.cursor.com)",
       "WebFetch(domain:www.truefoundry.com)",
-      "WebFetch(domain:jduncan.io)"
+      "WebFetch(domain:jduncan.io)",
+      "Bash(awk '{print $5}')",
+      "Bash(xargs -I{} taskkill /PID {} /F)",
+      "Bash(PORT=3001 node server.js)",
+      "Bash(PORT=3002 node server.js)"
     ]
   }
 }

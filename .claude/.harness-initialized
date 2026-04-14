@@ -1,22 +1,5 @@
-initialized: 2026-04-13
-version: 1.0.0
-agents:
-  - quick-recipe-creator
-  - k-drama-expert
-  - single-react-dev
-  - daon-erp-remote
-  - erp-db
-  - erp-analyst
-  - erp-n8n
-  - erp-webapp
-  - server
-  - 기획자
-  - AI-개발자
-  - 검토자
-  - 배포자
-skills:
-  - harness-kr
-  - parallel
-  - daon-erp
-  - recipe
-  - gstack (full suite)
+initialized: 2026-04-14T10:58:16Z
+mode: learn.afm
+agents: learn.afm-tutor, learn.afm-diary, learn.afm-project, learn.afm-reviewer, AI-개발자, 기획자, 검토자, 배포자, single-react-dev, quick-recipe-creator, k-drama-expert
+skills: week-start, week-retro + gstack suite
+harness-kr: 활성

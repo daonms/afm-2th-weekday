@@ -1,219 +1,229 @@
-# Project Claude Config
+# AFM 2기 평일반 — AI 학습 전용 Claude 설정
 
-## 승인 워크플로우 — 모든 작업에 필수 적용
+> **부트캠프**: harbor.school AI 부트캠프 2기 평일반
+> **목표**: AI 선구자 · 코딩 입문자 → 실전 앱 개발자
+> **폴더**: 학습 전용 (DAONAI ERP와 분리)
 
-### 규칙 요약
-1. **기획 단계**: 승인이 필요한 항목을 리스트로 출력하고 **1번만** 승인 요청
-2. **1차 승인 후**: 작업 완료까지 **절대 승인 요청 금지** (중간 확인·질문도 금지)
-3. **완료 후**: 완료 보고 + 다음 작업 내역 및 지시서 출력
+---
 
-### Phase 1 — 기획 단계 (승인 전)
+## 언어 원칙
 
-작업 착수 전 반드시 아래 형식으로 승인 목록 출력:
+- 모든 답변은 **한국어** (코드/명령어/고유명사만 원문 유지)
+- 수강생 눈높이 — 전문용어는 반드시 풀어서 설명
+- 영어 용어 남발 금지
 
+---
+
+## 커리큘럼 (5주)
+
+| 주차 | 주제 | 핵심 기술 | 폴더 |
+|------|------|----------|------|
+| Week 1 | AI 기초 + 문서 작성 | Markdown · Claude 프롬프트 | `week_1/` |
+| Week 2 | HTML/CSS/JS 기초 앱 | React CDN · Tailwind · Canvas | `week_2/` |
+| Week 3 | 네트워크 + AI 서버 앱 | Node.js · OpenAI API · SSE | `week_3/` |
+| Week 4 | 서버 + DB | Supabase · Auth · 관계형 DB | `week_4/` |
+| Week 5 | 실전 배포 + 통합 | Vercel · 도메인 · 모니터링 | `week_5/` |
+
+상세 진행 내역: `timetable.md`
+
+---
+
+## 한국어 → 에이전트 라우팅
+
+| 지시 패턴 | 에이전트 | 용도 |
+|----------|---------|------|
+| "설명해줘" · "이해가 안 돼" · "~가 뭐야?" · "코드 해설" | `learn.afm-tutor` | 개념·코드 설명 |
+| "일기 써줘" · "회고" · "오늘 정리" · "뭐 배웠지" | `learn.afm-diary` | 학습 일기 작성 |
+| "프로젝트 만들어줘" · "앱 스캐폴딩" · "실습 준비" | `learn.afm-project` | 주차별 미니앱 생성 |
+| "리뷰해줘" · "내 코드 봐줘" · "과제 검사" · "피드백" | `learn.afm-reviewer` | 코드 리뷰 |
+| "웹앱 만들어줘" · "React 앱" · "단일 HTML" · "프론트엔드" | `single-react-dev` | React SPA 제작 (강사 제공) |
+| "서버 만들어줘" · "server.js" · "Express" · "API 엔드포인트" · "Node.js 서버" | `single-server-specialist` | Node.js 백엔드 제작 (강사 제공) |
+| "배포해줘" · "Vercel" · "vercel.json" · "환경변수 설정" · "배포 오류" | `vercel-deploy-optimizer` | Vercel 배포 전문 (강사 제공) |
+| "AI 기능" · "챗봇" · "OpenAI" · "스트리밍" | `AI-개발자` | AI API 통합 |
+| "기획해줘" · "설계 · 아이디어 검토" | `기획자` | 기획·PRD |
+| "검토해줘" · "버그" · "보안 체크" | `검토자` | 코드 리뷰 (실무급) |
+| "PR" · "GitHub" · "머지" | `배포자` | PR·GitHub 작업 |
+| "레시피" · "요리" · "냉장고" | `quick-recipe-creator` | 레시피 실습 |
+| "K드라마" · "드라마 추천" | `k-drama-expert` | 드라마 분석 실습 |
+
+상세 라우팅 기준: `.claude/skills/harness-kr/references/routing-guide.md`
+
+---
+
+## 슬래시 스킬 (학습 전용)
+
+| 명령 | 용도 |
+|------|------|
+| `/week-start N` | 새 주차 시작 — 폴더·일기·회고 템플릿 생성 |
+| `/week-retro N` | 주차 마감 회고 — 일기 집계·성장 포인트 추출 |
+| `/harness-kr` | 에이전트 시스템 재구성 |
+| `/parallel` | Cursor와 병렬 작업 |
+
+gstack 스킬 (범용): `/browse`, `/qa`, `/ship`, `/review`, `/design-review`, `/investigate` 등
+전체 목록: `.claude/skills/` 참조
+
+---
+
+## 승인 워크플로우 (필수)
+
+### Phase 1 — 기획 (착수 전)
 ```
 ## 📋 작업 계획 — 승인 요청
 
-**작업명**: [작업 제목]
+작업명: [제목]
 
-### 진행할 내용
-1. [구체적인 작업 항목]
-2. [구체적인 작업 항목]
-3. ...
+진행할 내용:
+1. ...
+2. ...
 
-### 변경될 파일
-- [파일 경로] — [변경 내용]
+변경될 파일:
+- [경로] — [내용]
 
-### 예상 결과
-[완료 시 어떤 상태가 되는지]
+예상 결과: [완료 시 상태]
 
----
-✅ 진행할까요? (승인 후 완료까지 중간 보고 없이 진행합니다)
+✅ 진행할까요?
 ```
 
-승인 인식 키워드: `예`, `네`, `ㅇ`, `ok`, `OK`, `진행`, `승인`, `go`, `ㄱ`
+승인 키워드: `예` `네` `ㅇ` `ok` `OK` `진행` `승인` `go` `ㄱ`
 
-### Phase 2 — 작업 실행 (승인 후)
-
+### Phase 2 — 실행 (승인 후)
 - 추가 승인 요청 **절대 금지**
 - 중간 확인 질문 **금지**
-- 오류 발생 시 스스로 해결 후 계속 진행 (최대 3회 재시도)
-- 재시도 3회 실패 시에만 사용자에게 보고 후 대기
+- 오류 발생 시 스스로 해결 (최대 3회 재시도)
+- 3회 실패 시에만 사용자에게 보고 후 대기
 
-### Phase 3 — 완료 보고 (작업 후)
-
-작업 완료 시 반드시 아래 형식으로 출력:
-
+### Phase 3 — 완료 보고
 ```
 ## ✅ 작업 완료 보고
 
-### 완료된 작업
 | 항목 | 결과 |
 |------|------|
 | [작업1] | 완료 |
-| [작업2] | 완료 |
 
-### 변경된 파일
-- [파일]: [변경 내용]
-
----
+변경된 파일:
+- [파일]: [내용]
 
 ## 📌 다음 작업 지시서
-
-**권장 다음 단계**:
-1. [다음 작업 제목]
-   - 내용: [구체적 지시]
-   - 명령: `[실행할 명령어 또는 지시문]`
-
-2. [다음 작업 제목]
-   - 내용: [구체적 지시]
+1. [다음 작업] — [명령]
 ```
 
 ### 예외 (승인 없이 즉시 실행)
 - 단순 질문·설명 요청
 - 파일 읽기·조회만 하는 작업
-- 오류 메시지 분석
+- 개념 해설 요청
 
 ---
 
-## 한국어 하네스 시스템 (harness-kr) — 최우선 실행
+## 수강생 배려 원칙
 
-**대화 시작 시 반드시 다음을 수행하세요:**
-
-1. `.claude/.harness-initialized` 파일을 읽어보세요 (Read 도구 사용).
-2. **파일이 없으면**: 다른 작업을 시작하기 전에 사용자에게 이 메시지를 먼저 출력하세요:
-
-   > **"프로젝트 에이전트 시스템을 구축할까요?"**
-   > *(승인하면 에이전트 팀과 스킬이 자동으로 최적화됩니다)*
-
-3. 사용자가 승인(예/네/ㅇ/ok/yes 등)하면 `/harness-kr` 스킬을 실행하세요.
-4. **파일이 있으면**: 아래 라우팅 가이드에 따라 한국어 작업 지시를 받아 적합한 에이전트에게 라우팅하세요.
-
-### 한국어 라우팅 가이드 (초기화 후)
-
-| 한국어 지시 패턴 | 에이전트 |
-|----------------|---------|
-| 웹앱/대시보드/UI/React 만들어줘 | `single-react-dev` |
-| 서버/API/백엔드/Express 만들어줘 | `server` |
-| AI/Claude API/챗봇/스트리밍 | `AI-개발자` |
-| 기획/설계/아이디어/방향 | `기획자` |
-| 코드 리뷰/버그/보안/검토 | `검토자` |
-| 배포/Vercel/PR/GitHub | `배포자` |
-| 냉장고/레시피/요리/뭐 먹지 | `quick-recipe-creator` |
-| 드라마/K드라마 추천 | `k-drama-expert` |
-| ERP/서버관리/Docker | `daon-erp-remote` |
-| DB/쿼리/PostgreSQL | `erp-db` |
-| 매출/매입/PnL/분석 | `erp-analyst` |
-| n8n/워크플로우/Telegram | `erp-n8n` |
-| ERP 웹앱/PostgREST | `erp-webapp` |
-
-라우팅 상세 기준: `.claude/skills/harness-kr/references/routing-guide.md` 참고
-
-| 병렬 작업 요청 | 스킬 |
-|--------------|------|
-| "병렬로 해줘", "Cursor랑 같이", "/ide cursor", "동시에 작업" | `/parallel` |
+1. **칭찬 먼저** — 잘한 점 3개 찾은 뒤 개선점 제시
+2. **"왜"를 설명** — "이렇게 해" ❌ → "~한 이유로" ⭕
+3. **비유 사용** — "함수는 자판기, 인수는 동전, 반환값은 음료"
+4. **작게 나누기** — 한 번에 1~3줄씩 해설
+5. **실수 환영** — 오류 메시지도 함께 해석
 
 ---
 
-## Cursor AI 병렬 연동 (/ide cursor)
+## 학습 결과물 관리
 
-Claude Code가 Cursor IDE를 직접 제어하는 연결 방식:
+### 폴더 구조
+```
+afm-2th-weekday/
+├── week_1/
+│   ├── diary/YYYY.MM.DD.md        # 일기
+│   ├── projects/                  # 프로젝트
+│   ├── notes/                     # 수업 노트
+│   ├── README.md                  # 주차 개요
+│   └── weekly-retro.md            # 주간 회고
+├── week_2/ ... week_5/
+├── timetable.md                   # 전체 진행표 (자동 갱신)
+└── CLAUDE.md
+```
 
-**연결 순서 (최초 1회 설정)**:
-1. Cursor Command Palette (`Ctrl+Shift+P`) → "Install 'cursor' command in PATH"
-2. Cursor 내 터미널 (`Ctrl+Shift+\``) → `claude` 실행
-3. Claude 프롬프트에서 `/ide` → cursor 선택
+### 자동 갱신 규칙
+- 일기 작성 시 → `timetable.md`의 해당 주차 결과물 컬럼 자동 갱신
+- 회고 작성 시 → 주차별 학습 키워드 업데이트
+- 프로젝트 스캐폴딩 시 → README에 학습 포인트 3개 자동 기록
 
-**병렬 역할 분담**:
-- **Claude Code (터미널)**: 멀티파일 수정·구조 설계·테스트·API 구현 → Cursor 탭에 diff 표시
-- **Cursor 채팅창**: 단일 파일 세밀한 편집 (`Ctrl+L`로 코드 선택 후 채팅)
+---
 
-**작업 추적**: `.mcp.json`의 `parallel-coordinator` MCP 서버 (`list_tasks`, `create_task` 등)
+## Cursor AI 병렬 연동
+
+**트리거**: "커서연결" 발화 시 아래 안내 출력
+
+```
+## 🔗 커서 연결 가이드
+
+### 1단계 — Cursor PATH 등록 (최초 1회)
+Cursor → Ctrl+Shift+P → "Install 'cursor' command in PATH"
+
+### 2단계 — Cursor 터미널에서 Claude 실행
+Cursor 내 터미널 (Ctrl+Shift+`) → claude 입력
+
+### 3단계 — IDE 연결
+Claude 프롬프트에서 → /ide → cursor 선택
+```
+
+**역할 분담**:
+- Claude Code (터미널): 멀티파일·서버·API·스캐폴딩
+- Cursor 채팅창: 단일 파일 UI·스타일 (`Ctrl+L`)
+
+MCP 작업 현황: `.mcp.json`의 `parallel-coordinator`의 `get_summary` 도구
+
+---
+
+## 에이전트 네이밍 규칙 (학습 폴더)
+
+형식: `learn.afm-{role}` 또는 범용 `{project}.{role}`
+
+| 접두사 | 용도 |
+|--------|------|
+| `learn.afm-*` | AFM 학습 전용 (tutor, diary, project, reviewer) |
+| `single-*` | 단일 파일 기반 앱 제작 |
+| (없음) | 범용 (`AI-개발자`, `기획자`, `검토자`, `배포자`) |
+
+- 에이전트 파일: `.claude/agents/{name}.md`
+- ERP 관련 에이전트 **절대 추가 금지** (DAONAI 폴더 전용)
+
+---
+
+## 금지사항
+
+1. **ERP 에이전트 호출 금지** — 이 폴더는 학습 전용
+2. **DAONAI 경로 참조 금지** — `G:\내 드라이브\DAONAI\` 건드리지 말 것
+3. **과도한 최적화 강요 금지** — 수강생 레벨 존중
+4. **빌드 도구 초기 세팅 금지** — Week 2~3은 CDN으로
+5. **TypeScript 강요 금지** — 학습 입문 단계
+
+---
+
+## 트리거: "작업내역 요약"
+
+사용자가 **"작업내역 요약"** 발화 시:
+1. 타임테이블(표) 형식 요약
+2. 각 행: 순서·작업 주제·핵심 변경·결과 상태
+3. 하단에 다음 액션 3개 이내
+4. 한국어 간결하게
+
+---
+
+## 트리거: "일기", "회고", "정리"
+
+- 단어 감지 시 `learn.afm-diary` 에이전트 자동 호출
+- 현재 주차 확인 → `week_N/diary/YYYY.MM.DD.md` 생성·업데이트
 
 ---
 
 ## gstack
-Use `/browse` from `gstack` for all web browsing. Never use `mcp__claude-in-chrome__*` tools.
 
-Available skills: /harness-kr, /parallel, /office-hours, /plan-ceo-review, /plan-eng-review, /plan-design-review, /design-consultation, /review, /ship, /land-and-deploy, /canary, /benchmark, /browse, /qa, /qa-only, /design-review, /setup-browser-cookies, /setup-deploy, /retro, /investigate, /document-release, /codex, /cso, /autoplan, /careful, /freeze, /guard, /unfreeze, /gstack-upgrade, /daon-erp.
+`/browse` 사용. `mcp__claude-in-chrome__*` 도구 금지.
 
-If gstack skills aren't working, run:
-`cd .claude/skills/gstack && ./setup`
-
-## DAONMS ERP 원격 서버 통제
-
-### SSH 접속
-- **서버**: daonms-i7-1 (100.123.134.44)
-- **사용자**: i7dt
-- **키**: `~/.ssh/id_ed25519`
-- **명령어**: `ssh -i ~/.ssh/id_ed25519 i7dt@100.123.134.44 "<command>"`
-- **서버 경로**: `/home/i7dt/daon-erp`
-
-### 에이전트 선택 가이드
-| 작업 | 에이전트 |
-|------|----------|
-| 서버 관리·Docker·일반 명령 | `daon-erp-remote` |
-| DB 스키마·쿼리·DDL·마이그레이션 | `erp-db` |
-| 매입/매출/PnL 분석·보고서 | `erp-analyst` |
-| n8n 워크플로우·Code 노드·챗봇 | `erp-n8n` |
-| 웹앱 UI·PostgREST 연동 | `erp-webapp` |
-
-### 서비스 URL
-| 서비스 | URL |
-|--------|-----|
-| ERP 웹앱 | erp.daonms.com |
-| REST API | api.daonms.com |
-| n8n 워크플로우 | n8n.daonms.com |
-| KPI 대시보드 | kpi.daonms.com |
-| DB 관리 | sql.daonms.com |
-| AI Proxy | code.daonms.com |
-
-### 필수 금지사항
-- 운영 DB DROP/대량삭제: 사용자 확인 필수
-- ERP_v6 워크플로우: CLI import 금지 (UI에서만)
-- Telegram setWebhook 수동 호출 금지
-- 구 Drive credential `7zat0DXsDPXJRkLH` 사용 금지
-- 이카운트 로그인 재시도 3회 제한
+gstack 스킬 동작 안 할 시: `cd .claude/skills/gstack && ./setup`
 
 ---
 
-## 사용자 트리거 지침: "커서연결"
+## 주의
 
-사용자가 **"커서연결"** 이라고 말하면, Cursor AI 병렬 연동 상태를 확인하고 안내한다:
-
-1. **MCP 서버 상태 확인**: `parallel-coordinator` 연결 여부 출력
-2. **IDE 연결 상태 안내**:
-   ```
-   ## 🔗 커서 연결 가이드
-
-   ### 1단계 — Cursor PATH 등록 (최초 1회)
-   Cursor → Ctrl+Shift+P → "Install 'cursor' command in PATH"
-
-   ### 2단계 — Cursor 터미널에서 Claude 실행
-   Cursor 내 터미널 (Ctrl+Shift+`) → claude 입력
-
-   ### 3단계 — IDE 연결
-   Claude 프롬프트에서 → /ide → cursor 선택
-
-   연결 완료 시: Claude Code가 Cursor 탭에 파일을 직접 열고 diff 표시
-   ```
-3. **MCP 작업 현황**: `parallel-coordinator`의 `get_summary` 도구로 현재 작업 수 출력
-4. **병렬 역할 안내**:
-   - Claude Code (터미널): 멀티파일·서버·API
-   - Cursor 채팅창: 단일 파일·UI (`Ctrl+L` 사용)
-
----
-
-## 사용자 트리거 지침: "작업내역 요약"
-
-사용자가 정확히 **"작업내역 요약"** 이라고 말하면, 현재 세션에서 진행한 작업을 아래 형식으로 정리한다.
-
-1. **타임테이블(표) 형식**으로 먼저 요약
-2. 각 행에는 최소한 다음 정보를 포함:
-   - 순서
-   - 작업 주제
-   - 핵심 변경/조치
-   - 결과 상태(완료/진행중/이슈)
-3. 필요 시 하단에 **다음 액션(체크리스트)** 3개 이내로 추가
-4. 응답은 한국어로 간결하게 작성
-
+- 이 폴더는 **학습·실습 전용**입니다
+- 실제 운영 시스템(DAONMS ERP)과 분리 유지
+- 결과물은 Git으로 버전 관리 (`.gitignore`에 `.env`·`node_modules` 포함)
