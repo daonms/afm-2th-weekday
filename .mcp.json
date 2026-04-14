@@ -4,6 +4,40 @@
       "command": "node",
       "args": [".claude/parallel-coordinator/server.js"],
       "env": {}
+    },
+    "chrome-local-mcp": {
+      "command": "node",
+      "args": ["C:/Users/Leepro/AppData/Roaming/npm/node_modules/chrome-local-mcp/mcp-server.js"],
+      "env": {}
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp"]
+    },
+    "google-workspace": {
+      "command": "google-docs-mcp",
+      "args": [],
+      "env": {
+        "GOOGLE_CLIENT_ID": "",
+        "GOOGLE_CLIENT_SECRET": "",
+        "GOOGLE_REDIRECT_URI": "http://localhost:3000/oauth2callback"
+      }
+    },
+    "gmail": {
+      "command": "node",
+      "args": ["C:/Users/Leepro/AppData/Roaming/npm/node_modules/@gongrzhe/server-gmail-autoauth-mcp/build/index.js"],
+      "env": {
+        "GOOGLE_CLIENT_ID": "",
+        "GOOGLE_CLIENT_SECRET": ""
+      }
+    },
+    "ms-365": {
+      "command": "ms-365-mcp-server",
+      "args": [],
+      "env": {
+        "AZURE_CLIENT_ID": "",
+        "AZURE_TENANT_ID": "common"
+      }
     }
   }
 }

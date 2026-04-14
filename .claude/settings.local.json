@@ -70,7 +70,8 @@
       "Bash(PORT=3001 node server.js)",
       "Bash(PORT=3002 node server.js)",
       "Skill(update-config)",
-      "mcp__claude_ai_Notion__notion-search"
+      "mcp__claude_ai_Notion__notion-search",
+      "Bash(claude mcp:*)"
     ]
   }
 }
