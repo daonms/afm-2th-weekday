@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Todo 관리자 패널</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useMemo, useEffect, useCallback } = React;
+
+    // ========================================
+    // API 유틸
+    // ========================================
+    const API = '/api';
+    function getToken()  { return localStorage.getItem('admin_token'); }
+    function getAdminUser() { return JSON.parse(localStorage.getItem('admin_user') || 'null'); }
+
+    async function apiFetch(url, options = {}) {
+      const token = getToken();
+      const res = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        ...options,
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message);
+      return json.data;
+    }
+
+    const TODAY = new Date().toISOString().slice(0, 10);
+
+    // 유저별 테마 색상
+    const USER_COLORS = {
+      daon:  { bg: 'bg-purple-100', text: 'text-purple-700', bar: 'bg-purple-500' },
+      alice: { bg: 'bg-blue-100',   text: 'text-blue-700',   bar: 'bg-blue-500' },
+      bob:   { bg: 'bg-amber-100',  text: 'text-amber-700',  bar: 'bg-amber-500' },
+      admin: { bg: 'bg-green-100',  text: 'text-green-700',  bar: 'bg-green-500' },
+    };
+    const getUserColor = (name) => USER_COLORS[name] || { bg: 'bg-gray-100', text: 'text-gray-700', bar: 'bg-gray-500' };
+
+    // ========================================
+    // 디자인 시스템 컴포넌트
+    // ========================================
+    function Button({ variant = 'primary', size = 'md', disabled, onClick, children, className = '' }) {
+      const variants = {
+        primary: 'bg-blue-600 hover:bg-blue-700 text-white',
+        secondary: 'bg-gray-100 hover:bg-gray-200 text-gray-700',
+        danger: 'bg-red-500 hover:bg-red-600 text-white',
+        ghost: 'bg-transparent hover:bg-gray-100 text-gray-700',
+        outline: 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300',
+      };
+      const sizes = {
+        sm: 'px-2.5 py-1 text-xs',
+        md: 'px-3.5 py-1.5 text-sm',
+        lg: 'px-5 py-2.5 text-base',
+      };
+      return (
+        <button
+          onClick={onClick}
+          disabled={disabled}
+          className={`inline-flex items-center justify-center font-medium rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    function Card({ children, className = '' }) {
+      return <div className={`bg-white rounded-2xl shadow-sm p-5 ${className}`}>{children}</div>;
+    }
+
+    function Badge({ color = 'gray', children }) {
+      const colors = {
+        green: 'bg-green-100 text-green-700',
+        gray: 'bg-gray-100 text-gray-600',
+        blue: 'bg-blue-100 text-blue-700',
+        red: 'bg-red-100 text-red-700',
+        amber: 'bg-amber-100 text-amber-700',
+        purple: 'bg-purple-100 text-purple-700',
+      };
+      return (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${colors[color]}`}>
+          {children}
+        </span>
+      );
+    }
+
+    function Avatar({ name, size = 'md' }) {
+      const sizes = { sm: 'w-7 h-7 text-xs', md: 'w-9 h-9 text-sm', lg: 'w-11 h-11 text-base' };
+      const color = getUserColor(name);
+      return (
+        <div className={`${sizes[size]} ${color.bg} ${color.text} rounded-full flex items-center justify-center font-semibold flex-shrink-0`}>
+          {name ? name[0].toUpperCase() : '?'}
+        </div>
+      );
+    }
+
+    function ProgressBar({ value, max, color = 'bg-blue-500' }) {
+      const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+      return (
+        <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+          <div className={`h-full ${color} transition-all`} style={{ width: `${pct}%` }}></div>
+        </div>
+      );
+    }
+
+    function Input({ value, onChange, placeholder, className = '', type = 'text' }) {
+      return (
+        <input
+          type={type}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          className={`w-full px-3.5 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent ${className}`}
+        />
+      );
+    }
+
+    function Select({ value, onChange, children, className = '' }) {
+      return (
+        <select
+          value={value}
+          onChange={onChange}
+          className={`px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 ${className}`}
+        >
+          {children}
+        </select>
+      );
+    }
+
+    // ========================================
+    // 사이드바
+    // ========================================
+    function Sidebar({ activePage, onNavigate }) {
+      const menus = [
+        { key: 'dashboard', label: '대시보드', icon: '📊' },
+        { key: 'users',     label: '유저 관리', icon: '👥' },
+        { key: 'todos',     label: 'Todo 관리', icon: '✅' },
+      ];
+      return (
+        <aside className="w-56 bg-white border-r border-gray-200 flex flex-col h-screen sticky top-0">
+          <div className="px-5 py-6 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold">T</div>
+              <div>
+                <div className="text-sm font-bold text-gray-800">Todo Admin</div>
+                <div className="text-[11px] text-gray-400">관리자 패널</div>
+              </div>
+            </div>
+          </div>
+          <nav className="flex-1 p-3 space-y-1">
+            {menus.map(m => (
+              <button
+                key={m.key}
+                onClick={() => onNavigate(m.key)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                  activePage === m.key
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <span>{m.icon}</span>
+                <span>{m.label}</span>
+              </button>
+            ))}
+          </nav>
+          <div className="p-3 text-[11px] text-gray-400 border-t border-gray-100">
+            v1.1 · Live DB
+          </div>
+        </aside>
+      );
+    }
+
+    // ========================================
+    // 헤더바
+    // ========================================
+    function Header({ title, adminUser, onLogout }) {
+      return (
+        <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+          <h1 className="text-lg font-bold text-gray-800">{title}</h1>
+          <div className="flex items-center gap-3">
+            <Avatar name={adminUser?.username || 'admin'} size="sm" />
+            <div className="text-sm">
+              <div className="font-semibold text-gray-800">{adminUser?.username || 'admin'}</div>
+              <div className="text-[11px] text-gray-400">관리자</div>
+            </div>
+            <button onClick={onLogout}
+              className="ml-2 text-xs text-gray-400 hover:text-red-400 transition-colors border border-gray-200 rounded-lg px-2.5 py-1.5">
+              로그아웃
+            </button>
+          </div>
+        </header>
+      );
+    }
+
+    // ========================================
+    // 대시보드 페이지
+    // ========================================
+    function DashboardPage({ users, todos }) {
+      const [stats, setStats] = useState(null);
+
+      useEffect(() => {
+        apiFetch(`${API}/admin/stats`)
+          .then(setStats)
+          .catch(() => {});
+      }, []);
+
+      const totalUsers = stats?.totalUsers ?? users.length;
+      const totalTodos = stats?.totalTodos ?? todos.length;
+      const doneCount  = stats?.doneTodos  ?? todos.filter(t => t.done).length;
+      const donePct    = totalTodos > 0 ? Math.round((doneCount / totalTodos) * 100) : 0;
+      const todayDue   = stats?.todayDue   ?? todos.filter(t => t.due_date === TODAY && !t.done).length;
+
+      const summaryCards = [
+        { label: '전체 유저 수', value: totalUsers,    icon: '👥', color: 'text-blue-600',   bg: 'bg-blue-50' },
+        { label: '전체 Todo 수', value: totalTodos,   icon: '📝', color: 'text-purple-600', bg: 'bg-purple-50' },
+        { label: '완료율',       value: `${donePct}%`,icon: '✅', color: 'text-green-600',  bg: 'bg-green-50' },
+        { label: '오늘 마감',    value: todayDue,     icon: '⏰', color: 'text-red-600',    bg: 'bg-red-50' },
+      ];
+
+      const userStats = users.map(u => {
+        const userTodos = todos.filter(t => t.username === u.username);
+        const done = userTodos.filter(t => t.done).length;
+        return {
+          username: u.username,
+          total: parseInt(u.todo_count || userTodos.length),
+          done:  parseInt(u.done_count || done),
+          pct: userTodos.length > 0 ? Math.round((done / userTodos.length) * 100) : 0,
+        };
+      });
+
+      const recentTodos = [...todos]
+        .sort((a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt))
+        .slice(0, 5);
+
+      return (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {summaryCards.map(c => (
+              <Card key={c.label}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">{c.label}</div>
+                    <div className={`text-2xl font-bold ${c.color}`}>{c.value}</div>
+                  </div>
+                  <div className={`w-10 h-10 rounded-xl ${c.bg} flex items-center justify-center text-xl`}>
+                    {c.icon}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
+              <h3 className="text-sm font-bold text-gray-800 mb-4">유저별 진행률</h3>
+              <div className="space-y-4">
+                {userStats.map(s => {
+                  const color = getUserColor(s.username);
+                  return (
+                    <div key={s.username}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <Avatar name={s.username} size="sm" />
+                          <span className="text-sm font-medium text-gray-700">{s.username}</span>
+                        </div>
+                        <span className="text-xs text-gray-500">{s.done} / {s.total} ({s.pct}%)</span>
+                      </div>
+                      <ProgressBar value={s.done} max={s.total} color={color.bar} />
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
+            <Card>
+              <h3 className="text-sm font-bold text-gray-800 mb-4">최근 Todo 5개</h3>
+              <ul className="space-y-2">
+                {recentTodos.map(t => (
+                  <li key={t.id} className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50">
+                    <Avatar name={t.username} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-sm ${t.done ? 'line-through text-gray-400' : 'text-gray-800'} truncate`}>
+                        {t.title}
+                      </div>
+                      <div className="text-[11px] text-gray-400">
+                        {t.username} · {(t.created_at || t.createdAt || '').slice(0, 10)}
+                      </div>
+                    </div>
+                    {t.done ? <Badge color="green">완료</Badge> : <Badge color="blue">진행중</Badge>}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 유저 관리 페이지
+    // ========================================
+    function UsersPage({ users, setUsers, todos }) {
+      const [keyword, setKeyword] = useState('');
+
+      const enrichedUsers = useMemo(() => {
+        return users.map(u => {
+          const userTodos = todos.filter(t => t.username === u.username);
+          return {
+            ...u,
+            todoCount: userTodos.length,
+            doneCount: userTodos.filter(t => t.done).length,
+          };
+        });
+      }, [users, todos]);
+
+      const filtered = enrichedUsers.filter(u =>
+        u.username.toLowerCase().includes(keyword.toLowerCase())
+      );
+
+      const [actionError, setActionError] = useState('');
+
+      const toggleRole = async (id) => {
+        try {
+          const updated = await apiFetch(`${API}/admin/users/${id}/role`, { method: 'PATCH' });
+          setUsers(users.map(u => u.id === id ? { ...u, role: updated.role } : u));
+        } catch (e) { setActionError(e.message); }
+      };
+
+      const deleteUser = async (id) => {
+        try {
+          await apiFetch(`${API}/admin/users/${id}`, { method: 'DELETE' });
+          setUsers(users.filter(u => u.id !== id));
+        } catch (e) { setActionError(e.message); }
+      };
+
+      return (
+        <div className="space-y-4">
+          <Card>
+            {actionError && (
+              <div className="mb-3 p-3 bg-red-50 text-red-500 text-xs rounded-lg flex justify-between">
+                {actionError}
+                <button onClick={() => setActionError('')} className="ml-2 text-red-300 hover:text-red-500">✕</button>
+              </div>
+            )}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1">
+                <Input
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  placeholder="아이디로 검색..."
+                />
+              </div>
+              <div className="text-xs text-gray-500">총 {filtered.length}명</div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-gray-500 border-b border-gray-200">
+                    <th className="py-3 px-2 font-medium">유저</th>
+                    <th className="py-3 px-2 font-medium">역할</th>
+                    <th className="py-3 px-2 font-medium">Todo (완료/전체)</th>
+                    <th className="py-3 px-2 font-medium">가입일</th>
+                    <th className="py-3 px-2 font-medium text-right">액션</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(u => {
+                    const isAdminAccount = u.username === 'admin';
+                    return (
+                      <tr key={u.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                        <td className="py-3 px-2">
+                          <div className="flex items-center gap-3">
+                            <Avatar name={u.username} size="md" />
+                            <div className="font-medium text-gray-800">{u.username}</div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-2">
+                          {u.role === 'admin'
+                            ? <Badge color="green">admin</Badge>
+                            : <Badge color="gray">user</Badge>}
+                        </td>
+                        <td className="py-3 px-2 text-gray-600">
+                          {u.doneCount} / {u.todoCount}
+                        </td>
+                        <td className="py-3 px-2 text-gray-500">{u.createdAt}</td>
+                        <td className="py-3 px-2">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={isAdminAccount}
+                              onClick={() => toggleRole(u.id)}
+                            >
+                              역할 변경
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              disabled={isAdminAccount}
+                              onClick={() => deleteUser(u.id)}
+                            >
+                              삭제
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan="5" className="py-10 text-center text-gray-400 text-sm">
+                        검색 결과가 없습니다
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Todo 관리 페이지
+    // ========================================
+    function TodosPage({ todos, setTodos, users }) {
+      const [statusTab, setStatusTab] = useState('all'); // all | active | done
+      const [userFilter, setUserFilter] = useState('all');
+
+      const filtered = useMemo(() => {
+        return todos.filter(t => {
+          if (statusTab === 'active' && t.done) return false;
+          if (statusTab === 'done' && !t.done) return false;
+          if (userFilter !== 'all' && t.username !== userFilter) return false;
+          return true;
+        });
+      }, [todos, statusTab, userFilter]);
+
+      const [todoError, setTodoError] = useState('');
+
+      const deleteTodo = async (id) => {
+        try {
+          await apiFetch(`${API}/admin/todos/${id}`, { method: 'DELETE' });
+          setTodos(todos.filter(t => t.id !== id));
+        } catch (e) { setTodoError(e.message); }
+      };
+
+      const deleteAllDone = async () => {
+        try {
+          await apiFetch(`${API}/admin/todos/done/all`, { method: 'DELETE' });
+          setTodos(todos.filter(t => !t.done));
+        } catch (e) { setTodoError(e.message); }
+      };
+
+      const isOverdue = (dueDate, done) => {
+        if (!dueDate || done) return false;
+        return dueDate < TODAY;
+      };
+
+      const tabs = [
+        { key: 'all',    label: '전체',   count: todos.length },
+        { key: 'active', label: '진행중', count: todos.filter(t => !t.done).length },
+        { key: 'done',   label: '완료',   count: todos.filter(t => t.done).length },
+      ];
+
+      return (
+        <div className="space-y-4">
+          <Card>
+            {todoError && (
+              <div className="mb-3 p-3 bg-red-50 text-red-500 text-xs rounded-lg flex justify-between">
+                {todoError}
+                <button onClick={() => setTodoError('')} className="ml-2 text-red-300 hover:text-red-500">✕</button>
+              </div>
+            )}
+            {/* 상단 필터 영역 */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              {/* 상태 탭 */}
+              <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+                {tabs.map(t => (
+                  <button
+                    key={t.key}
+                    onClick={() => setStatusTab(t.key)}
+                    className={`px-3.5 py-1.5 text-xs font-medium rounded-md transition ${
+                      statusTab === t.key
+                        ? 'bg-white text-gray-800 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {t.label} <span className="opacity-60">({t.count})</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Select value={userFilter} onChange={(e) => setUserFilter(e.target.value)}>
+                  <option value="all">전체 유저</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.username}>{u.username}</option>
+                  ))}
+                </Select>
+                <Button variant="danger" size="md" onClick={deleteAllDone}>
+                  완료 항목 일괄 삭제
+                </Button>
+              </div>
+            </div>
+
+            {/* 테이블 */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-gray-500 border-b border-gray-200">
+                    <th className="py-3 px-2 font-medium">작성자</th>
+                    <th className="py-3 px-2 font-medium">할 일</th>
+                    <th className="py-3 px-2 font-medium">마감일</th>
+                    <th className="py-3 px-2 font-medium">상태</th>
+                    <th className="py-3 px-2 font-medium">등록일</th>
+                    <th className="py-3 px-2 font-medium text-right">액션</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(t => {
+                    const overdue = isOverdue(t.due_date, t.done);
+                    return (
+                      <tr key={t.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                        <td className="py-3 px-2">
+                          <div className="flex items-center gap-2">
+                            <Avatar name={t.username} size="sm" />
+                            <span className="text-sm text-gray-700">{t.username}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-2">
+                          <div className={`${t.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                            {t.title}
+                          </div>
+                        </td>
+                        <td className="py-3 px-2">
+                          {t.due_date
+                            ? <span className={overdue ? 'text-red-600 font-semibold' : 'text-gray-500'}>
+                                {t.due_date}{overdue && ' ⚠'}
+                              </span>
+                            : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="py-3 px-2">
+                          {t.done
+                            ? <Badge color="green">완료</Badge>
+                            : overdue
+                              ? <Badge color="red">마감초과</Badge>
+                              : <Badge color="blue">진행중</Badge>}
+                        </td>
+                        <td className="py-3 px-2 text-gray-500">{t.createdAt}</td>
+                        <td className="py-3 px-2 text-right">
+                          <Button variant="danger" size="sm" onClick={() => deleteTodo(t.id)}>
+                            삭제
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan="6" className="py-10 text-center text-gray-400 text-sm">
+                        조건에 맞는 Todo가 없습니다
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 로그인 페이지
+    // ========================================
+    function LoginPage({ onLogin }) {
+      const [username, setUsername] = useState('admin');
+      const [password, setPassword] = useState('');
+      const [error, setError]       = useState('');
+      const [loading, setLoading]   = useState(false);
+
+      async function handleSubmit(e) {
+        e.preventDefault();
+        setError(''); setLoading(true);
+        try {
+          const data = await apiFetch(`${API}/login`, {
+            method: 'POST', body: JSON.stringify({ username, password }),
+          });
+          localStorage.setItem('admin_token', data.token);
+          localStorage.setItem('admin_user', JSON.stringify({ username: data.username, role: data.role }));
+          onLogin({ username: data.username, role: data.role });
+        } catch (e) { setError(e.message); }
+        finally { setLoading(false); }
+      }
+
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+          <div className="w-full max-w-sm">
+            <div className="text-center mb-8">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">T</div>
+              <h1 className="text-2xl font-bold text-gray-900">Todo Admin</h1>
+              <p className="text-sm text-gray-400 mt-1">관리자 계정으로 로그인하세요</p>
+            </div>
+            <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm p-6 space-y-3">
+              <input type="text" placeholder="아이디" value={username} onChange={e => setUsername(e.target.value)} required
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+              <input type="password" placeholder="비밀번호" value={password} onChange={e => setPassword(e.target.value)} required
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+              {error && <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+              <button type="submit" disabled={loading}
+                className="w-full py-2.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-60 text-white text-sm font-medium rounded-xl transition-colors">
+                {loading ? '로그인 중...' : '관리자 로그인'}
+              </button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // App 루트
+    // ========================================
+    function App() {
+      const [adminUser, setAdminUser] = useState(null);
+      const [activePage, setActivePage] = useState('dashboard');
+      const [users, setUsers] = useState([]);
+      const [todos, setTodos] = useState([]);
+      const [loading, setLoading] = useState(false);
+
+      // 기존 로그인 복원
+      useEffect(() => {
+        const saved = getAdminUser();
+        if (saved && getToken()) setAdminUser(saved);
+      }, []);
+
+      // 로그인 시 데이터 로드
+      const loadData = useCallback(async () => {
+        if (!getToken()) return;
+        setLoading(true);
+        try {
+          const [u, t] = await Promise.all([
+            apiFetch(`${API}/admin/users`),
+            apiFetch(`${API}/admin/todos`),
+          ]);
+          setUsers(u);
+          setTodos(t);
+        } catch (e) {
+          if (e.message.includes('로그인') || e.message.includes('토큰') || e.message.includes('관리자')) {
+            handleLogout();
+          }
+        } finally { setLoading(false); }
+      }, []);
+
+      useEffect(() => {
+        if (adminUser) loadData();
+      }, [adminUser, loadData]);
+
+      function handleLogin(user) { setAdminUser(user); }
+      function handleLogout() {
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_user');
+        setAdminUser(null);
+        setUsers([]); setTodos([]);
+      }
+
+      if (!adminUser) return <LoginPage onLogin={handleLogin} />;
+
+      const pageTitle = { dashboard: '대시보드', users: '유저 관리', todos: 'Todo 관리' }[activePage];
+
+      return (
+        <div className="flex min-h-screen">
+          <Sidebar activePage={activePage} onNavigate={setActivePage} />
+          <div className="flex-1 flex flex-col min-w-0">
+            <Header title={pageTitle} adminUser={adminUser} onLogout={handleLogout} />
+            <main className="flex-1 p-6">
+              {loading ? (
+                <div className="flex items-center justify-center h-64 text-gray-400 text-sm">데이터 불러오는 중...</div>
+              ) : (
+                <>
+                  {activePage === 'dashboard' && <DashboardPage users={users} todos={todos} />}
+                  {activePage === 'users'     && <UsersPage users={users} setUsers={setUsers} todos={todos} />}
+                  {activePage === 'todos'     && <TodosPage todos={todos} setTodos={setTodos} users={users} />}
+                </>
+              )}
+            </main>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
