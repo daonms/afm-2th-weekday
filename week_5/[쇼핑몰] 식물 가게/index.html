@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>초록 식물 가게 🌿</title>
+
+  <!-- React 18 CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- Babel: JSX를 브라우저가 이해할 수 있도록 변환 -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Tailwind CSS: 유틸리티 클래스 기반 스타일링 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    // ============================================================
+    // Supabase 설정 — 아래 두 값을 본인 프로젝트 값으로 교체하세요
+    // Supabase 대시보드 → Project Settings → API 에서 확인
+    // ============================================================
+    const SUPABASE_URL = 'https://ggvsoogzuvdjoelkwmdh.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_nc__Fsl_a7HZE0D6T7ejOA_huMRzoxD';
+  </script>
+
+  <style>
+    /* 식물 카드 이미지 통일 높이 */
+    .product-img {
+      height: 200px;
+      object-fit: cover;
+      width: 100%;
+    }
+    /* 페이지 전환 부드럽게 */
+    .page-fade {
+      animation: fadeIn 0.25s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="bg-green-50 min-h-screen">
+
+<div id="root"></div>
+
+<script type="text/babel">
+  const { useState, useEffect, useCallback } = React;
+
+  // ============================================================
+  // Supabase 클라이언트 초기화
+  // supabase 변수는 전역 window.supabase 에서 가져옵니다
+  // ============================================================
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ============================================================
+  // 유틸: 숫자를 한국 원화 형식으로 포맷 (35000 → "35,000원")
+  // ============================================================
+  const formatPrice = (num) => num.toLocaleString('ko-KR') + '원';
+
+  // ============================================================
+  // 컴포넌트: 네비게이션 바
+  // props: user(현재 유저), cartCount(장바구니 수량), onNav(페이지 이동 함수), onLogout
+  // ============================================================
+  function Navbar({ user, cartCount, onNav, onLogout }) {
+    return (
+      <nav className="bg-green-600 text-white shadow-lg sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          {/* 로고 */}
+          <button
+            onClick={() => onNav('products')}
+            className="text-xl font-bold tracking-tight hover:text-green-100 transition"
+          >
+            🌿 초록 식물 가게
+          </button>
+
+          {/* 우측 메뉴 */}
+          <div className="flex items-center gap-4">
+            {/* 장바구니 버튼 — 뱃지로 수량 표시 */}
+            <button
+              onClick={() => onNav('cart')}
+              className="relative flex items-center gap-1 bg-green-500 hover:bg-green-400 px-3 py-1.5 rounded-full text-sm font-medium transition"
+            >
+              <span>🛒</span>
+              <span>장바구니</span>
+              {/* cartCount가 1 이상일 때만 뱃지 표시 */}
+              {cartCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                  {cartCount > 99 ? '99+' : cartCount}
+                </span>
+              )}
+            </button>
+
+            {/* 로그인/로그아웃 */}
+            {user ? (
+              <div className="flex items-center gap-2">
+                <span className="text-green-200 text-sm hidden sm:block">
+                  {user.email.split('@')[0]}님
+                </span>
+                <button
+                  onClick={onLogout}
+                  className="bg-green-700 hover:bg-green-800 px-3 py-1.5 rounded-full text-sm transition"
+                >
+                  로그아웃
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => onNav('login')}
+                className="bg-white text-green-700 hover:bg-green-100 px-3 py-1.5 rounded-full text-sm font-medium transition"
+              >
+                로그인
+              </button>
+            )}
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
+  // ============================================================
+  // 컴포넌트: 상품 카드 (개별 식물 1개)
+  // props: product(상품 데이터), onAddToCart(장바구니 담기 함수)
+  // ============================================================
+  function ProductCard({ product, onAddToCart }) {
+    const [adding, setAdding] = useState(false); // 버튼 로딩 상태
+
+    const handleAdd = async () => {
+      setAdding(true);
+      await onAddToCart(product);
+      setAdding(false);
+    };
+
+    return (
+      <div className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 flex flex-col">
+        {/* 상품 이미지 */}
+        <img
+          src={product.image_url}
+          alt={product.name}
+          className="product-img"
+          onError={(e) => {
+            // 이미지 로드 실패 시 대체 이미지
+            e.target.src = 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400';
+          }}
+        />
+
+        {/* 상품 정보 */}
+        <div className="p-4 flex flex-col flex-1">
+          <h3 className="font-bold text-gray-800 text-lg mb-1">{product.name}</h3>
+          <p className="text-gray-500 text-sm flex-1 mb-3 leading-relaxed">{product.description}</p>
+
+          {/* 가격 + 버튼 */}
+          <div className="flex items-center justify-between mt-auto">
+            <span className="text-green-700 font-bold text-lg">{formatPrice(product.price)}</span>
+            <button
+              onClick={handleAdd}
+              disabled={adding}
+              className="bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-1"
+            >
+              {adding ? (
+                <span className="animate-pulse">담는 중...</span>
+              ) : (
+                <>
+                  <span>+</span>
+                  <span>담기</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================
+  // 페이지: 상품 목록 (#products)
+  // ============================================================
+  function ProductsPage({ user, onAddToCart }) {
+    const [products, setProducts] = useState([]);  // 상품 목록
+    const [loading, setLoading] = useState(true);  // 로딩 상태
+    const [error, setError] = useState(null);       // 에러 상태
+
+    // 컴포넌트가 화면에 나타날 때 상품 불러오기
+    useEffect(() => {
+      loadProducts();
+    }, []);
+
+    const loadProducts = async () => {
+      setLoading(true);
+      setError(null);
+
+      // Supabase에서 products 테이블 전체 조회
+      // RLS 정책으로 비로그인도 조회 가능
+      const { data, error: err } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (err) {
+        console.error('상품 조회 오류:', err);
+        setError('상품을 불러오지 못했습니다. Supabase 설정을 확인하세요.');
+      } else {
+        setProducts(data || []);
+      }
+      setLoading(false);
+    };
+
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center py-20">
+          <div className="text-green-600 text-xl animate-pulse">식물들을 불러오는 중... 🌱</div>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="max-w-6xl mx-auto px-4 py-10">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+            <p className="text-red-600 font-medium mb-2">{error}</p>
+            <p className="text-red-400 text-sm mb-4">
+              index.html 상단의 SUPABASE_URL과 SUPABASE_ANON_KEY를 확인하고,<br/>
+              supabase-schema.sql을 Supabase SQL Editor에서 실행했는지 확인하세요.
+            </p>
+            <button
+              onClick={loadProducts}
+              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm"
+            >
+              다시 시도
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-8 page-fade">
+        {/* 히어로 배너 */}
+        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-8 mb-8 text-white text-center">
+          <h1 className="text-3xl font-bold mb-2">자연을 집으로 🌿</h1>
+          <p className="text-green-100">건강한 식물로 공간을 채워보세요. 전국 무료 배송!</p>
+        </div>
+
+        {/* 상품 그리드 — 반응형: 모바일 1열 / 태블릿 2열 / PC 3~4열 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {products.map(product => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              onAddToCart={onAddToCart}
+            />
+          ))}
+        </div>
+
+        {products.length === 0 && (
+          <p className="text-center text-gray-400 py-16">
+            상품이 없습니다. supabase-schema.sql을 실행해 샘플 데이터를 추가하세요.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // ============================================================
+  // 페이지: 로그인 / 회원가입 (#login)
+  // ============================================================
+  function LoginPage({ onLoginSuccess }) {
+    const [tab, setTab] = useState('login');         // 'login' | 'signup'
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState(null);    // { type: 'success'|'error', text }
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      setLoading(true);
+      setMessage(null);
+
+      if (tab === 'login') {
+        // 로그인 처리
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          setMessage({ type: 'error', text: '로그인 실패: ' + error.message });
+        } else {
+          setMessage({ type: 'success', text: '로그인 성공! 이동 중...' });
+          setTimeout(() => onLoginSuccess(data.user), 500);
+        }
+      } else {
+        // 회원가입 처리
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) {
+          setMessage({ type: 'error', text: '회원가입 실패: ' + error.message });
+        } else if (data.user && !data.session) {
+          // 이메일 확인 필요한 경우 (Supabase 기본 설정)
+          setMessage({ type: 'success', text: '이메일을 확인해 인증 링크를 클릭하세요!' });
+        } else {
+          setMessage({ type: 'success', text: '가입 완료! 로그인 중...' });
+          setTimeout(() => onLoginSuccess(data.user), 500);
+        }
+      }
+      setLoading(false);
+    };
+
+    return (
+      <div className="max-w-md mx-auto px-4 py-12 page-fade">
+        <div className="bg-white rounded-2xl shadow-lg p-8">
+          {/* 헤더 */}
+          <div className="text-center mb-6">
+            <div className="text-5xl mb-2">🌿</div>
+            <h2 className="text-2xl font-bold text-gray-800">초록 식물 가게</h2>
+            <p className="text-gray-500 text-sm mt-1">장바구니 이용을 위해 로그인하세요</p>
+          </div>
+
+          {/* 탭 전환: 로그인 / 회원가입 */}
+          <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
+            <button
+              onClick={() => { setTab('login'); setMessage(null); }}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+                tab === 'login'
+                  ? 'bg-white text-green-700 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              로그인
+            </button>
+            <button
+              onClick={() => { setTab('signup'); setMessage(null); }}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+                tab === 'signup'
+                  ? 'bg-white text-green-700 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              회원가입
+            </button>
+          </div>
+
+          {/* 폼 */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">이메일</label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                placeholder="example@email.com"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                placeholder={tab === 'signup' ? '최소 6자리' : ''}
+                minLength={6}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent"
+              />
+            </div>
+
+            {/* 결과 메시지 */}
+            {message && (
+              <div className={`rounded-xl px-4 py-3 text-sm ${
+                message.type === 'success'
+                  ? 'bg-green-50 text-green-700 border border-green-200'
+                  : 'bg-red-50 text-red-600 border border-red-200'
+              }`}>
+                {message.text}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white py-3 rounded-xl font-medium transition"
+            >
+              {loading ? '처리 중...' : tab === 'login' ? '로그인' : '회원가입'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================
+  // 페이지: 장바구니 (#cart)
+  // ============================================================
+  function CartPage({ user, onNav }) {
+    const [cartItems, setCartItems] = useState([]);  // { ...cart행, product: {...} }
+    const [loading, setLoading] = useState(true);
+
+    // 비로그인이면 로그인 페이지로 강제 이동
+    useEffect(() => {
+      if (!user) {
+        onNav('login');
+        return;
+      }
+      loadCart();
+    }, [user]);
+
+    // 장바구니 + 상품 정보 함께 조회 (join)
+    const loadCart = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('cart')
+        .select(`
+          id,
+          quantity,
+          product_id,
+          products (
+            id,
+            name,
+            price,
+            image_url,
+            description
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        alert('장바구니 조회 오류: ' + error.message);
+      } else {
+        setCartItems(data || []);
+      }
+      setLoading(false);
+    };
+
+    // 수량 변경 (+1 또는 -1)
+    const updateQuantity = async (item, delta) => {
+      const newQty = item.quantity + delta;
+
+      if (newQty < 1) {
+        // 수량이 0이 되면 삭제 확인
+        if (window.confirm(`"${item.products.name}"을(를) 장바구니에서 삭제할까요?`)) {
+          await removeItem(item.id);
+        }
+        return;
+      }
+
+      // Supabase UPDATE
+      const { error } = await supabase
+        .from('cart')
+        .update({ quantity: newQty })
+        .eq('id', item.id);
+
+      if (error) {
+        alert('수량 변경 오류: ' + error.message);
+      } else {
+        // 로컬 상태 업데이트 (DB 재조회 없이 즉시 반영)
+        setCartItems(prev =>
+          prev.map(ci => ci.id === item.id ? { ...ci, quantity: newQty } : ci)
+        );
+      }
+    };
+
+    // 개별 상품 삭제
+    const removeItem = async (cartId) => {
+      const { error } = await supabase
+        .from('cart')
+        .delete()
+        .eq('id', cartId);
+
+      if (error) {
+        alert('삭제 오류: ' + error.message);
+      } else {
+        setCartItems(prev => prev.filter(ci => ci.id !== cartId));
+      }
+    };
+
+    // 총 합계 계산
+    const totalPrice = cartItems.reduce(
+      (sum, item) => sum + (item.products.price * item.quantity), 0
+    );
+
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center py-20">
+          <div className="text-green-600 text-xl animate-pulse">장바구니 불러오는 중... 🛒</div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-8 page-fade">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+          <span>🛒</span>
+          <span>내 장바구니</span>
+          <span className="text-green-600 text-lg">({cartItems.length}종)</span>
+        </h2>
+
+        {/* 장바구니가 비어있을 때 */}
+        {cartItems.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow p-12 text-center">
+            <div className="text-6xl mb-4">🌱</div>
+            <p className="text-gray-500 mb-6">장바구니가 비어있어요.<br/>마음에 드는 식물을 담아보세요!</p>
+            <button
+              onClick={() => onNav('products')}
+              className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-medium transition"
+            >
+              식물 보러 가기
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* 장바구니 아이템 목록 */}
+            <div className="space-y-4 mb-6">
+              {cartItems.map(item => (
+                <div key={item.id} className="bg-white rounded-2xl shadow p-4 flex items-center gap-4">
+                  {/* 상품 이미지 */}
+                  <img
+                    src={item.products.image_url}
+                    alt={item.products.name}
+                    className="w-20 h-20 object-cover rounded-xl flex-shrink-0"
+                    onError={e => {
+                      e.target.src = 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=100';
+                    }}
+                  />
+
+                  {/* 상품 정보 */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-gray-800 truncate">{item.products.name}</h3>
+                    <p className="text-gray-400 text-sm">{formatPrice(item.products.price)}</p>
+                    {/* 소계 */}
+                    <p className="text-green-600 font-semibold text-sm mt-0.5">
+                      소계: {formatPrice(item.products.price * item.quantity)}
+                    </p>
+                  </div>
+
+                  {/* 수량 조절 버튼 */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => updateQuantity(item, -1)}
+                      className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold flex items-center justify-center transition"
+                    >
+                      -
+                    </button>
+                    <span className="w-8 text-center font-bold text-gray-800">
+                      {item.quantity}
+                    </span>
+                    <button
+                      onClick={() => updateQuantity(item, +1)}
+                      className="w-8 h-8 rounded-full bg-green-100 hover:bg-green-200 text-green-700 font-bold flex items-center justify-center transition"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  {/* 삭제 버튼 */}
+                  <button
+                    onClick={() => removeItem(item.id)}
+                    className="text-red-400 hover:text-red-600 transition flex-shrink-0 ml-2"
+                    title="삭제"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* 결제 요약 */}
+            <div className="bg-white rounded-2xl shadow p-6">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-gray-600 font-medium">총 상품 금액</span>
+                <span className="text-2xl font-bold text-green-600">{formatPrice(totalPrice)}</span>
+              </div>
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-sm text-gray-400 mb-4 text-center">무료 배송 · 신선 식물 보장</p>
+                <button
+                  onClick={() => alert('준비 중입니다 🌿\n곧 주문 기능이 추가될 예정이에요!')}
+                  className="w-full bg-green-500 hover:bg-green-600 text-white py-4 rounded-xl font-bold text-lg transition"
+                >
+                  주문하기 ({cartItems.length}종 · {formatPrice(totalPrice)})
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // ============================================================
+  // 루트 컴포넌트: 앱 전체를 관리
+  // - 인증 상태 (user)
+  // - 현재 페이지 (page)
+  // - 장바구니 개수 (cartCount)
+  // ============================================================
+  function App() {
+    const [user, setUser] = useState(null);           // 로그인한 유저 or null
+    const [page, setPage] = useState('products');     // 현재 페이지 이름
+    const [cartCount, setCartCount] = useState(0);    // 장바구니 아이템 수
+    const [authReady, setAuthReady] = useState(false);// 인증 초기화 완료 여부
+
+    // ----------------------------------------------------------
+    // 앱 시작 시: URL 해시로 초기 페이지 결정 + 인증 상태 구독
+    // ----------------------------------------------------------
+    useEffect(() => {
+      // 현재 URL 해시 읽기 (예: #cart → 'cart')
+      const hash = window.location.hash.replace('#', '') || 'products';
+      setPage(['products', 'cart', 'login'].includes(hash) ? hash : 'products');
+
+      // 브라우저 뒤로가기/앞으로가기 대응
+      const handleHashChange = () => {
+        const h = window.location.hash.replace('#', '') || 'products';
+        setPage(['products', 'cart', 'login'].includes(h) ? h : 'products');
+      };
+      window.addEventListener('hashchange', handleHashChange);
+
+      // Supabase 인증 상태 구독 — 로그인/로그아웃 감지
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          const currentUser = session?.user ?? null;
+          setUser(currentUser);
+          setAuthReady(true);
+          if (currentUser) {
+            await refreshCartCount(currentUser.id);
+          } else {
+            setCartCount(0);
+          }
+        }
+      );
+
+      return () => {
+        window.removeEventListener('hashchange', handleHashChange);
+        subscription.unsubscribe();
+      };
+    }, []);
+
+    // ----------------------------------------------------------
+    // 장바구니 수량 갱신 (로그인 상태에서만)
+    // ----------------------------------------------------------
+    const refreshCartCount = async (userId) => {
+      const { data, error } = await supabase
+        .from('cart')
+        .select('id')
+        .eq('user_id', userId);
+
+      if (!error) {
+        setCartCount(data?.length || 0);
+      }
+    };
+
+    // ----------------------------------------------------------
+    // 페이지 이동 함수 — URL 해시도 함께 변경
+    // ----------------------------------------------------------
+    const navigateTo = useCallback((targetPage) => {
+      setPage(targetPage);
+      window.location.hash = targetPage;
+    }, []);
+
+    // ----------------------------------------------------------
+    // 장바구니 담기 — 비로그인 시 로그인 페이지로 이동
+    // 핵심 로직:
+    //   1단계: 이미 담겨있는지 SELECT로 확인
+    //   2단계: 있으면 quantity + 1 UPDATE, 없으면 INSERT
+    // ----------------------------------------------------------
+    const handleAddToCart = useCallback(async (product) => {
+      if (!user) {
+        // 비로그인: 로그인 페이지로 이동
+        navigateTo('login');
+        return;
+      }
+
+      // 1단계: 해당 상품이 이미 장바구니에 있는지 확인
+      const { data: existing, error: selectError } = await supabase
+        .from('cart')
+        .select('id, quantity')
+        .eq('user_id', user.id)
+        .eq('product_id', product.id)
+        .maybeSingle(); // 없으면 null 반환 (에러 아님)
+
+      if (selectError) {
+        alert('장바구니 확인 오류: ' + selectError.message);
+        return;
+      }
+
+      if (existing) {
+        // 2-A: 이미 있으면 수량 +1
+        const { error: updateError } = await supabase
+          .from('cart')
+          .update({ quantity: existing.quantity + 1 })
+          .eq('id', existing.id);
+
+        if (updateError) {
+          alert('수량 업데이트 오류: ' + updateError.message);
+          return;
+        }
+      } else {
+        // 2-B: 없으면 새로 추가
+        const { error: insertError } = await supabase
+          .from('cart')
+          .insert({
+            user_id: user.id,
+            product_id: product.id,
+            quantity: 1,
+          });
+
+        if (insertError) {
+          alert('장바구니 추가 오류: ' + insertError.message);
+          return;
+        }
+      }
+
+      // 장바구니 아이콘 숫자 갱신
+      await refreshCartCount(user.id);
+      console.log(`"${product.name}" 장바구니에 추가!`);
+    }, [user, navigateTo]);
+
+    // ----------------------------------------------------------
+    // 로그인 성공 처리
+    // ----------------------------------------------------------
+    const handleLoginSuccess = useCallback((loggedInUser) => {
+      setUser(loggedInUser);
+      // 이전 페이지(#products 등)로 돌아가거나 상품 목록으로
+      const prevHash = document.referrer ? '' : 'products';
+      navigateTo(page === 'login' ? 'products' : page);
+    }, [page, navigateTo]);
+
+    // ----------------------------------------------------------
+    // 로그아웃 처리
+    // ----------------------------------------------------------
+    const handleLogout = async () => {
+      await supabase.auth.signOut();
+      setUser(null);
+      setCartCount(0);
+      navigateTo('products');
+    };
+
+    // 인증 초기화 전 로딩 스크린
+    if (!authReady) {
+      return (
+        <div className="min-h-screen bg-green-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-6xl mb-4 animate-bounce">🌿</div>
+            <p className="text-green-600 font-medium">초록 식물 가게 로딩 중...</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-green-50">
+        {/* 네비게이션 바 — 모든 페이지 공통 */}
+        <Navbar
+          user={user}
+          cartCount={cartCount}
+          onNav={navigateTo}
+          onLogout={handleLogout}
+        />
+
+        {/* 페이지 라우팅 — hash 기반 */}
+        {page === 'products' && (
+          <ProductsPage
+            user={user}
+            onAddToCart={handleAddToCart}
+          />
+        )}
+        {page === 'login' && (
+          <LoginPage
+            onLoginSuccess={handleLoginSuccess}
+          />
+        )}
+        {page === 'cart' && (
+          <CartPage
+            user={user}
+            onNav={navigateTo}
+          />
+        )}
+
+        {/* 푸터 */}
+        <footer className="text-center py-8 text-green-400 text-sm mt-8 border-t border-green-100">
+          <p>🌿 초록 식물 가게 — AFM 2기 평일반 Week 5 실습 프로젝트</p>
+          <p className="mt-1 text-xs text-green-300">Powered by React · Supabase · Tailwind CSS</p>
+        </footer>
+      </div>
+    );
+  }
+
+  // React 18 방식으로 앱 마운트
+  const root = ReactDOM.createRoot(document.getElementById('root'));
+  root.render(<App />);
+</script>
+</body>
+</html>
