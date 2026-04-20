@@ -72,6 +72,22 @@
 
 ---
 
+## Week 5 — 실전 배포 + 통합 (04.20 ~)
+
+| 날짜 | 활동 | 결과물 |
+|------|------|--------|
+| 04.20 (월) | Notion MCP 실습 — 워크스페이스 탐색 및 5개 DB 조회 | 수업 실습 |
+| 04.20 (월) | 텔레그램 + Notion AI 비서 (Groq Llama 3.3 · tool_use · node-cron) | `week_5/telegram-notion-bot/` |
+| 04.20 (월) | Chrome MCP AI 뉴스 리서치 에이전트 + Notion 업로드 | `week_5/ai-news-research/2026-04-20.md` |
+| 04.20 (월) | 텔레그램 봇 뉴스 브리핑 확장 (/뉴스 명령어 · RSS 파싱 · 오전 9시 스케줄러) | `week_5/telegram-notion-bot/server.js` |
+| 04.20 (월) | 가계부 풀스택 앱 구축 (Express · pg Pool · Supabase · React CDN · Tailwind · CRUD) | `week_5/budget-app/` |
+| 04.20 (월) | 가계부 수정 기능 추가 + Vercel 배포 | https://budget-app-alpha-one.vercel.app |
+| 04.20 (월) | 식물 가게 쇼핑몰 (React + Supabase Auth + RLS + 장바구니) | `week_5/[쇼핑몰] 식물 가게/` |
+
+**Week 5 핵심 학습**: MCP 도구 연동, LLM tool_use(function calling), Telegram Bot API, Groq API, node-cron 스케줄러, RSS 파싱, pg Pool 직접 연결, DATE timezone 처리(`to_char`), Vercel 서버리스 듀얼 모드(`module.exports`+`require.main`), React 상태 끌어올리기, Supabase Auth + RLS
+
+---
+
 ## 전체 결과물 요약
 
 | 주차 | 앱 수 | 핵심 기술 |
@@ -79,7 +95,8 @@
 | Week 1 | 문서 5건 | Markdown · AI 프롬프트 |
 | Week 2 | 앱 9개 | HTML/CSS/JS · React · Tailwind |
 | Week 3 | 앱 9개 + 이미지서비스 1개 | Node.js 서버 · REST API · OpenAI · DALL-E |
-| **합계** | **앱 19개 + 문서** | — |
+| Week 5 | 앱/서비스 7개 | Telegram Bot · Notion MCP · Groq · Chrome MCP · node-cron · pg Pool · Vercel · Supabase Auth |
+| **합계** | **앱 25개 + 문서** | — |
 
 ---
 
