@@ -2,7 +2,6 @@ const express = require('express');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const OpenAI = require('openai');
 const https = require('https');
 const path = require('path');
 require('dotenv').config();
@@ -15,12 +14,44 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-const openai = new OpenAI({
-  apiKey: process.env.GROK_API_KEY,
-  baseURL: 'https://api.groq.com/openai/v1'
-});
-
 const JWT_SECRET = process.env.JWT_SECRET || 'dashboard-secret';
+
+function callGroq(messages, maxTokens = 400) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages,
+      max_tokens: maxTokens,
+      temperature: 0.7
+    });
+    const options = {
+      hostname: 'api.groq.com',
+      path: '/openai/v1/chat/completions',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${(process.env.GROK_API_KEY || '').trim()}`,
+        'Content-Length': Buffer.byteLength(body)
+      }
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json.error) return reject(new Error(json.error.message));
+          resolve(json.choices[0].message.content);
+        } catch (e) {
+          reject(new Error('Groq 응답 파싱 실패: ' + data.slice(0, 200)));
+        }
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
 
 // ── DB 초기화 ──────────────────────────────────────────────
 async function initDB() {
@@ -185,16 +216,11 @@ ${dbText}
 날씨에 맞는 조언, 지출 패턴 분석, 오늘의 동기부여 메시지를 포함하세요.`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMsg }
-      ],
-      max_tokens: 400,
-      temperature: 0.7
-    });
-    res.json({ briefing: completion.choices[0].message.content });
+    const briefing = await callGroq([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMsg }
+    ]);
+    res.json({ briefing });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

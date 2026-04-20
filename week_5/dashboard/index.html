@@ -21,27 +21,33 @@
   <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.css" rel="stylesheet" />
   <style>
     body { font-family: 'Pretendard Variable', 'Pretendard', system-ui, sans-serif; }
-    .card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); }
     .spinner { animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .fade-in { animation: fadeIn 0.4s ease-in; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     .briefing-text { line-height: 1.8; }
+    .theme-toggle { transition: transform 0.3s ease; }
+    .theme-toggle:hover { transform: rotate(20deg); }
   </style>
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen">
+<body>
 <div id="root"></div>
 
 <script type="text/babel">
-const { useState, useEffect, useCallback } = React;
+const { useState, useEffect, useCallback, createContext, useContext } = React;
+
+// ── 테마 컨텍스트 ──────────────────────────────────────────
+const ThemeCtx = createContext({ dark: true, toggle: () => {} });
+const useTheme = () => useContext(ThemeCtx);
+
+// 다크/라이트 토큰 선택 헬퍼
+const t = (darkCls, lightCls) => ({ dark, toggle }) => dark ? darkCls : lightCls;
 
 // ── 토큰 관리 ──────────────────────────────────────────────
 const getToken = () => localStorage.getItem('dashboard_token');
-const setToken = (t) => localStorage.setItem('dashboard_token', t);
+const setToken = (v) => localStorage.setItem('dashboard_token', v);
 const removeToken = () => localStorage.removeItem('dashboard_token');
-const getUser = () => {
-  try { return JSON.parse(localStorage.getItem('dashboard_user')); } catch { return null; }
-};
+const getUser = () => { try { return JSON.parse(localStorage.getItem('dashboard_user')); } catch { return null; } };
 const setUser = (u) => localStorage.setItem('dashboard_user', JSON.stringify(u));
 const removeUser = () => localStorage.removeItem('dashboard_user');
 
@@ -65,6 +71,7 @@ async function api(path, opts = {}) {
 const Icon = ({ name, cls = 'w-5 h-5' }) => {
   const icons = {
     sun: <svg class={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>,
+    moon: <svg class={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>,
     wallet: <svg class={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8L6 7h12z"/><circle cx="16" cy="14" r="1" fill="currentColor"/></svg>,
     robot: <svg class={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M12 2v6"/><circle cx="12" cy="2" r="1" fill="currentColor"/><rect x="7" y="12" width="3" height="3" rx="0.5"/><rect x="14" y="12" width="3" height="3" rx="0.5"/><path d="M8 20v2M16 20v2"/></svg>,
     logout: <svg class={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
@@ -84,8 +91,32 @@ const Spinner = ({ sm }) => (
   </svg>
 );
 
+// ── 테마 토글 버튼 ─────────────────────────────────────────
+function ThemeToggle({ small }) {
+  const { dark, toggle } = useTheme();
+  return (
+    <button
+      onClick={toggle}
+      class={`theme-toggle flex items-center justify-center rounded-lg transition ${
+        small
+          ? 'p-2'
+          : dark
+            ? 'p-2 text-gray-400 hover:text-yellow-300 bg-gray-800 hover:bg-gray-700'
+            : 'p-2 text-gray-500 hover:text-blue-600 bg-gray-100 hover:bg-gray-200'
+      }`}
+      title={dark ? '라이트 모드로 전환' : '다크 모드로 전환'}
+    >
+      {dark
+        ? <Icon name="sun" cls={small ? 'w-4 h-4 text-yellow-300' : 'w-4 h-4'} />
+        : <Icon name="moon" cls={small ? 'w-4 h-4 text-blue-500' : 'w-4 h-4'} />
+      }
+    </button>
+  );
+}
+
 // ── 로그인/회원가입 폼 ─────────────────────────────────────
 function AuthPage({ onAuth }) {
+  const { dark } = useTheme();
   const [mode, setMode] = useState('login');
   const [form, setForm] = useState({ email: '', password: '', name: '' });
   const [error, setError] = useState('');
@@ -97,9 +128,7 @@ function AuthPage({ onAuth }) {
     setLoading(true);
     try {
       const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
-      const body = mode === 'login'
-        ? { email: form.email, password: form.password }
-        : form;
+      const body = mode === 'login' ? { email: form.email, password: form.password } : form;
       const data = await api(endpoint, { method: 'POST', body: JSON.stringify(body) });
       setToken(data.token);
       setUser(data.user);
@@ -114,28 +143,43 @@ function AuthPage({ onAuth }) {
   const inp = (field) => ({
     value: form[field],
     onChange: (e) => setForm(f => ({ ...f, [field]: e.target.value })),
-    class: 'w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500 transition'
+    class: `w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 transition ${
+      dark
+        ? 'bg-gray-800 border-gray-700 text-gray-100 placeholder-gray-500'
+        : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-400'
+    }`
   });
 
   return (
-    <div class="min-h-screen flex items-center justify-center px-4">
+    <div class={`min-h-screen flex items-center justify-center px-4 ${dark ? 'bg-gray-950' : 'bg-gray-50'}`}>
       <div class="w-full max-w-md fade-in">
+        {/* 테마 토글 — 우상단 */}
+        <div class="flex justify-end mb-2">
+          <ThemeToggle small />
+        </div>
+
         <div class="text-center mb-8">
           <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4">
             <Icon name="robot" cls="w-8 h-8 text-white" />
           </div>
-          <h1 class="text-2xl font-bold text-white">나만의 AI 대시보드</h1>
-          <p class="text-gray-400 mt-1 text-sm">개인 맞춤형 AI 브리핑 서비스</p>
+          <h1 class={`text-2xl font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>나만의 AI 대시보드</h1>
+          <p class={`mt-1 text-sm ${dark ? 'text-gray-400' : 'text-gray-500'}`}>개인 맞춤형 AI 브리핑 서비스</p>
         </div>
 
-        <div class="card rounded-2xl p-6">
-          <div class="flex mb-6 bg-gray-800 rounded-lg p-1">
+        <div class={`rounded-2xl p-6 border ${
+          dark
+            ? 'bg-white/5 border-white/10'
+            : 'bg-white border-gray-200 shadow-sm'
+        }`}>
+          <div class={`flex mb-6 rounded-lg p-1 ${dark ? 'bg-gray-800' : 'bg-gray-100'}`}>
             {['login', 'register'].map(m => (
               <button
                 key={m}
                 onClick={() => { setMode(m); setError(''); }}
                 class={`flex-1 py-2 rounded-md text-sm font-medium transition ${
-                  mode === m ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                  mode === m
+                    ? 'bg-blue-600 text-white'
+                    : dark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-800'
                 }`}
               >
                 {m === 'login' ? '로그인' : '회원가입'}
@@ -146,21 +190,25 @@ function AuthPage({ onAuth }) {
           <form onSubmit={submit} class="space-y-4">
             {mode === 'register' && (
               <div>
-                <label class="block text-sm text-gray-400 mb-1">이름</label>
+                <label class={`block text-sm mb-1 ${dark ? 'text-gray-400' : 'text-gray-600'}`}>이름</label>
                 <input {...inp('name')} placeholder="홍길동" required />
               </div>
             )}
             <div>
-              <label class="block text-sm text-gray-400 mb-1">이메일</label>
+              <label class={`block text-sm mb-1 ${dark ? 'text-gray-400' : 'text-gray-600'}`}>이메일</label>
               <input {...inp('email')} type="email" placeholder="email@example.com" required />
             </div>
             <div>
-              <label class="block text-sm text-gray-400 mb-1">비밀번호</label>
+              <label class={`block text-sm mb-1 ${dark ? 'text-gray-400' : 'text-gray-600'}`}>비밀번호</label>
               <input {...inp('password')} type="password" placeholder="••••••••" required />
             </div>
 
             {error && (
-              <div class="bg-red-900/40 border border-red-700 text-red-300 rounded-lg px-4 py-2 text-sm">
+              <div class={`border rounded-lg px-4 py-2 text-sm ${
+                dark
+                  ? 'bg-red-900/40 border-red-700 text-red-300'
+                  : 'bg-red-50 border-red-200 text-red-600'
+              }`}>
                 {error}
               </div>
             )}
@@ -175,7 +223,7 @@ function AuthPage({ onAuth }) {
             </button>
           </form>
 
-          <p class="text-center text-xs text-gray-600 mt-4">
+          <p class={`text-center text-xs mt-4 ${dark ? 'text-gray-600' : 'text-gray-400'}`}>
             테스트 계정: test@daon.com / test1234
           </p>
         </div>
@@ -186,6 +234,7 @@ function AuthPage({ onAuth }) {
 
 // ── 날씨 위젯 ──────────────────────────────────────────────
 function WeatherWidget({ data, loading }) {
+  const { dark } = useTheme();
   const weatherEmoji = (desc) => {
     if (!desc) return '🌤';
     const d = desc.toLowerCase();
@@ -199,10 +248,10 @@ function WeatherWidget({ data, loading }) {
   };
 
   return (
-    <div class="card rounded-2xl p-5">
+    <div class={`rounded-2xl p-5 border ${dark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200 shadow-sm'}`}>
       <div class="flex items-center gap-2 mb-4">
         <Icon name="sun" cls="w-5 h-5 text-yellow-400" />
-        <h2 class="font-semibold text-gray-200">오늘 날씨 · 서울</h2>
+        <h2 class={`font-semibold ${dark ? 'text-gray-200' : 'text-gray-700'}`}>오늘 날씨 · 서울</h2>
       </div>
       {loading ? (
         <div class="flex justify-center py-6"><Spinner /></div>
@@ -211,24 +260,24 @@ function WeatherWidget({ data, loading }) {
           <div class="flex items-end gap-3 mb-4">
             <span class="text-5xl">{weatherEmoji(data.desc)}</span>
             <div>
-              <div class="text-4xl font-bold text-white">{data.temp}°C</div>
-              <div class="text-sm text-gray-400">체감 {data.feels_like}°C</div>
+              <div class={`text-4xl font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>{data.temp}°C</div>
+              <div class={`text-sm ${dark ? 'text-gray-400' : 'text-gray-500'}`}>체감 {data.feels_like}°C</div>
             </div>
           </div>
-          <p class="text-gray-300 text-sm mb-3">{data.desc}</p>
+          <p class={`text-sm mb-3 ${dark ? 'text-gray-300' : 'text-gray-600'}`}>{data.desc}</p>
           <div class="grid grid-cols-2 gap-2">
-            <div class="flex items-center gap-2 text-sm text-gray-400">
+            <div class={`flex items-center gap-2 text-sm ${dark ? 'text-gray-400' : 'text-gray-500'}`}>
               <Icon name="drop" cls="w-4 h-4 text-blue-400" />
               습도 {data.humidity}%
             </div>
-            <div class="flex items-center gap-2 text-sm text-gray-400">
+            <div class={`flex items-center gap-2 text-sm ${dark ? 'text-gray-400' : 'text-gray-500'}`}>
               <Icon name="wind" cls="w-4 h-4 text-teal-400" />
               바람 {data.wind}km/h
             </div>
           </div>
         </div>
       ) : (
-        <p class="text-gray-500 text-sm py-4 text-center">날씨 정보를 불러올 수 없습니다</p>
+        <p class={`text-sm py-4 text-center ${dark ? 'text-gray-500' : 'text-gray-400'}`}>날씨 정보를 불러올 수 없습니다</p>
       )}
     </div>
   );
@@ -236,6 +285,7 @@ function WeatherWidget({ data, loading }) {
 
 // ── 지출 위젯 ──────────────────────────────────────────────
 function SpendingWidget({ data, loading }) {
+  const { dark } = useTheme();
   const colors = ['bg-blue-500','bg-purple-500','bg-pink-500','bg-orange-500','bg-teal-500','bg-green-500'];
 
   const totalExpense = data ? parseInt(data.summary?.total_expense || 0) : 0;
@@ -243,18 +293,20 @@ function SpendingWidget({ data, loading }) {
   const topCategories = categories.filter(r => parseInt(r.total) > 0).slice(0, 5);
 
   return (
-    <div class="card rounded-2xl p-5">
+    <div class={`rounded-2xl p-5 border ${dark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200 shadow-sm'}`}>
       <div class="flex items-center gap-2 mb-4">
         <Icon name="wallet" cls="w-5 h-5 text-green-400" />
-        <h2 class="font-semibold text-gray-200">최근 30일 지출</h2>
+        <h2 class={`font-semibold ${dark ? 'text-gray-200' : 'text-gray-700'}`}>최근 30일 지출</h2>
       </div>
       {loading ? (
         <div class="flex justify-center py-6"><Spinner /></div>
       ) : data ? (
         <div class="fade-in">
           <div class="mb-4">
-            <div class="text-3xl font-bold text-white">{totalExpense.toLocaleString()}<span class="text-lg text-gray-400 ml-1">원</span></div>
-            <div class="text-sm text-gray-400">{data.summary?.total_count || 0}건 거래</div>
+            <div class={`text-3xl font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>
+              {totalExpense.toLocaleString()}<span class={`text-lg ml-1 ${dark ? 'text-gray-400' : 'text-gray-500'}`}>원</span>
+            </div>
+            <div class={`text-sm ${dark ? 'text-gray-400' : 'text-gray-500'}`}>{data.summary?.total_count || 0}건 거래</div>
           </div>
           <div class="space-y-2.5">
             {topCategories.map((cat, i) => {
@@ -263,10 +315,10 @@ function SpendingWidget({ data, loading }) {
               return (
                 <div key={cat.category}>
                   <div class="flex justify-between text-sm mb-1">
-                    <span class="text-gray-300">{cat.category}</span>
-                    <span class="text-gray-400">{amt.toLocaleString()}원 ({pct}%)</span>
+                    <span class={dark ? 'text-gray-300' : 'text-gray-600'}>{cat.category}</span>
+                    <span class={dark ? 'text-gray-400' : 'text-gray-500'}>{amt.toLocaleString()}원 ({pct}%)</span>
                   </div>
-                  <div class="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                  <div class={`h-1.5 rounded-full overflow-hidden ${dark ? 'bg-gray-800' : 'bg-gray-100'}`}>
                     <div
                       class={`h-full rounded-full ${colors[i % colors.length]}`}
                       style={{ width: `${pct}%`, transition: 'width 0.8s ease' }}
@@ -278,14 +330,15 @@ function SpendingWidget({ data, loading }) {
           </div>
         </div>
       ) : (
-        <p class="text-gray-500 text-sm py-4 text-center">지출 데이터를 불러올 수 없습니다</p>
+        <p class={`text-sm py-4 text-center ${dark ? 'text-gray-500' : 'text-gray-400'}`}>지출 데이터를 불러올 수 없습니다</p>
       )}
     </div>
   );
 }
 
 // ── AI 브리핑 위젯 ─────────────────────────────────────────
-function BriefingWidget({ weather, dbData, userEmail }) {
+function BriefingWidget({ weather, dbData }) {
+  const { dark } = useTheme();
   const [briefing, setBriefing] = useState('');
   const [loading, setLoading] = useState(false);
   const [generated, setGenerated] = useState(false);
@@ -307,23 +360,21 @@ function BriefingWidget({ weather, dbData, userEmail }) {
     }
   };
 
-  const today = new Date().toLocaleDateString('ko-KR', {
-    month: 'long', day: 'numeric', weekday: 'short'
-  });
+  const today = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
 
   return (
-    <div class="card rounded-2xl p-5">
+    <div class={`rounded-2xl p-5 border ${dark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200 shadow-sm'}`}>
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-2">
           <Icon name="sparkle" cls="w-5 h-5 text-purple-400" />
-          <h2 class="font-semibold text-gray-200">AI 데일리 브리핑</h2>
+          <h2 class={`font-semibold ${dark ? 'text-gray-200' : 'text-gray-700'}`}>AI 데일리 브리핑</h2>
         </div>
-        <span class="text-xs text-gray-500">{today}</span>
+        <span class={`text-xs ${dark ? 'text-gray-500' : 'text-gray-400'}`}>{today}</span>
       </div>
 
       {!generated && !loading && (
         <div class="text-center py-6">
-          <p class="text-gray-400 text-sm mb-4">날씨·지출 데이터를 분석해<br/>오늘 하루 맞춤 브리핑을 생성합니다</p>
+          <p class={`text-sm mb-4 ${dark ? 'text-gray-400' : 'text-gray-500'}`}>날씨·지출 데이터를 분석해<br/>오늘 하루 맞춤 브리핑을 생성합니다</p>
           <button
             onClick={generate}
             class="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 mx-auto transition"
@@ -337,18 +388,18 @@ function BriefingWidget({ weather, dbData, userEmail }) {
       {loading && (
         <div class="flex flex-col items-center py-8 gap-3">
           <Spinner />
-          <p class="text-gray-400 text-sm">AI가 분석 중입니다...</p>
+          <p class={`text-sm ${dark ? 'text-gray-400' : 'text-gray-500'}`}>AI가 분석 중입니다...</p>
         </div>
       )}
 
       {briefing && !loading && (
         <div class="fade-in">
-          <div class="bg-gray-900/60 rounded-xl p-4 mb-4">
-            <p class="text-gray-200 text-sm briefing-text whitespace-pre-wrap">{briefing}</p>
+          <div class={`rounded-xl p-4 mb-4 ${dark ? 'bg-gray-900/60' : 'bg-gray-50'}`}>
+            <p class={`text-sm briefing-text whitespace-pre-wrap ${dark ? 'text-gray-200' : 'text-gray-700'}`}>{briefing}</p>
           </div>
           <button
             onClick={generate}
-            class="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition"
+            class={`flex items-center gap-1.5 text-xs transition ${dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
           >
             <Icon name="refresh" cls="w-3.5 h-3.5" />
             다시 생성
@@ -361,58 +412,64 @@ function BriefingWidget({ weather, dbData, userEmail }) {
 
 // ── 환영 카드 ──────────────────────────────────────────────
 function WelcomeCard({ user, onLogout }) {
+  const { dark } = useTheme();
   const hour = new Date().getHours();
   const greeting = hour < 6 ? '좋은 밤이에요' : hour < 12 ? '좋은 아침이에요' : hour < 18 ? '좋은 오후에요' : '좋은 저녁이에요';
 
   return (
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-xl font-bold text-white">{greeting}, {user.name}님 👋</h1>
-        <p class="text-gray-400 text-sm mt-0.5">{new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}</p>
+        <h1 class={`text-xl font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>{greeting}, {user.name}님 👋</h1>
+        <p class={`text-sm mt-0.5 ${dark ? 'text-gray-400' : 'text-gray-500'}`}>
+          {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
+        </p>
       </div>
-      <button
-        onClick={onLogout}
-        class="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-300 bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg transition"
-      >
-        <Icon name="logout" cls="w-4 h-4" />
-        로그아웃
-      </button>
+      <div class="flex items-center gap-2">
+        <ThemeToggle />
+        <button
+          onClick={onLogout}
+          class={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg transition ${
+            dark
+              ? 'text-gray-500 hover:text-gray-300 bg-gray-800 hover:bg-gray-700'
+              : 'text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200'
+          }`}
+        >
+          <Icon name="logout" cls="w-4 h-4" />
+          로그아웃
+        </button>
+      </div>
     </div>
   );
 }
 
 // ── 메인 대시보드 ──────────────────────────────────────────
 function Dashboard({ user, onLogout }) {
+  const { dark } = useTheme();
   const [weather, setWeather] = useState(null);
   const [dbData, setDbData] = useState(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [dbLoading, setDbLoading] = useState(true);
 
   useEffect(() => {
-    api('/api/weather')
-      .then(setWeather)
-      .catch(console.error)
-      .finally(() => setWeatherLoading(false));
-
-    api('/api/db-summary')
-      .then(setDbData)
-      .catch(console.error)
-      .finally(() => setDbLoading(false));
+    api('/api/weather').then(setWeather).catch(console.error).finally(() => setWeatherLoading(false));
+    api('/api/db-summary').then(setDbData).catch(console.error).finally(() => setDbLoading(false));
   }, []);
 
   return (
-    <div class="max-w-2xl mx-auto px-4 py-6 fade-in">
-      <WelcomeCard user={user} onLogout={onLogout} />
-
-      <div class="grid grid-cols-1 gap-4">
-        <WeatherWidget data={weather} loading={weatherLoading} />
-        <SpendingWidget data={dbData} loading={dbLoading} />
-        <BriefingWidget weather={weather} dbData={dbData} userEmail={user.email} />
+    <div class={`min-h-screen transition-colors duration-300 ${dark ? 'bg-gray-950 text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
+      <div class="max-w-3xl mx-auto px-4 py-6 fade-in">
+        <WelcomeCard user={user} onLogout={onLogout} />
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <WeatherWidget data={weather} loading={weatherLoading} />
+          <SpendingWidget data={dbData} loading={dbLoading} />
+          <div class="sm:col-span-2">
+            <BriefingWidget weather={weather} dbData={dbData} />
+          </div>
+        </div>
+        <p class={`text-center text-xs mt-6 ${dark ? 'text-gray-700' : 'text-gray-400'}`}>
+          AI Dashboard · Powered by Groq LLaMA 3.3 + Supabase
+        </p>
       </div>
-
-      <p class="text-center text-xs text-gray-700 mt-6">
-        AI Dashboard · Powered by Groq LLaMA 3.3 + Supabase
-      </p>
     </div>
   );
 }
@@ -420,17 +477,28 @@ function Dashboard({ user, onLogout }) {
 // ── 앱 루트 ────────────────────────────────────────────────
 function App() {
   const [user, setUser] = useState(() => getUser());
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem('dashboard_theme');
+    return saved ? saved === 'dark' : true;
+  });
+
+  const toggle = () => setDark(d => {
+    const next = !d;
+    localStorage.setItem('dashboard_theme', next ? 'dark' : 'light');
+    return next;
+  });
 
   const handleAuth = (userData) => setUser(userData);
+  const handleLogout = () => { removeToken(); removeUser(); setUser(null); };
 
-  const handleLogout = () => {
-    removeToken();
-    removeUser();
-    setUser(null);
-  };
-
-  if (!user) return <AuthPage onAuth={handleAuth} />;
-  return <Dashboard user={user} onLogout={handleLogout} />;
+  return (
+    <ThemeCtx.Provider value={{ dark, toggle }}>
+      {!user
+        ? <AuthPage onAuth={handleAuth} />
+        : <Dashboard user={user} onLogout={handleLogout} />
+      }
+    </ThemeCtx.Provider>
+  );
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
