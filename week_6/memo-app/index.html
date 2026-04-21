@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📝 메모 앱</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    /* 포스트잇 느낌의 부드러운 배경 */
+    body {
+      background: linear-gradient(135deg, #fef9c3 0%, #fef3c7 50%, #fde68a 100%);
+      min-height: 100vh;
+    }
+
+    /* 커스텀 스크롤바 */
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background-color: rgba(161, 98, 7, 0.3);
+      border-radius: 3px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background-color: rgba(161, 98, 7, 0.5);
+    }
+
+    /* 스피너 애니메이션 */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* 카드 호버 애니메이션 */
+    .memo-card {
+      transition: all 0.2s ease;
+    }
+    .memo-card:hover {
+      transform: translateY(-2px);
+    }
+
+    /* 페이드인 애니메이션 */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in {
+      animation: fadeIn 0.3s ease-out;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    // ========================================
+    // React Hooks
+    // ========================================
+    const { useState, useEffect, useCallback, useMemo } = React;
+
+    // ========================================
+    // API 설정
+    // ========================================
+    const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:3000/api`;
+
+    // ========================================
+    // 🎨 Design System Components
+    // ========================================
+
+    // Button — variant (primary, secondary, danger, ghost), size (sm, md, lg)
+    function Button({ variant = 'primary', size = 'md', disabled, onClick, className = '', children, type = 'button', ...rest }) {
+      const base = 'inline-flex items-center justify-center gap-1.5 font-semibold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed';
+      const variants = {
+        primary: 'bg-amber-500 hover:bg-amber-600 text-white focus:ring-amber-400 shadow-sm',
+        secondary: 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 focus:ring-gray-300',
+        danger: 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-400',
+        ghost: 'bg-transparent hover:bg-amber-100 text-amber-700 focus:ring-amber-300',
+      };
+      const sizes = {
+        sm: 'px-2.5 py-1 text-xs',
+        md: 'px-4 py-2 text-sm',
+        lg: 'px-5 py-2.5 text-base',
+      };
+      return (
+        <button
+          type={type}
+          disabled={disabled}
+          onClick={onClick}
+          className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
+          {...rest}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    // Input — label, value, onChange, placeholder, error
+    function Input({ label, value, onChange, placeholder, error, disabled, className = '', ...rest }) {
+      return (
+        <div className={`flex flex-col gap-1 ${className}`}>
+          {label && <label className="text-sm font-semibold text-gray-700">{label}</label>}
+          <input
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            disabled={disabled}
+            className={`px-3 py-2 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-colors ${
+              error
+                ? 'border-red-400 focus:ring-red-300'
+                : 'border-gray-300 focus:ring-amber-400 focus:border-amber-400'
+            } disabled:bg-gray-100`}
+            {...rest}
+          />
+          {error && <span className="text-xs text-red-500">{error}</span>}
+        </div>
+      );
+    }
+
+    // Textarea
+    function Textarea({ label, value, onChange, placeholder, error, disabled, rows = 10, className = '' }) {
+      return (
+        <div className={`flex flex-col gap-1 flex-1 ${className}`}>
+          {label && <label className="text-sm font-semibold text-gray-700">{label}</label>}
+          <textarea
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            disabled={disabled}
+            rows={rows}
+            className={`flex-1 px-3 py-2 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 transition-colors resize-none custom-scroll ${
+              error
+                ? 'border-red-400 focus:ring-red-300'
+                : 'border-gray-300 focus:ring-amber-400 focus:border-amber-400'
+            } disabled:bg-gray-100`}
+          />
+          {error && <span className="text-xs text-red-500">{error}</span>}
+        </div>
+      );
+    }
+
+    // Spinner
+    function Spinner({ size = 'md', className = '' }) {
+      const sizes = { sm: 'w-4 h-4', md: 'w-6 h-6', lg: 'w-10 h-10' };
+      return (
+        <div className={`${sizes[size]} spinner border-2 border-amber-200 border-t-amber-500 rounded-full ${className}`} />
+      );
+    }
+
+    // ErrorBanner
+    function ErrorBanner({ message, onClose }) {
+      if (!message) return null;
+      return (
+        <div className="fade-in fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg shadow-lg flex items-center gap-2 max-w-md">
+          <span className="text-base">⚠️</span>
+          <span className="text-sm flex-1">{message}</span>
+          <button
+            onClick={onClose}
+            className="text-red-400 hover:text-red-600 ml-2 text-lg leading-none"
+            aria-label="에러 닫기"
+          >
+            ×
+          </button>
+        </div>
+      );
+    }
+
+    // EmptyState
+    function EmptyState({ icon = '📭', title, description, action }) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full text-center p-8">
+          <div className="text-5xl mb-3 opacity-60">{icon}</div>
+          <h3 className="text-base font-semibold text-gray-600 mb-1">{title}</h3>
+          {description && <p className="text-sm text-gray-500 mb-4">{description}</p>}
+          {action}
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🛠️ 유틸리티
+    // ========================================
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      const now = new Date();
+      const isSameDay = d.toDateString() === now.toDateString();
+      if (isSameDay) {
+        return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+      }
+      return d.toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' });
+    }
+
+    function truncate(text, length = 50) {
+      if (!text) return '';
+      const clean = text.replace(/\s+/g, ' ').trim();
+      return clean.length > length ? clean.slice(0, length) + '…' : clean;
+    }
+
+    // ========================================
+    // 🧩 Layout Components
+    // ========================================
+    function Header() {
+      return (
+        <header className="bg-amber-400/90 backdrop-blur-sm border-b border-amber-500/40 shadow-sm sticky top-0 z-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold text-amber-900 flex items-center gap-2">
+              <span>📝</span>
+              <span>메모 앱</span>
+            </h1>
+            <span className="hidden sm:inline text-xs text-amber-800/70 ml-2">
+              Express + PostgreSQL 연동
+            </span>
+          </div>
+        </header>
+      );
+    }
+
+    // ========================================
+    // 📄 Page Components
+    // ========================================
+
+    // MemoCard — 사이드바 목록 카드
+    function MemoCard({ memo, selected, onClick, onDelete }) {
+      return (
+        <div
+          onClick={onClick}
+          className={`memo-card cursor-pointer bg-white rounded-lg p-3 shadow-sm hover:shadow-md border-2 ${
+            selected ? 'border-blue-400 ring-2 ring-blue-200' : 'border-transparent'
+          }`}
+        >
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <h3 className="font-semibold text-sm text-gray-800 truncate flex-1">
+              {memo.title || '(제목 없음)'}
+            </h3>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(memo.id); }}
+              className="text-gray-300 hover:text-red-500 transition-colors text-sm px-1 -my-1 shrink-0"
+              aria-label="메모 삭제"
+              title="삭제"
+            >
+              🗑️
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mb-2 leading-relaxed min-h-[2rem]">
+            {truncate(memo.content, 50) || <span className="italic text-gray-400">내용 없음</span>}
+          </p>
+          <div className="text-[10px] text-gray-400 flex items-center gap-1">
+            <span>🕒</span>
+            <span>{formatDate(memo.updated_at || memo.created_at)}</span>
+          </div>
+        </div>
+      );
+    }
+
+    // MemoList — 사이드바
+    function MemoList({ memos, loading, selectedId, onSelect, onDelete, onNew, className = '' }) {
+      return (
+        <aside className={`flex flex-col bg-amber-100/60 border border-amber-200/70 rounded-xl ${className}`}>
+          <div className="p-3 border-b border-amber-200/70 flex items-center justify-between gap-2">
+            <div className="text-sm font-bold text-amber-900">
+              메모 목록 <span className="text-amber-700 font-normal">({memos.length})</span>
+            </div>
+            <Button size="sm" variant="primary" onClick={onNew}>
+              <span>+</span>
+              <span>새 메모</span>
+            </Button>
+          </div>
+          <div className="flex-1 overflow-y-auto custom-scroll p-2 space-y-2 min-h-0">
+            {loading ? (
+              <div className="flex items-center justify-center h-32">
+                <Spinner />
+              </div>
+            ) : memos.length === 0 ? (
+              <EmptyState
+                icon="📋"
+                title="메모가 없어요"
+                description="'+ 새 메모' 버튼으로 첫 메모를 만들어 보세요."
+              />
+            ) : (
+              memos.map((memo) => (
+                <MemoCard
+                  key={memo.id}
+                  memo={memo}
+                  selected={selectedId === memo.id}
+                  onClick={() => onSelect(memo)}
+                  onDelete={onDelete}
+                />
+              ))
+            )}
+          </div>
+        </aside>
+      );
+    }
+
+    // MemoEditor — 오른쪽 메인 영역
+    function MemoEditor({ draft, isNew, saving, onChange, onSave, onCancel, onBackToList, isMobile }) {
+      const canSave = !!(draft && (draft.title?.trim() || draft.content?.trim()));
+
+      if (!draft) {
+        return (
+          <section className="flex-1 bg-white/80 rounded-xl border border-amber-200/70 shadow-sm">
+            <EmptyState
+              icon="✏️"
+              title="선택된 메모가 없습니다"
+              description="왼쪽 목록에서 메모를 선택하거나 새 메모를 만들어보세요."
+            />
+          </section>
+        );
+      }
+
+      return (
+        <section className="flex-1 bg-white/90 rounded-xl border border-amber-200/70 shadow-sm flex flex-col min-h-0">
+          <div className="p-4 border-b border-amber-200/70 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              {isMobile && (
+                <Button size="sm" variant="ghost" onClick={onBackToList} aria-label="목록으로">
+                  ← 목록
+                </Button>
+              )}
+              <h2 className="text-base font-bold text-gray-800 truncate">
+                {isNew ? '✨ 새 메모 작성' : '📝 메모 편집'}
+              </h2>
+              {!isNew && draft.updated_at && (
+                <span className="hidden sm:inline text-xs text-gray-400 ml-2">
+                  최근 수정: {formatDate(draft.updated_at)}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button size="sm" variant="secondary" onClick={onCancel} disabled={saving}>
+                취소
+              </Button>
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={onSave}
+                disabled={!canSave || saving}
+              >
+                {saving ? (
+                  <>
+                    <Spinner size="sm" className="border-white/40 border-t-white" />
+                    <span>저장 중…</span>
+                  </>
+                ) : (
+                  <>
+                    <span>💾</span>
+                    <span>{isNew ? '저장' : '수정 저장'}</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex-1 flex flex-col p-4 gap-3 min-h-0">
+            <Input
+              label="제목"
+              value={draft.title || ''}
+              onChange={(e) => onChange({ ...draft, title: e.target.value })}
+              placeholder="제목을 입력하세요"
+              disabled={saving}
+            />
+            <Textarea
+              label="내용"
+              value={draft.content || ''}
+              onChange={(e) => onChange({ ...draft, content: e.target.value })}
+              placeholder="메모 내용을 입력하세요…"
+              disabled={saving}
+            />
+          </div>
+        </section>
+      );
+    }
+
+    // ========================================
+    // 🚀 App — 최상위 컴포넌트
+    // ========================================
+    function App() {
+      const [memos, setMemos] = useState([]);
+      const [selectedId, setSelectedId] = useState(null);
+      const [draft, setDraft] = useState(null);       // 현재 편집 중인 메모 { id?, title, content }
+      const [isNew, setIsNew] = useState(false);
+      const [loading, setLoading] = useState(true);
+      const [saving, setSaving] = useState(false);
+      const [error, setError] = useState('');
+      // 모바일 탭 전환 상태 — 'list' or 'editor'
+      const [mobileView, setMobileView] = useState('list');
+      const [isMobile, setIsMobile] = useState(false);
+
+      // 모바일 감지
+      useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+      }, []);
+
+      // 에러 자동 닫기 (5초)
+      useEffect(() => {
+        if (!error) return;
+        const t = setTimeout(() => setError(''), 5000);
+        return () => clearTimeout(t);
+      }, [error]);
+
+      // API — 메모 목록 불러오기
+      const fetchMemos = useCallback(async () => {
+        setLoading(true);
+        setError('');
+        try {
+          const res = await fetch(`${API_BASE_URL}/memos`);
+          if (!res.ok) throw new Error(`목록 불러오기 실패 (HTTP ${res.status})`);
+          const data = await res.json();
+          // 최신순 정렬 보강
+          const sorted = Array.isArray(data)
+            ? [...data].sort((a, b) =>
+                new Date(b.updated_at || b.created_at || 0) -
+                new Date(a.updated_at || a.created_at || 0)
+              )
+            : [];
+          setMemos(sorted);
+        } catch (err) {
+          console.error(err);
+          setError(`서버와 통신할 수 없어요. (${err.message})`);
+        } finally {
+          setLoading(false);
+        }
+      }, []);
+
+      useEffect(() => {
+        fetchMemos();
+      }, [fetchMemos]);
+
+      // 메모 선택
+      const handleSelect = useCallback((memo) => {
+        setSelectedId(memo.id);
+        setDraft({ id: memo.id, title: memo.title, content: memo.content, updated_at: memo.updated_at, created_at: memo.created_at });
+        setIsNew(false);
+        if (isMobile) setMobileView('editor');
+      }, [isMobile]);
+
+      // 새 메모
+      const handleNew = useCallback(() => {
+        setSelectedId(null);
+        setDraft({ title: '', content: '' });
+        setIsNew(true);
+        if (isMobile) setMobileView('editor');
+      }, [isMobile]);
+
+      // 편집 취소 — 선택 해제
+      const handleCancel = useCallback(() => {
+        setDraft(null);
+        setSelectedId(null);
+        setIsNew(false);
+        if (isMobile) setMobileView('list');
+      }, [isMobile]);
+
+      // 목록으로 (모바일)
+      const handleBackToList = useCallback(() => {
+        setMobileView('list');
+      }, []);
+
+      // 저장 (생성/수정 자동 분기)
+      const handleSave = useCallback(async () => {
+        if (!draft) return;
+        const title = (draft.title || '').trim();
+        const content = (draft.content || '').trim();
+        if (!title && !content) {
+          setError('제목이나 내용을 입력해주세요.');
+          return;
+        }
+        setSaving(true);
+        setError('');
+        try {
+          let res, saved;
+          if (isNew) {
+            res = await fetch(`${API_BASE_URL}/memos`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ title, content }),
+            });
+          } else {
+            res = await fetch(`${API_BASE_URL}/memos/${draft.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ title, content }),
+            });
+          }
+          if (!res.ok) throw new Error(`저장 실패 (HTTP ${res.status})`);
+          saved = await res.json();
+          // 목록 갱신
+          await fetchMemos();
+          // 선택 유지
+          if (saved && saved.id != null) {
+            setSelectedId(saved.id);
+            setDraft({
+              id: saved.id,
+              title: saved.title ?? title,
+              content: saved.content ?? content,
+              created_at: saved.created_at,
+              updated_at: saved.updated_at,
+            });
+            setIsNew(false);
+          }
+        } catch (err) {
+          console.error(err);
+          setError(`저장하지 못했어요. (${err.message})`);
+        } finally {
+          setSaving(false);
+        }
+      }, [draft, isNew, fetchMemos]);
+
+      // 삭제 (확인 없이 즉시)
+      const handleDelete = useCallback(async (id) => {
+        setError('');
+        // 낙관적 업데이트
+        const prev = memos;
+        setMemos((list) => list.filter((m) => m.id !== id));
+        if (selectedId === id) {
+          setSelectedId(null);
+          setDraft(null);
+          setIsNew(false);
+          if (isMobile) setMobileView('list');
+        }
+        try {
+          const res = await fetch(`${API_BASE_URL}/memos/${id}`, { method: 'DELETE' });
+          if (!res.ok && res.status !== 204) throw new Error(`삭제 실패 (HTTP ${res.status})`);
+        } catch (err) {
+          console.error(err);
+          setError(`삭제하지 못했어요. (${err.message})`);
+          setMemos(prev); // 롤백
+        }
+      }, [memos, selectedId, isMobile]);
+
+      // 모바일에서 보여줄 패널 결정
+      const showList = !isMobile || mobileView === 'list';
+      const showEditor = !isMobile || mobileView === 'editor';
+
+      return (
+        <div className="min-h-screen flex flex-col">
+          <ErrorBanner message={error} onClose={() => setError('')} />
+          <Header />
+
+          <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6">
+            <div className="grid md:grid-cols-[320px_1fr] gap-4 h-[calc(100vh-120px)]">
+              {showList && (
+                <MemoList
+                  memos={memos}
+                  loading={loading}
+                  selectedId={selectedId}
+                  onSelect={handleSelect}
+                  onDelete={handleDelete}
+                  onNew={handleNew}
+                  className="h-full min-h-0"
+                />
+              )}
+              {showEditor && (
+                <MemoEditor
+                  draft={draft}
+                  isNew={isNew}
+                  saving={saving}
+                  onChange={setDraft}
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                  onBackToList={handleBackToList}
+                  isMobile={isMobile}
+                />
+              )}
+            </div>
+          </main>
+
+          <footer className="text-center text-xs text-amber-800/60 py-3">
+            📝 메모 앱 — React 18 · Tailwind · Express + PostgreSQL
+          </footer>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - heading "🖼️ 이미지 업로드 테스트" [level=1] [ref=e5]
+    - paragraph [ref=e6]: 드래그 앤 드롭으로 간편하게 이미지를 업로드해보세요
+  - button "파일 업로드 영역 — 클릭 또는 드래그 앤 드롭" [ref=e8] [cursor=pointer]:
+    - generic:
+      - generic: 🖼️
+      - generic:
+        - paragraph: 이미지를 드래그하거나 클릭하세요
+        - paragraph: 여러 장을 한 번에 업로드할 수 있습니다
+      - generic:
+        - generic: JPG
+        - generic: PNG
+        - generic: GIF
+        - generic: WEBP
+        - generic: 최대 10MB
+  - generic [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]: 📸
+        - generic [ref=e24]:
+          - paragraph [ref=e25]: 업로드된 이미지
+          - paragraph [ref=e26]: 2장
+      - generic [ref=e28]:
+        - generic [ref=e29]: 💾
+        - generic [ref=e30]:
+          - paragraph [ref=e31]: 전체 용량
+          - paragraph [ref=e32]: 121 KB
+    - button "전체 삭제" [ref=e33] [cursor=pointer]:
+      - img [ref=e34]
+      - text: 전체 삭제
+  - generic [ref=e10]:
+    - generic [ref=e36]:
+      - button "github-2013_e_Uxul2_A.png 원본 보기" [active] [ref=e37] [cursor=pointer]:
+        - img "github-2013_e_Uxul2_A.png" [ref=e38]
+        - generic [ref=e40]: 🔍 원본 보기
+      - button "github-2013_e_Uxul2_A.png 삭제" [ref=e41] [cursor=pointer]:
+        - img [ref=e42]
+      - generic [ref=e44]:
+        - paragraph [ref=e45]: github-2013_e_Uxul2_A.png
+        - generic [ref=e46]:
+          - generic [ref=e47]: PNG
+          - generic [ref=e48]: 61.94 KB
+    - generic [ref=e49]:
+      - button "github-2026_E2OvYEf5h.png 원본 보기" [ref=e50] [cursor=pointer]:
+        - img "github-2026_E2OvYEf5h.png" [ref=e51]
+        - generic [ref=e53]: 🔍 원본 보기
+      - button "github-2026_E2OvYEf5h.png 삭제" [ref=e54] [cursor=pointer]:
+        - img [ref=e55]
+      - generic [ref=e57]:
+        - paragraph [ref=e58]: github-2026_E2OvYEf5h.png
+        - generic [ref=e59]:
+          - generic [ref=e60]: PNG
+          - generic [ref=e61]: 59.06 KB
+  - dialog [ref=e62]:
+    - generic [ref=e64]:
+      - generic [ref=e65]:
+        - generic [ref=e66]:
+          - paragraph [ref=e67]: github-2013_e_Uxul2_A.png
+          - generic [ref=e68]:
+            - generic [ref=e69]: PNG
+            - generic [ref=e70]: 61.94 KB
+            - generic [ref=e71]: ·
+            - generic [ref=e72]: image/png
+        - button "닫기" [ref=e73] [cursor=pointer]:
+          - img [ref=e74]
+      - img "github-2013_e_Uxul2_A.png" [ref=e77]
+  - contentinfo [ref=e13]:
+    - paragraph [ref=e14]: AFM 2기 평일반 · Week 6 · 이미지 업로드 실습

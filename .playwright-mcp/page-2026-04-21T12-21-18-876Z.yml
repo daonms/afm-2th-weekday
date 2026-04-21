@@ -1,0 +1,21 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - heading "🖼️ 이미지 업로드 테스트" [level=1] [ref=e5]
+    - paragraph [ref=e6]: 드래그 앤 드롭으로 간편하게 이미지를 업로드해보세요
+  - button "파일 업로드 영역 — 클릭 또는 드래그 앤 드롭" [ref=e8] [cursor=pointer]:
+    - generic:
+      - generic: 🖼️
+      - generic:
+        - paragraph: 이미지를 드래그하거나 클릭하세요
+        - paragraph: 여러 장을 한 번에 업로드할 수 있습니다
+      - generic:
+        - generic: JPG
+        - generic: PNG
+        - generic: GIF
+        - generic: WEBP
+        - generic: 최대 10MB
+  - generic [ref=e10]:
+    - generic [ref=e11]: 📭
+    - paragraph [ref=e12]: 아직 업로드된 이미지가 없습니다
+  - contentinfo [ref=e13]:
+    - paragraph [ref=e14]: AFM 2기 평일반 · Week 6 · 이미지 업로드 실습

@@ -72,7 +72,12 @@
       "Skill(update-config)",
       "mcp__claude_ai_Notion__notion-search",
       "Bash(claude mcp:*)",
-      "mcp__claude_ai_Notion__notion-fetch"
+      "mcp__claude_ai_Notion__notion-fetch",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_file_upload"
     ]
   }
 }
