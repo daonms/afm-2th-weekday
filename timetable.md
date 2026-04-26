@@ -72,7 +72,21 @@
 
 ---
 
-## Week 5 — 실전 배포 + 통합 (04.20 ~)
+## Week 4 — 서버 + DB (04.07 ~ 04.13)
+
+| 날짜 | 앱 | 기술 | 결과물 |
+|------|-----|------|--------|
+| 04.07 (월) | 메모 앱 (인메모리 배열) | Node.js · Express · REST API | `week_4/memo-app/` |
+| 04.07 (월) | 메모 앱 v2 (JSON 파일 저장) | fs 모듈 · JSON 영속성 | `week_4/memo-app-json/` |
+| 04.07 (월) | 메모 앱 v3 (PostgreSQL 연동) | pg Pool · Supabase DB | `week_4/memo-app-pg/` |
+| 04.07 (월) | Todo 앱 풀스택 (CRUD + React UI) | Express · pg · React CDN · Tailwind | `week_4/todo-app/` |
+| 04.07 (월) | 대시보드 (라이트/다크 테마 + 반응형) | React · Tailwind · 샘플 시드 데이터 | `week_4/dashboard/` |
+
+**Week 4 핵심 학습**: Express RESTful API 설계, PostgreSQL 직접 연결(pg Pool), Supabase DB 테이블 관계, CRUD 전 사이클, React 상태관리
+
+---
+
+## Week 5 — 실전 배포 + 통합 (04.14 ~ 04.20)
 
 | 날짜 | 활동 | 결과물 |
 |------|------|--------|
@@ -80,23 +94,50 @@
 | 04.20 (월) | 텔레그램 + Notion AI 비서 (Groq Llama 3.3 · tool_use · node-cron) | `week_5/telegram-notion-bot/` |
 | 04.20 (월) | Chrome MCP AI 뉴스 리서치 에이전트 + Notion 업로드 | `week_5/ai-news-research/2026-04-20.md` |
 | 04.20 (월) | 텔레그램 봇 뉴스 브리핑 확장 (/뉴스 명령어 · RSS 파싱 · 오전 9시 스케줄러) | `week_5/telegram-notion-bot/server.js` |
-| 04.20 (월) | 가계부 풀스택 앱 구축 (Express · pg Pool · Supabase · React CDN · Tailwind · CRUD) | `week_5/budget-app/` |
-| 04.20 (월) | 가계부 수정 기능 추가 + Vercel 배포 | https://budget-app-alpha-one.vercel.app |
+| 04.20 (월) | 가계부 풀스택 앱 (Express · pg Pool · Supabase · React CDN · CRUD) | `week_5/budget-app/` |
+| 04.20 (월) | 가계부 수정 기능 + Vercel 배포 | https://budget-app-alpha-one.vercel.app |
 | 04.20 (월) | 식물 가게 쇼핑몰 (React + Supabase Auth + RLS + 장바구니) | `week_5/[쇼핑몰] 식물 가게/` |
 
-**Week 5 핵심 학습**: MCP 도구 연동, LLM tool_use(function calling), Telegram Bot API, Groq API, node-cron 스케줄러, RSS 파싱, pg Pool 직접 연결, DATE timezone 처리(`to_char`), Vercel 서버리스 듀얼 모드(`module.exports`+`require.main`), React 상태 끌어올리기, Supabase Auth + RLS
+**Week 5 핵심 학습**: MCP 도구 연동, LLM tool_use(function calling), Telegram Bot API, Groq API, node-cron 스케줄러, RSS 파싱, pg Pool, Vercel 서버리스, Supabase Auth + RLS
+
+---
+
+## Week 6 — 실전 서비스 완성 + 자체 서버 배포 (04.21 ~ 04.26)
+
+### Part 1: 메모 앱 업그레이드 (04.21)
+
+| 항목 | 내용 |
+|------|------|
+| Express + PostgreSQL 메모 앱 | 제목·내용·태그 · 검색 · 핀 고정 · 다크모드 |
+| Vercel 배포 | `week_6/memo-app/` |
+
+### Part 2: 쇼핑몰 완전판 — 진짜 서비스 (04.26)
+
+| 기능 | 구현 내용 | 기술 |
+|------|----------|------|
+| 이미지 업로드 | 관리자 드래그앤드롭 → ImageKit CDN 업로드 | multer(메모리) · imagekit SDK |
+| 결제 시스템 | Toss Payments v2 위젯 → 서버 confirm | toss-payments · 주문번호 UUID |
+| 마이페이지 | 본인 주문 내역 + 상태 뱃지 | JWT 인증 · PAID/PREPARING/SHIPPING/DELIVERED/CANCELED |
+| 관리자 페이지 | 상품 추가·삭제, 전체 주문 조회, 상태 변경 | ADMIN_EMAILS 화이트리스트 |
+| 상품 검색 | 실시간 키워드 검색 | ILIKE 쿼리 · useMemo |
+| 재고 뱃지 | stock ≤ 5 시 "재고 부족" 표시 | DB stock 컬럼 |
+| **자체 서버 배포** | **https://shop.daonms.com** | **Docker · Caddy · Let's Encrypt SSL** |
+
+**Week 6 핵심 학습**: 외부 스토리지 API(ImageKit), PG 결제 연동(Toss Payments), JWT 권한 분리(관리자/일반), Docker 컨테이너화, Caddy 리버스 프록시, Let's Encrypt 자동 SSL, 실서버 배포 전 과정
 
 ---
 
 ## 전체 결과물 요약
 
-| 주차 | 앱 수 | 핵심 기술 |
-|------|-------|----------|
-| Week 1 | 문서 5건 | Markdown · AI 프롬프트 |
-| Week 2 | 앱 9개 | HTML/CSS/JS · React · Tailwind |
-| Week 3 | 앱 9개 + 이미지서비스 1개 | Node.js 서버 · REST API · OpenAI · DALL-E |
-| Week 5 | 앱/서비스 7개 | Telegram Bot · Notion MCP · Groq · Chrome MCP · node-cron · pg Pool · Vercel · Supabase Auth |
-| **합계** | **앱 25개 + 문서** | — |
+| 주차 | 결과물 | 핵심 기술 | 배포 |
+|------|--------|----------|------|
+| Week 1 | 문서 5건 | Markdown · AI 프롬프트 | — |
+| Week 2 | 앱 9개 | HTML/CSS/JS · React · Tailwind | — |
+| Week 3 | 앱 9개 + Midjourney 서비스 | Node.js · OpenAI · DALL-E | — |
+| Week 4 | 앱 5개 (메모3종·Todo·대시보드) | Express · PostgreSQL · Supabase | — |
+| Week 5 | 앱/서비스 7개 | Telegram Bot · Notion MCP · Groq · Vercel · Supabase Auth | Vercel |
+| Week 6 | 메모앱 + 쇼핑몰 완전판 | ImageKit · Toss Payments · Docker · Caddy | **자체 서버(shop.daonms.com)** |
+| **합계** | **앱 30+개 + 문서** | — | Vercel + 자체 서버 |
 
 ---
 
@@ -117,6 +158,14 @@
 ## 실행 방법
 
 ```bash
+# Midjourney
 node week3/[Network]MyMidjourney/server.js
 # → http://localhost:3001
+
+# 쇼핑몰 (로컬)
+cd "week_6/쇼핑몰 (결제 포함)" && node server.js
+# → http://localhost:3001
+
+# 쇼핑몰 (운영)
+# → https://shop.daonms.com
 ```
