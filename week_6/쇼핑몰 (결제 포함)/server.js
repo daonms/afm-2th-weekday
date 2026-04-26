@@ -4,16 +4,37 @@ const cors = require("cors");
 const path = require("path");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const multer = require("multer");
+const ImageKit = require("imagekit");
 const { Pool } = require("pg");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || "daon-bakery-secret-2026";
 const TOSS_SECRET_KEY = process.env.TOSS_SECRET_KEY || "test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6";
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "daon@daonms.com")
+  .split(",")
+  .map(s => s.trim().toLowerCase())
+  .filter(Boolean);
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
+});
+
+// ImageKit 클라이언트 (관리자 이미지 업로드용)
+const imagekit = process.env.IMAGEKIT_PUBLIC_KEY
+  ? new ImageKit({
+      publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+      privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
+      urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
+    })
+  : null;
+
+// multer 메모리 스토리지 (서버리스/Vercel 호환). 5MB 제한.
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
 });
 
 app.use(cors());
@@ -37,6 +58,7 @@ async function initDB() {
       image_url TEXT,
       description TEXT,
       category VARCHAR(100),
+      stock INTEGER NOT NULL DEFAULT 100,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
     CREATE TABLE IF NOT EXISTS shop_cart (
@@ -53,10 +75,15 @@ async function initDB() {
       payment_key VARCHAR(255) UNIQUE NOT NULL,
       order_id VARCHAR(255) UNIQUE NOT NULL,
       amount INTEGER NOT NULL,
-      status VARCHAR(50) NOT NULL DEFAULT 'DONE',
+      status VARCHAR(50) NOT NULL DEFAULT 'PAID',
       items JSONB NOT NULL,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
+  `);
+
+  // 기존 테이블에 stock 컬럼이 없을 수 있으므로 안전 추가
+  await pool.query(`
+    ALTER TABLE shop_products ADD COLUMN IF NOT EXISTS stock INTEGER NOT NULL DEFAULT 100;
   `);
 
   const { rows } = await pool.query("SELECT COUNT(*) FROM shop_products");
@@ -94,9 +121,27 @@ function auth(req, res, next) {
   }
 }
 
+// 관리자 가드 (auth 뒤에 사용)
+function adminOnly(req, res, next) {
+  const email = String(req.user?.email || "").toLowerCase();
+  if (!ADMIN_EMAILS.includes(email)) {
+    return res.status(403).json({ error: "관리자 권한이 필요합니다" });
+  }
+  next();
+}
+
 // ── 라우트 ──────────────────────────────────────────────
 
 app.get("/", (_req, res) => res.sendFile(path.join(__dirname, "index.html")));
+
+// 현재 로그인 사용자 정보 (관리자 여부 포함)
+app.get("/api/me", auth, (req, res) => {
+  const email = String(req.user.email || "").toLowerCase();
+  res.json({
+    user: { id: req.user.id, email: req.user.email, name: req.user.name },
+    isAdmin: ADMIN_EMAILS.includes(email),
+  });
+});
 
 // 회원가입
 app.post("/api/auth/signup", async (req, res) => {
@@ -109,12 +154,13 @@ app.post("/api/auth/signup", async (req, res) => {
       "INSERT INTO shop_users (email, password_hash, name) VALUES ($1,$2,$3) RETURNING id, email, name",
       [email, hash, name]
     );
+    const isAdmin = ADMIN_EMAILS.includes(rows[0].email.toLowerCase());
     const token = jwt.sign(
       { id: rows[0].id, email: rows[0].email, name: rows[0].name },
       JWT_SECRET,
       { expiresIn: "7d" }
     );
-    res.status(201).json({ token, user: rows[0] });
+    res.status(201).json({ token, user: rows[0], isAdmin });
   } catch (err) {
     if (err.code === "23505") return res.status(400).json({ error: "이미 사용 중인 이메일입니다" });
     res.status(500).json({ error: err.message });
@@ -130,29 +176,121 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(401).json({ error: "이메일 또는 비밀번호가 틀렸습니다" });
     const ok = await bcrypt.compare(password, rows[0].password_hash);
     if (!ok) return res.status(401).json({ error: "이메일 또는 비밀번호가 틀렸습니다" });
+    const isAdmin = ADMIN_EMAILS.includes(rows[0].email.toLowerCase());
     const token = jwt.sign(
       { id: rows[0].id, email: rows[0].email, name: rows[0].name },
       JWT_SECRET,
       { expiresIn: "7d" }
     );
-    res.json({ token, user: { id: rows[0].id, email: rows[0].email, name: rows[0].name } });
+    res.json({
+      token,
+      user: { id: rows[0].id, email: rows[0].email, name: rows[0].name },
+      isAdmin,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 상품 목록 (공개)
+// 상품 목록 (공개) — 카테고리 필터 + 검색(q) 지원
 app.get("/api/products", async (req, res) => {
   try {
-    const { category } = req.query;
-    let q = "SELECT * FROM shop_products ORDER BY id";
+    const { category, q } = req.query;
+    const conds = [];
     const params = [];
     if (category) {
-      q = "SELECT * FROM shop_products WHERE category=$1 ORDER BY id";
       params.push(category);
+      conds.push(`category = $${params.length}`);
     }
-    const { rows } = await pool.query(q, params);
+    if (q && q.trim()) {
+      params.push(`%${q.trim()}%`);
+      conds.push(`(name ILIKE $${params.length} OR description ILIKE $${params.length})`);
+    }
+    const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
+    const { rows } = await pool.query(
+      `SELECT * FROM shop_products ${where} ORDER BY id`,
+      params
+    );
     res.json({ data: rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── 관리자: 이미지 업로드 ───────────────────────────────
+app.post("/api/admin/upload", auth, adminOnly, upload.single("image"), async (req, res) => {
+  if (!imagekit)
+    return res.status(500).json({ error: "ImageKit 환경변수가 설정되지 않았습니다" });
+  if (!req.file) return res.status(400).json({ error: "이미지 파일이 없습니다" });
+  try {
+    const safeName = (req.file.originalname || "image").replace(/[^\w.\-]/g, "_");
+    const result = await imagekit.upload({
+      file: req.file.buffer,
+      fileName: `${Date.now()}_${safeName}`,
+      folder: "/afm-shop",
+    });
+    res.json({ url: result.url, fileId: result.fileId, name: result.name });
+  } catch (err) {
+    console.error("ImageKit 업로드 오류:", err.message);
+    res.status(500).json({ error: "업로드 실패: " + err.message });
+  }
+});
+
+// ── 관리자: 상품 등록 ───────────────────────────────────
+app.post("/api/admin/products", auth, adminOnly, async (req, res) => {
+  try {
+    const { name, price, image_url, description, category, stock } = req.body;
+    if (!name || !price || !category)
+      return res.status(400).json({ error: "이름, 가격, 카테고리는 필수입니다" });
+    const { rows } = await pool.query(
+      `INSERT INTO shop_products (name, price, image_url, description, category, stock)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [name, Number(price), image_url || null, description || null, category, Number(stock ?? 100)]
+    );
+    res.status(201).json({ data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── 관리자: 상품 삭제 ───────────────────────────────────
+app.delete("/api/admin/products/:id", auth, adminOnly, async (req, res) => {
+  try {
+    await pool.query("DELETE FROM shop_products WHERE id=$1", [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── 관리자: 전체 주문 조회 ───────────────────────────────
+app.get("/api/admin/orders", auth, adminOnly, async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT o.*, u.email AS buyer_email, u.name AS buyer_name
+       FROM shop_orders o
+       LEFT JOIN shop_users u ON o.user_id = u.id
+       ORDER BY o.created_at DESC`
+    );
+    res.json({ data: rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── 관리자: 주문 상태 변경 ───────────────────────────────
+app.patch("/api/admin/orders/:id/status", auth, adminOnly, async (req, res) => {
+  try {
+    const allowed = ["PAID", "PREPARING", "SHIPPING", "DELIVERED", "CANCELED"];
+    const { status } = req.body;
+    if (!allowed.includes(status))
+      return res.status(400).json({ error: `상태값은 ${allowed.join(", ")} 중 하나여야 합니다` });
+    const { rows } = await pool.query(
+      "UPDATE shop_orders SET status=$1 WHERE id=$2 RETURNING *",
+      [status, req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "주문을 찾을 수 없습니다" });
+    res.json({ data: rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -256,7 +394,7 @@ app.post("/api/payment/confirm", auth, async (req, res) => {
 
     await pool.query(
       `INSERT INTO shop_orders (user_id, payment_key, order_id, amount, status, items)
-       VALUES ($1,$2,$3,$4,'DONE',$5)`,
+       VALUES ($1,$2,$3,$4,'PAID',$5)`,
       [req.user.id, paymentKey, orderId, amount, JSON.stringify(items)]
     );
 
@@ -270,7 +408,7 @@ app.post("/api/payment/confirm", auth, async (req, res) => {
   }
 });
 
-// 주문 내역 조회
+// 주문 내역 조회 (본인만)
 app.get("/api/orders", auth, async (req, res) => {
   try {
     const { rows } = await pool.query(
