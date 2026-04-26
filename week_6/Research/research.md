@@ -3,7 +3,7 @@
 **리서치 일자:** 2026-04-26  
 **비교 기준:** [week_6/MISSION.md](../MISSION.md) — AI 기반 정서·커뮤니케이션 지원, 멀티 에이전트 토론, 클라이언트 맞춤 전략, (로드맵) 음성.
 
-**탐색 도구:** Cursor `cursor-ide-browser` MCP — 랜딩 URL 방문 후 뷰포트 스크린샷 자동 저장.
+**탐색 도구:** Cursor `cursor-ide-browser` MCP(CLAUDE 토큰부족으로 커서사용) — 랜딩 URL 방문 후 뷰포트 스크린샷 자동 저장.
 
 ---
 
