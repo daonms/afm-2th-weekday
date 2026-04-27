@@ -1,5 +1,6 @@
 /**
- * AI 노트 잠금 해제 — 유료 콘텐츠 (Toss + JWT + PostgreSQL/Supabase)
+ * 유료 콘텐츠 잠금 해제 미니앱 — 토스페이먼츠 승인 + JWT + PostgreSQL
+ * 열람 권한: purchases(user_id, content_id) 있을 때만 본문 반환
  */
 require("dotenv").config();
 const express = require("express");
@@ -207,7 +208,7 @@ app.get("/", (_req, res) => res.sendFile(path.join(__dirname, "index.html")));
 app.get("/api/health", (_req, res) => {
   res.json({
     status: "ok",
-    service: "paid-content-notes",
+    service: "paid-content-unlock",
     hasDb: !!process.env.DATABASE_URL,
   });
 });
@@ -437,7 +438,9 @@ app.post("/api/payment/confirm-content", auth, async (req, res) => {
 app.get("*", (_req, res) => res.sendFile(path.join(__dirname, "index.html")));
 
 if (require.main === module) {
-  app.listen(PORT, () => console.log(`📚 AI 노트 서버 → http://localhost:${PORT}`));
+  app.listen(PORT, () =>
+    console.log(`유료 콘텐츠 잠금 해제 API → http://localhost:${PORT}`)
+  );
 }
 
 module.exports = app;

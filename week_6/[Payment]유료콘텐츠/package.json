@@ -1,7 +1,7 @@
 {
-  "name": "paid-content-notes",
+  "name": "paid-content-unlock",
   "version": "1.0.0",
-  "description": "AI 개발자 유료 강의 노트 — Express + PostgreSQL + JWT + 토스페이먼츠",
+  "description": "유료 콘텐츠 잠금 해제 — 토스페이먼츠 + JWT + PostgreSQL (purchases로 열람 제어)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
