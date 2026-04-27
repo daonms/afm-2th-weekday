@@ -1,7 +1,7 @@
 {
-  "name": "payment-paid-content",
-  "version": "1.1.0",
-  "description": "[Payment]유료콘텐츠 — 토스페이먼츠 · Express · PostgreSQL · JWT (결제한 사용자만 본문 열람)",
+  "name": "paid-content-notes",
+  "version": "1.0.0",
+  "description": "AI 개발자 유료 강의 노트 — Express + PostgreSQL + JWT + 토스페이먼츠",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -12,9 +12,11 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
-    "imagekit": "^5.2.0",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^1.4.5-lts.1",
     "pg": "^8.20.0"
-  }
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "private": true
 }

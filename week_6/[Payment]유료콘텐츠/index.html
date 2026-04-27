@@ -3,120 +3,117 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>[Payment]유료콘텐츠 · 토스페이먼츠</title>
+  <title>AI 노트 랩 — 유료 강의 노트</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://js.tosspayments.com/v2/standard"></script>
   <style>
-    body { background: linear-gradient(160deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); min-height: 100vh; font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif; }
-    .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-    .card-hover:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(0,0,0,0.35); }
-    .fade-in { animation: fadeIn 0.35s ease; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-    .glass { background: rgba(255,255,255,0.06); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
-    .body-text { white-space: pre-wrap; line-height: 1.7; }
+    body { background: linear-gradient(165deg, #0f172a 0%, #1e293b 45%, #0f172a 100%); min-height: 100vh; font-family: ui-sans-serif, system-ui, sans-serif; }
+    .fade-in { animation: fi 0.35s ease; }
+    @keyframes fi { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .blur-lock { filter: blur(6px); user-select: none; pointer-events: none; }
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   </style>
 </head>
-<body>
+<body class="text-slate-100">
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect, useCallback, useRef, useMemo } = React;
+const { useState, useEffect, useCallback, useRef } = React;
 
-const STATUS_META = {
-  PAID: { label: '결제완료', cls: 'bg-emerald-500/20 text-emerald-300' },
-  PREPARING: { label: '처리중', cls: 'bg-amber-500/20 text-amber-200' },
-  SHIPPING: { label: '처리중', cls: 'bg-sky-500/20 text-sky-200' },
-  DELIVERED: { label: '완료', cls: 'bg-slate-500/30 text-slate-200' },
-  CANCELED: { label: '취소', cls: 'bg-red-500/20 text-red-300' },
-};
+const TOSS_CK = 'test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm';
+const LS = 'afm_note_token';
 
+function getToken() { return localStorage.getItem(LS); }
+function setToken(t) { if (t) localStorage.setItem(LS, t); else localStorage.removeItem(LS); }
+
+function parsePath() {
+  const p = window.location.pathname;
+  if (p === '/payment/success') return { name: 'success' };
+  if (p === '/payment/fail') return { name: 'fail' };
+  if (p === '/purchases') return { name: 'purchases' };
+  const m = p.match(/^\/content\/(\d+)$/);
+  if (m) return { name: 'content', id: m[1] };
+  const pay = p.match(/^\/pay\/(\d+)$/);
+  if (pay) return { name: 'pay', id: pay[1] };
+  return { name: 'home' };
+}
+
+function navigate(to) {
+  window.history.pushState({}, '', to);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
+// ── Toast ─────────────────────────────────────────
 function Toast({ message, type, onClose }) {
   useEffect(() => {
     const t = setTimeout(onClose, 3200);
     return () => clearTimeout(t);
   }, [onClose]);
   return (
-    <div className={`fixed bottom-6 right-6 z-50 fade-in flex items-center gap-2 px-5 py-3 rounded-2xl shadow-xl text-sm font-medium ${
-      type === 'error' ? 'bg-red-600 text-white' : 'bg-cyan-600 text-white'
-    }`}>
-      <span>{type === 'error' ? '⚠️' : '✅'}</span>
-      <span>{message}</span>
-    </div>
+    <div className={`fixed bottom-6 right-6 z-[100] fade-in px-4 py-3 rounded-xl shadow-xl text-sm font-medium ${
+      type === 'error' ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'
+    }`}>{message}</div>
   );
 }
 
-function AuthModal({ initialMode, onClose, onAuth }) {
-  const [mode, setMode] = useState(initialMode);
+// ── Auth Modal ───────────────────────────────────
+function AuthModal({ mode: initial, onClose, onAuth }) {
+  const [mode, setMode] = useState(initial);
   const [form, setForm] = useState({ email: '', password: '', name: '' });
-  const [error, setError] = useState('');
+  const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const submit = async (e) => {
+  const submit = async e => {
     e.preventDefault();
-    setError('');
+    setErr('');
     setLoading(true);
     try {
-      const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/signup';
+      const ep = mode === 'login' ? '/api/auth/login' : '/api/auth/signup';
       const body = mode === 'login'
         ? { email: form.email, password: form.password }
         : { email: form.email, password: form.password, name: form.name };
-      const res = await fetch(endpoint, {
+      const res = await fetch(ep, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      onAuth(data.token, data.user, !!data.isAdmin);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+      setToken(data.token);
+      onAuth(data.user);
+    } catch (e2) { setErr(e2.message); }
+    finally { setLoading(false); }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-40 p-4" onClick={onClose}>
-      <div className="bg-slate-800 border border-slate-600 rounded-3xl p-8 w-full max-w-sm shadow-2xl fade-in text-slate-100" onClick={e => e.stopPropagation()}>
-        <div className="text-center mb-6">
-          <div className="text-5xl mb-2">🔐</div>
-          <h2 className="text-2xl font-bold">{mode === 'login' ? '로그인' : '회원가입'}</h2>
-          <p className="text-slate-400 text-sm mt-1">유료 콘텐츠는 로그인 후 구매·열람할 수 있어요</p>
-        </div>
-        {error && (
-          <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-xl mb-4 text-sm">{error}</div>
-        )}
-        <form onSubmit={submit} className="space-y-4">
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-slate-800 border border-slate-600 rounded-2xl p-8 w-full max-w-sm fade-in shadow-2xl" onClick={e => e.stopPropagation()}>
+        <h2 className="text-xl font-bold text-center mb-1">{mode === 'login' ? '로그인' : '회원가입'}</h2>
+        <p className="text-slate-400 text-sm text-center mb-6">AI 노트 랩 — 강의 노트 잠금 해제</p>
+        {err && <div className="bg-red-900/50 border border-red-700 text-red-200 text-sm px-3 py-2 rounded-lg mb-4">{err}</div>}
+        <form onSubmit={submit} className="space-y-3">
           {mode === 'signup' && (
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">이름</label>
-              <input type="text" required placeholder="홍길동" value={form.name} onChange={e => set('name', e.target.value)}
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-            </div>
+            <input required placeholder="이름" value={form.name} onChange={e => set('name', e.target.value)}
+              className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-2.5 text-sm" />
           )}
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">이메일</label>
-            <input type="email" required value={form.email} onChange={e => set('email', e.target.value)}
-              className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">비밀번호</label>
-            <input type="password" required value={form.password} onChange={e => set('password', e.target.value)}
-              className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-          </div>
+          <input required type="email" placeholder="이메일" value={form.email} onChange={e => set('email', e.target.value)}
+            className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-2.5 text-sm" />
+          <input required type="password" placeholder="비밀번호" value={form.password} onChange={e => set('password', e.target.value)}
+            className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-2.5 text-sm" />
           <button type="submit" disabled={loading}
-            className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-3 rounded-xl transition disabled:opacity-50">
-            {loading ? '처리 중...' : (mode === 'login' ? '로그인' : '회원가입')}
+            className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-3 rounded-xl disabled:opacity-50">
+            {loading ? '…' : (mode === 'login' ? '로그인' : '가입')}
           </button>
         </form>
-        <p className="text-center text-sm text-slate-500 mt-5">
+        <p className="text-center text-slate-500 text-sm mt-4">
           {mode === 'login' ? (
-            <>계정이 없으신가요? <button onClick={() => { setMode('signup'); setError(''); }} className="text-cyan-400 font-semibold">회원가입</button></>
+            <button type="button" onClick={() => { setMode('signup'); setErr(''); }} className="text-cyan-400">회원가입</button>
           ) : (
-            <>이미 있으신가요? <button onClick={() => { setMode('login'); setError(''); }} className="text-cyan-400 font-semibold">로그인</button></>
+            <button type="button" onClick={() => { setMode('login'); setErr(''); }} className="text-cyan-400">로그인</button>
           )}
         </p>
       </div>
@@ -124,616 +121,370 @@ function AuthModal({ initialMode, onClose, onAuth }) {
   );
 }
 
-function ContentListPage({ token, onSelect, onNeedLogin, refreshKey }) {
+// ── Home: 목록 ────────────────────────────────────
+function HomePage({ token, user, onOpen }) {
   const [list, setList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [q, setQ] = useState('');
-
+  const [load, setLoad] = useState(true);
   useEffect(() => {
-    setLoading(true);
-    const h = token ? { Authorization: 'Bearer ' + token } : {};
-    fetch('/api/products', { headers: h })
+    fetch('/api/contents')
       .then(r => r.json())
-      .then(d => { setList(d.data || []); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [token, refreshKey]);
+      .then(d => { setList(d.data || []); setLoad(false); })
+      .catch(() => setLoad(false));
+  }, []);
 
-  const filtered = useMemo(() => {
-    if (!q.trim()) return list;
-    const s = q.trim().toLowerCase();
-    return list.filter(p => p.name.toLowerCase().includes(s) || (p.description || '').toLowerCase().includes(s));
-  }, [list, q]);
-
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center min-h-72 gap-3 text-slate-400">
-      <div className="text-5xl animate-pulse">🔒</div>
-      <p className="text-sm">콘텐츠를 불러오는 중...</p>
-    </div>
-  );
+  if (load) return <div className="flex justify-center py-24 text-4xl animate-pulse">📚</div>;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10">
+    <div className="max-w-3xl mx-auto px-4 py-10 fade-in">
       <div className="text-center mb-10">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight">[Payment]유료콘텐츠</h1>
-        <p className="text-slate-400 mt-2">토스페이먼츠로 결제한 사람만 <span className="text-cyan-400">전체 본문</span>을 열람할 수 있어요</p>
-        {!token && (
-          <p className="text-amber-200/80 text-sm mt-3">로그인하면 내가 산 콘텐츠가 잠금 해제로 표시돼요</p>
-        )}
+        <p className="text-cyan-400 text-sm font-medium tracking-widest uppercase mb-2">AI Developer Notes</p>
+        <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-cyan-200 to-indigo-300 bg-clip-text text-transparent">
+          잠긴 노트를 열면, 업무가 줄어듭니다
+        </h1>
+        <p className="text-slate-400 mt-3 text-sm">미리보기만 보고 결정하세요 · 판매량은 베스트 콘텐츠 참고</p>
       </div>
-      <div className="max-w-md mx-auto mb-8">
-        <input
-          type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="제목·설명 검색"
-          className="w-full glass rounded-full px-5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50" />
-      </div>
-      <div className="grid md:grid-cols-2 gap-5">
-        {filtered.map(p => (
-          <button key={p.id} type="button" onClick={() => onSelect(p)}
-            className="text-left glass rounded-2xl overflow-hidden card-hover fade-in p-0 border border-white/10">
-            <div className="aspect-[16/10] relative bg-slate-800">
-              <img src={p.image_url} alt="" className="w-full h-full object-cover opacity-90"
-                onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
-              <div className="hidden absolute inset-0 items-center justify-center text-4xl bg-slate-800">📄</div>
-              <span className={`absolute top-3 right-3 text-xs font-bold px-2.5 py-1 rounded-full ${
-                p.purchased ? 'bg-emerald-500/90 text-white' : 'bg-slate-900/80 text-amber-200 border border-amber-500/50'
-              }`}>
-                {p.purchased ? '열람 가능' : '잠김'}
-              </span>
+      <div className="grid gap-5">
+        {list.map(c => (
+          <button
+            key={c.id}
+            onClick={() => onOpen(c.id)}
+            className="text-left bg-slate-800/80 border border-slate-700 hover:border-cyan-600/50 rounded-2xl overflow-hidden flex flex-col sm:flex-row transition group"
+          >
+            <div className="sm:w-44 h-40 sm:h-auto shrink-0 bg-slate-900">
+              <img src={c.image_url || ''} alt="" className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
             </div>
-            <div className="p-5">
-              <span className="text-xs text-cyan-400/90 font-medium">{p.category}</span>
-              <h3 className="font-bold text-white text-lg mt-1 leading-snug">{p.name}</h3>
-              <p className="text-slate-400 text-sm mt-2 line-clamp-2">{p.description}</p>
-              <div className="mt-4 flex items-center justify-between">
-                <span className="text-xl font-bold text-white">₩{Number(p.price).toLocaleString()}</span>
-                <span className="text-sm font-semibold text-cyan-300">{p.purchased ? '읽기 →' : '잠금 해제 →'}</span>
+            <div className="p-5 flex-1 flex flex-col">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <span className="text-xs px-2 py-0.5 rounded-md bg-slate-700 text-cyan-300">{c.category}</span>
+                {c.is_best && (
+                  <span className="text-xs font-bold text-amber-400">🔥 BEST</span>
+                )}
+              </div>
+              <h2 className="text-lg font-bold text-white mb-2 leading-snug">{c.title}</h2>
+              <p className="text-slate-400 text-sm line-clamp-2 mb-4 flex-1">{c.preview}</p>
+              <div className="flex items-center justify-between mt-auto">
+                <span className="text-cyan-400 font-bold">₩{Number(c.price).toLocaleString()}</span>
+                <span className="text-slate-500 text-xs">판매 {Number(c.sales_count).toLocaleString()} · 열람권 구매</span>
               </div>
             </div>
           </button>
         ))}
       </div>
-      {filtered.length === 0 && (
-        <p className="text-center text-slate-500 py-16">검색 결과가 없어요</p>
+      {list.length === 0 && (
+        <p className="text-center text-slate-500 py-16">콘텐츠가 없습니다. DATABASE_URL을 확인하세요.</p>
       )}
     </div>
   );
 }
 
-function LockIntro({ product, onPay, onBack, user }) {
+// ── Detail: 잠금 / 열람 ─────────────────────────────
+function ContentPage({ id, token, onNeedAuth }) {
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState('');
+  const [load, setLoad] = useState(true);
+
+  const loadOne = useCallback(() => {
+    const h = token ? { Authorization: `Bearer ${token}` } : {};
+    setLoad(true);
+    fetch(`/api/contents/${id}`, { headers: h })
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) setErr(d.error);
+        else setData(d);
+        setLoad(false);
+      })
+      .catch(() => { setErr('불러오기 실패'); setLoad(false); });
+  }, [id, token]);
+
+  useEffect(() => { loadOne(); }, [loadOne]);
+
+  if (load || !data) return <div className="flex justify-center py-24">…</div>;
+  if (err) return <div className="text-center text-red-400 py-16">{err}</div>;
+
+  const unlocked = data.purchased && data.body;
+
   return (
-    <div className="max-w-lg mx-auto px-4 py-10 fade-in">
-      <button type="button" onClick={onBack} className="text-slate-400 text-sm hover:text-white mb-6">← 목록</button>
-      <div className="glass rounded-3xl p-8 text-center border border-amber-500/30">
-        <div className="text-6xl mb-4">🔒</div>
-        <h1 className="text-2xl font-bold text-white mb-2">이 콘텐츠는 잠겨 있어요</h1>
-        <p className="text-slate-400 text-sm mb-6">결제 완료 시 이 기기·계정에서 언제든지 전체 본문을 읽을 수 있어요.</p>
-        <div className="text-left glass rounded-2xl p-4 mb-6 border border-white/10">
-          <p className="text-xs text-slate-500 mb-1">콘텐츠</p>
-          <p className="text-white font-semibold">{product.name}</p>
-          <p className="text-slate-500 text-sm mt-2 line-clamp-3">{product.description}</p>
-          <p className="text-cyan-400 font-bold text-xl mt-4">₩{Number(product.price).toLocaleString()}</p>
-        </div>
-        {user && (
-          <button type="button" onClick={onPay}
-            className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-900 font-bold py-4 rounded-2xl shadow-lg">
-            토스로 결제하고 열기
-          </button>
+    <div className="max-w-2xl mx-auto px-4 py-8 fade-in">
+      <button type="button" onClick={() => navigate('/')} className="text-slate-500 text-sm mb-6 hover:text-cyan-400">← 목록</button>
+      <div className="text-xs text-cyan-400 mb-2">{data.category}</div>
+      <h1 className="text-2xl font-bold mb-4">{data.title}</h1>
+      <div className="flex items-center gap-3 text-sm text-slate-500 mb-6">
+        <span>₩{Number(data.price).toLocaleString()}</span>
+        <span>·</span>
+        <span>판매 {Number(data.sales_count).toLocaleString()}</span>
+      </div>
+
+      <div className="space-y-4">
+        {unlocked ? (
+          <div className="rounded-2xl border border-slate-700 bg-slate-800/50 p-6 prose prose-invert prose-sm max-w-none whitespace-pre-wrap text-slate-200">
+            {data.body}
+          </div>
+        ) : (
+          <>
+            <div className="rounded-2xl border border-slate-600 bg-slate-800/30 p-6">
+              <p className="text-xs text-cyan-500/80 mb-2">미리보기 (무료)</p>
+              <p className="text-slate-200 text-sm leading-relaxed line-clamp-3 whitespace-pre-line">{data.preview}</p>
+            </div>
+            <div className="relative rounded-2xl border border-slate-700 bg-slate-900/80 overflow-hidden min-h-[220px]">
+              <div className="blur-lock px-6 py-5 whitespace-pre-wrap text-slate-400 text-sm min-h-[180px]">
+                {`섹션 A — 핵심 요약\n본문은 서버에서만 내려보냅니다. 프론트는 잠금일 때 본문 필드를 받지 않습니다.\n\n섹션 B — 체크리스트\n□ 항목 1  □ 항목 2  □ 항목 3\n\n섹션 C — 부록\n(결제 완료 시 실제 노트 텍스트로 교체됩니다)`}
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center bg-slate-950/70 backdrop-blur-[2px]">
+                <div className="text-center p-6 max-w-sm">
+                  <p className="text-slate-200 mb-1 font-medium">🔒 유료 본문</p>
+                  <p className="text-slate-400 text-sm mb-5">열람권을 구매하면 전체가 공개돼요</p>
+                  {!token ? (
+                    <button type="button" onClick={onNeedAuth} className="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-6 py-3 rounded-xl w-full">로그인하고 결제하기</button>
+                  ) : (
+                    <button type="button" onClick={() => navigate(`/pay/${id}`)} className="bg-gradient-to-r from-cyan-600 to-indigo-600 text-white font-semibold px-8 py-3 rounded-xl shadow-lg w-full">
+                      결제하고 열람 · ₩{Number(data.price).toLocaleString()}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>
   );
 }
 
-function CheckoutTossPage({ product, user, token, onBack, onStartPay, widgetRefState }) {
-  const productRef = useRef(product);
-  productRef.current = product;
-  const widgetRef = useRef(null);
+// ── Checkout (토스 위젯) ───────────────────────────
+function PayPage({ id, user, token }) {
+  const [content, setContent] = useState(null);
   const [ready, setReady] = useState(false);
   const [paying, setPaying] = useState(false);
-  const amount = Math.max(0, Math.round(Number(product.price)));
+  const widgetRef = useRef(null);
 
   useEffect(() => {
-    if (typeof TossPayments === 'undefined') return;
-    (async () => {
-      const value = amount;
-      if (value < 1) { setReady(false); return; }
-      try {
-        if (!widgetRef.current) {
-          const tossPayments = TossPayments('test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm');
-          const widgets = tossPayments.widgets({ customerKey: '__ANONYMOUS__' });
-          await widgets.setAmount({ currency: 'KRW', value });
-          await widgets.renderPaymentMethods({ selector: '#toss-payment-widget', variantKey: 'DEFAULT' });
-          await widgets.renderAgreement({ selector: '#toss-agreement', variantKey: 'AGREEMENT' });
-          widgetRef.current = widgets;
-        } else {
-          await widgetRef.current.setAmount({ currency: 'KRW', value });
+    fetch(`/api/contents/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => {
+        if (d.purchased) {
+          navigate(`/content/${id}`);
+          return;
         }
-        setReady(true);
-      } catch (err) { console.error(err); }
-    })();
-  }, [product.id, amount]);
+        setContent(d);
+      });
+  }, [id, token]);
 
-  const handlePay = async () => {
-    if (!widgetRef.current || !ready) return;
-    const p = productRef.current;
-    const value = Math.max(0, Math.round(Number(p.price)));
-    const auth = token || localStorage.getItem('daon_token');
-    if (!auth) { alert('로그인이 필요합니다.'); return; }
+  useEffect(() => {
+    if (!content || typeof TossPayments === 'undefined') return;
+    (async () => {
+      const amt = Number(content.price);
+      const toss = TossPayments(TOSS_CK);
+      const widgets = toss.widgets({ customerKey: 'USER_' + user.id });
+      await widgets.setAmount({ currency: 'KRW', value: amt });
+      await widgets.renderPaymentMethods({ selector: '#toss-pay', variantKey: 'DEFAULT' });
+      await widgets.renderAgreement({ selector: '#toss-agree', variantKey: 'AGREEMENT' });
+      widgetRef.current = widgets;
+      setReady(true);
+    })();
+  }, [content, user.id]);
+
+  const pay = async () => {
+    if (!widgetRef.current || !ready || !content) return;
+    sessionStorage.setItem('payContentId', String(id));
     setPaying(true);
     try {
-      const prep = await fetch('/api/payment/prepare', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + auth },
-        body: JSON.stringify({ amount: value, productId: p.id }),
-      });
-      const prepJson = await prep.json();
-      if (!prep.ok) { alert(prepJson.error || '결제 준비 실패'); setPaying(false); return; }
-      const { orderId } = prepJson;
       await widgetRef.current.requestPayment({
-        orderId,
-        orderName: p.name,
+        orderId: 'NOTE_' + id + '_' + user.id + '_' + Date.now(),
+        orderName: content.title.slice(0, 80),
         successUrl: window.location.origin + '/payment/success',
         failUrl: window.location.origin + '/payment/fail',
         customerName: user.name,
       });
-    } catch (err) {
-      if (err.code !== 'USER_CANCEL') alert('결제 오류: ' + (err && err.message));
+    } catch (e) {
+      if (e?.code !== 'USER_CANCEL') alert(e?.message || e);
       setPaying(false);
     }
   };
 
+  if (!content) return <div className="text-center py-20">불러오는 중…</div>;
+
   return (
-    <div className="max-w-xl mx-auto px-4 py-8">
-      <button type="button" onClick={onBack} className="text-slate-400 text-sm hover:text-white mb-6">← 잠금 화면</button>
-      <h1 className="text-2xl font-bold text-white mb-2">💳 토스페이먼츠 결제</h1>
-      <p className="text-slate-500 text-sm mb-6">{product.name}</p>
-      <div className="glass rounded-2xl p-5 mb-5 border border-white/10">
-        <div className="flex justify-between text-white font-bold text-lg">
-          <span>결제 금액</span>
-          <span className="text-cyan-400">₩{amount.toLocaleString()}</span>
-        </div>
+    <div className="max-w-lg mx-auto px-4 py-8">
+      <button type="button" onClick={() => navigate(`/content/${id}`)} className="text-slate-500 text-sm mb-4">← 콘텐츠로</button>
+      <h1 className="text-xl font-bold mb-2">💳 결제</h1>
+      <p className="text-slate-400 text-sm mb-6">{content.title}</p>
+      <div className="bg-slate-800/80 border border-slate-600 rounded-xl p-4 mb-4 flex justify-between">
+        <span>결제 금액</span>
+        <span className="text-cyan-400 font-bold">₩{Number(content.price).toLocaleString()}</span>
       </div>
-      <div className="glass rounded-2xl shadow-lg mb-5 overflow-hidden border border-white/10">
-        {!ready && (
-          <div className="flex items-center justify-center py-10 text-slate-500 text-sm">결제 UI 로딩...</div>
-        )}
-        <div id="toss-payment-widget" />
-        <div id="toss-agreement" />
+      <div className="bg-slate-800/50 rounded-xl overflow-hidden mb-4 p-2">
+        {!ready && <p className="text-center text-slate-500 py-8">결제 UI 로딩…</p>}
+        <div id="toss-pay" />
+        <div id="toss-agree" />
       </div>
-      <button type="button" onClick={handlePay} disabled={!ready || paying}
-        className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-4 rounded-2xl disabled:opacity-50">
-        {paying ? '처리 중...' : '결제하기'}
+      <button type="button" disabled={!ready || paying} onClick={pay}
+        className="w-full py-4 rounded-xl font-bold bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white">
+        {paying ? '이동 중…' : '토스로 결제하기'}
       </button>
-      <p className="text-center text-xs text-slate-500 mt-2">테스트 키 · 실제 청구되지 않는 테스트 환경일 수 있어요</p>
+      <p className="text-center text-xs text-slate-500 mt-2">토스페이먼츠 테스트 결제</p>
     </div>
   );
 }
 
-function ReadContentPage({ contentId, token, onBack, showToast }) {
-  const [data, setData] = useState(null);
-  const [err, setErr] = useState('');
+// ── Success: 서버 승인 + INSERT ────────────────────
+function SuccessPage({ token, onDone }) {
+  const [st, setSt] = useState('loading');
+  const [info, setInfo] = useState(null);
 
   useEffect(() => {
-    if (!contentId || !token) return;
-    fetch('/api/content/' + contentId, { headers: { Authorization: 'Bearer ' + token } })
-      .then(r => r.json().then(j => ({ ok: r.ok, j })))
-      .then(({ ok, j }) => {
-        if (ok) setData(j.data);
-        else { setErr(j.error || '열람할 수 없어요'); }
-      })
-      .catch(() => setErr('연결 실패'));
-  }, [contentId, token]);
-
-  if (err) return (
-    <div className="max-w-lg mx-auto px-4 py-20 text-center">
-      <p className="text-red-300 mb-4">{err}</p>
-      <button type="button" onClick={onBack} className="text-cyan-400">목록으로</button>
-    </div>
-  );
-  if (!data) return (
-    <div className="flex justify-center py-24 text-5xl animate-pulse text-slate-500">📖</div>
-  );
-  return (
-    <div className="max-w-2xl mx-auto px-4 py-8 fade-in">
-      <button type="button" onClick={onBack} className="text-slate-400 text-sm hover:text-white mb-6">← 목록</button>
-      {data.image_url && (
-        <img src={data.image_url} alt="" className="w-full aspect-video object-cover rounded-2xl mb-6 border border-white/10" />
-      )}
-      <h1 className="text-3xl font-bold text-white mb-2">{data.name}</h1>
-      <p className="text-slate-500 text-sm mb-8">{data.description}</p>
-      <div className="glass rounded-2xl p-6 md:p-8 border border-emerald-500/20 text-slate-200 body-text text-[15px]">
-        {data.content_body || '(본문이 비어 있어요. 관리자가 등록한 내용이 여기에 표시됩니다.)'}
-      </div>
-    </div>
-  );
-}
-
-function PaymentSuccessPage({ onViewPurchases, onToList }) {
-  const [status, setStatus] = useState('loading');
-  const [order, setOrder] = useState(null);
-  const [errMsg, setErrMsg] = useState('');
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const paymentKey = params.get('paymentKey');
-    const orderId = params.get('orderId');
-    const amount = Math.round(parseInt(String(params.get('amount') || '0'), 10) || 0);
-    if (!paymentKey) { setStatus('error'); setErrMsg('paymentKey가 없습니다.'); return; }
-    if (!orderId || amount < 1) { setStatus('error'); setErrMsg('주문 정보가 올바르지 않습니다.'); return; }
-    let c = false;
-    fetch('/api/payment/confirm', {
+    const q = new URLSearchParams(window.location.search);
+    const paymentKey = q.get('paymentKey');
+    const orderId = q.get('orderId');
+    const amount = Number(q.get('amount'));
+    const cid = sessionStorage.getItem('payContentId');
+    if (!paymentKey || !cid) { setSt('err'); return; }
+    fetch('/api/payment/confirm-content', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paymentKey, orderId, amount }),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ paymentKey, orderId, amount, content_id: Number(cid) }),
     })
-      .then(r => r.json().then(d => ({ ok: r.ok, d })))
-      .then(({ ok, d }) => {
-        if (c) return;
-        if (ok && d.success) { setOrder(d); setStatus('done'); }
-        else { setStatus('error'); setErrMsg((d && d.error) || '승인 실패'); }
-      })
-      .catch(() => { if (!c) { setStatus('error'); setErrMsg('서버 연결 실패'); } });
-    return () => { c = true; };
-  }, []);
-
-  if (status === 'loading') return (
-    <div className="flex flex-col items-center justify-center min-h-96 text-slate-300 gap-2">
-      <div className="text-5xl">💳</div>
-      <p>결제 승인 중...</p>
-    </div>
-  );
-  if (status === 'error') return (
-    <div className="max-w-md mx-auto px-4 py-20 text-center text-slate-200">
-      <p className="text-red-300 mb-4">{errMsg}</p>
-      <button type="button" onClick={onToList} className="px-6 py-2 bg-slate-700 rounded-xl">목록으로</button>
-    </div>
-  );
-  return (
-    <div className="max-w-md mx-auto px-4 py-16 text-center fade-in">
-      <div className="text-7xl mb-4">🎉</div>
-      <h2 className="text-3xl font-bold text-white mb-2">열람이 열렸어요</h2>
-      <p className="text-slate-400 mb-6">이제 콘텐츠 목록에서 <span className="text-emerald-400">열람 가능</span>으로 표시되고, 바로 읽을 수 있어요.</p>
-      {order && (
-        <div className="glass rounded-2xl p-4 text-left text-sm text-slate-300 mb-6 border border-white/10">
-          <p className="text-xs text-slate-500">주문 ID</p>
-          <p className="font-mono text-cyan-300/90">{order.orderId}</p>
-          <p className="text-xs text-slate-500 mt-2">총액</p>
-          <p className="text-white font-bold">₩{order.amount?.toLocaleString()}</p>
-        </div>
-      )}
-      <button type="button" onClick={onViewPurchases} className="w-full bg-cyan-500 text-slate-900 font-bold py-3 rounded-2xl mb-2">구매 이력 보기</button>
-      <button type="button" onClick={onToList} className="w-full text-slate-400 text-sm py-2">콘텐츠 목록</button>
-    </div>
-  );
-}
-
-function PurchasesPage({ token }) {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!token) { setLoading(false); return; }
-    fetch('/api/orders', { headers: { Authorization: 'Bearer ' + token } })
       .then(r => r.json())
-      .then(d => { setOrders(d.data || []); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then(d => {
+        if (d.success) { setInfo(d); setSt('ok'); sessionStorage.removeItem('payContentId'); }
+        else setSt('err');
+      })
+      .catch(() => setSt('err'));
   }, [token]);
 
-  if (loading) return <div className="flex justify-center py-20 text-4xl">📋</div>;
-
+  if (st === 'loading') return <div className="text-center py-20">결제 확인 중…</div>;
+  if (st === 'err') return (
+    <div className="text-center py-20 px-4">
+      <p className="text-red-400 mb-4">승인 처리에 실패했습니다</p>
+      <button type="button" onClick={onDone} className="text-cyan-400 underline">홈으로</button>
+    </div>
+  );
   return (
-    <div className="max-w-xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-white mb-2">구매 이력</h1>
-      <p className="text-slate-500 text-sm mb-6">토스로 결제가 완료된 콘텐츠만 표시돼요</p>
-      {orders.length === 0 ? (
-        <div className="text-center py-20 text-slate-500">아직 구매 기록이 없어요</div>
+    <div className="max-w-md mx-auto text-center py-16 px-4 fade-in">
+      <div className="text-6xl mb-4">🎉</div>
+      <h1 className="text-2xl font-bold text-emerald-400 mb-2">열람권이 활성화됐어요</h1>
+      <p className="text-slate-400 text-sm mb-6">orderId: {info?.orderId}</p>
+      <button type="button" onClick={() => navigate(`/content/${info?.content_id}`)}
+        className="w-full py-3 rounded-xl bg-cyan-600 font-semibold">노트 열기</button>
+      <button type="button" onClick={onDone} className="block w-full mt-3 text-slate-500 text-sm">목록으로</button>
+    </div>
+  );
+}
+
+function FailPage({ onDone }) {
+  return (
+    <div className="text-center py-20 px-4">
+      <p className="text-amber-400 mb-4">결제가 취소되었거나 실패했습니다</p>
+      <button type="button" onClick={onDone} className="text-cyan-400">홈으로</button>
+    </div>
+  );
+}
+
+// ── 구매 이력 ─────────────────────────────────────
+function PurchasesPage({ token }) {
+  const [rows, setRows] = useState([]);
+  const [load, setLoad] = useState(true);
+  useEffect(() => {
+    fetch('/api/purchases', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => { setRows(d.data || []); setLoad(false); });
+  }, [token]);
+  if (load) return <div className="text-center py-20">…</div>;
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-10">
+      <h1 className="text-2xl font-bold mb-6">📚 구매한 노트</h1>
+      {rows.length === 0 ? (
+        <p className="text-slate-500">아직 구매한 노트가 없어요</p>
       ) : (
-        <div className="space-y-4">
-          {orders.map(o => {
-            const meta = STATUS_META[o.status] || STATUS_META.PAID;
-            return (
-              <div key={o.id} className="glass rounded-2xl p-5 border border-white/10">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs font-mono text-slate-500">{o.order_id}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${meta.cls}`}>{meta.label}</span>
-                </div>
-                {o.items && o.items.map((it, i) => (
-                  <div key={i} className="flex justify-between text-sm text-slate-300 py-0.5">
-                    <span>{it.name} {it.quantity > 1 ? '×' + it.quantity : ''}</span>
-                    <span>₩{(it.price * it.quantity).toLocaleString()}</span>
-                  </div>
-                ))}
-                <div className="border-t border-white/10 mt-3 pt-3 flex justify-between font-bold text-white">
-                  <span>합계</span>
-                  <span className="text-cyan-400">₩{Number(o.amount).toLocaleString()}</span>
-                </div>
-                <p className="text-xs text-slate-500 mt-2">{new Date(o.created_at).toLocaleString('ko-KR')}</p>
+        <ul className="space-y-3">
+          {rows.map(p => (
+            <li key={p.id} className="bg-slate-800/60 border border-slate-700 rounded-xl p-4 flex gap-4">
+              <img src={p.image_url} className="w-20 h-20 rounded-lg object-cover shrink-0" alt="" />
+              <div className="flex-1 min-w-0">
+                <button type="button" onClick={() => navigate(`/content/${p.content_id}`)} className="font-semibold text-left text-cyan-300 hover:underline line-clamp-2">{p.title}</button>
+                <p className="text-xs text-slate-500 mt-1">{new Date(p.paid_at).toLocaleString('ko-KR')} · ₩{Number(p.amount).toLocaleString()}</p>
               </div>
-            );
-          })}
-        </div>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
 }
 
-function AdminPage({ token, showToast, onChanged }) {
-  const [tab, setTab] = useState('new');
-  return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-white mb-6">관리자 · 콘텐츠 등록</h1>
-      <div className="flex gap-2 mb-6 border-b border-slate-600">
-        {[{ k: 'new', t: '신규 등록' }, { k: 'list', t: '목록' }].map(x => (
-          <button key={x.k} type="button" onClick={() => setTab(x.k)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${tab === x.k ? 'border-cyan-400 text-cyan-300' : 'border-transparent text-slate-500'}`}>
-            {x.t}
-          </button>
-        ))}
-      </div>
-      {tab === 'new' && <AdminNewContent token={token} showToast={showToast} onCreated={onChanged} />}
-      {tab === 'list' && <AdminProductList token={token} showToast={showToast} onChanged={onChanged} />}
-    </div>
-  );
-}
-
-function AdminNewContent({ token, showToast, onCreated }) {
-  const [form, setForm] = useState({ name: '', price: '', category: '튜토리얼', description: '', content_body: '', image_url: '' });
-  const [submitting, setSubmitting] = useState(false);
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const submit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      const res = await fetch('/api/admin/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({
-          name: form.name,
-          price: Number(form.price),
-          category: form.category,
-          description: form.description,
-          content_body: form.content_body,
-          image_url: form.image_url || 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800',
-          stock: 999,
-        }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error);
-      showToast('등록 완료');
-      setForm({ name: '', price: '', category: '튜토리얼', description: '', content_body: '', image_url: '' });
-      onCreated?.();
-    } catch (err) { showToast(err.message, 'error'); }
-    finally { setSubmitting(false); }
-  };
-  return (
-    <form onSubmit={submit} className="glass rounded-2xl p-6 space-y-4 border border-white/10 text-slate-200">
-      <div>
-        <label className="text-sm text-slate-400">제목 *</label>
-        <input required value={form.name} onChange={e => set('name', e.target.value)} className="w-full mt-1 bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-white" />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="text-sm text-slate-400">가격(원) *</label>
-          <input required type="number" min="0" value={form.price} onChange={e => set('price', e.target.value)} className="w-full mt-1 bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-white" />
-        </div>
-        <div>
-          <label className="text-sm text-slate-400">카테고리</label>
-          <input value={form.category} onChange={e => set('category', e.target.value)} className="w-full mt-1 bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-white" />
-        </div>
-      </div>
-      <div>
-        <label className="text-sm text-slate-400">미리보기(짧은 소개) *</label>
-        <textarea required rows="2" value={form.description} onChange={e => set('description', e.target.value)} className="w-full mt-1 bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-white" />
-      </div>
-      <div>
-        <label className="text-sm text-slate-400">이미지 URL (선택)</label>
-        <input value={form.image_url} onChange={e => set('image_url', e.target.value)} placeholder="https://..." className="w-full mt-1 bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-white text-sm" />
-      </div>
-      <div>
-        <label className="text-sm text-cyan-300">전체 본문 (유료) * — 결제 후에만 공개</label>
-        <textarea required rows="10" value={form.content_body} onChange={e => set('content_body', e.target.value)} className="w-full mt-1 bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-white font-mono text-sm" />
-      </div>
-      <button type="submit" disabled={submitting} className="w-full bg-cyan-500 text-slate-900 font-bold py-3 rounded-xl disabled:opacity-50">
-        {submitting ? '저장 중...' : '콘텐츠 등록'}
-      </button>
-    </form>
-  );
-}
-
-function AdminProductList({ token, showToast, onChanged }) {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const load = () => {
-    setLoading(true);
-    fetch('/api/products')
-      .then(r => r.json())
-      .then(d => { setProducts(d.data || []); setLoading(false); });
-  };
-  useEffect(load, []);
-  const del = async (id, name) => {
-    if (!confirm('삭제할까요? ' + name)) return;
-    const res = await fetch('/api/admin/products/' + id, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
-    if (res.ok) { showToast('삭제됨'); load(); onChanged?.(); } else showToast('실패', 'error');
-  };
-  if (loading) return <p className="text-slate-500">로딩...</p>;
-  return (
-    <div className="space-y-2">
-      {products.map(p => (
-        <div key={p.id} className="glass rounded-xl p-4 flex items-center justify-between border border-white/10">
-          <div>
-            <p className="text-white font-medium">{p.name}</p>
-            <p className="text-slate-500 text-sm">₩{Number(p.price).toLocaleString()}</p>
-          </div>
-          <button type="button" onClick={() => del(p.id, p.name)} className="text-red-400 text-sm px-2">삭제</button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Header({ user, isAdmin, page, setPage, onOpenAuth, onLogout }) {
-  return (
-    <header className="glass border-b border-white/10 sticky top-0 z-30">
-      <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-        <button type="button" onClick={() => setPage('list')} className="text-sm sm:text-lg font-bold text-white flex items-center gap-2 text-left">
-          <span aria-hidden>🔓</span> <span className="leading-tight">[Payment]유료콘텐츠</span>
-        </button>
-        <nav className="flex items-center gap-1 sm:gap-2">
-          <button type="button" onClick={() => setPage('list')}
-            className={`text-sm px-2 sm:px-3 py-1.5 rounded-lg ${page === 'list' ? 'bg-white/10 text-cyan-300' : 'text-slate-400'}`}>목록</button>
-          {user && (
-            <button type="button" onClick={() => setPage('orders')}
-              className={`text-sm px-2 sm:px-3 py-1.5 rounded-lg ${page === 'orders' ? 'bg-white/10 text-cyan-300' : 'text-slate-400'}`}>구매 이력</button>
-          )}
-          {user && isAdmin && (
-            <button type="button" onClick={() => setPage('admin')}
-              className={`text-sm px-2 sm:px-3 py-1.5 rounded-lg ${page === 'admin' ? 'bg-white/10 text-cyan-300' : 'text-slate-400'}`}>관리</button>
-          )}
-          {user ? (
-            <button type="button" onClick={onLogout} className="ml-1 text-sm text-slate-400 border border-slate-600 rounded-lg px-2 py-1">로그아웃</button>
-          ) : (
-            <>
-              <button type="button" onClick={() => onOpenAuth('login')} className="text-sm text-slate-300">로그인</button>
-              <button type="button" onClick={() => onOpenAuth('signup')} className="text-sm bg-cyan-500 text-slate-900 px-2 py-1 rounded-lg font-semibold">가입</button>
-            </>
-          )}
-        </nav>
-      </div>
-    </header>
-  );
-}
-
+// ── App ───────────────────────────────────────────
 function App() {
-  const isPaymentSuccess = window.location.pathname === '/payment/success';
+  const [route, setRoute] = useState(() => parsePath());
+  const [token, setTok] = useState(getToken);
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [showAuth, setShowAuth] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState('login');
   const [toast, setToast] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0);
 
-  const [page, setPage] = useState(isPaymentSuccess ? 'payment-success' : 'list');
-  const [lockProduct, setLockProduct] = useState(null);
-  const [readId, setReadId] = useState(null);
-  const [flow, setFlow] = useState('list');
-
-  const showToast = useCallback((message, type = 'success') => {
-    setToast({ message, type, key: Date.now() });
-  }, []);
+  const sync = useCallback(() => setRoute(parsePath()), []);
+  useEffect(() => {
+    window.addEventListener('popstate', sync);
+    return () => window.removeEventListener('popstate', sync);
+  }, [sync]);
 
   useEffect(() => {
-    const t = localStorage.getItem('daon_token');
-    const u = localStorage.getItem('daon_user');
-    if (t && u) {
-      setToken(t);
-      setUser(JSON.parse(u));
-      fetch('/api/me', { headers: { Authorization: 'Bearer ' + t } })
-        .then(r => r.ok ? r.json() : null)
-        .then(data => { if (data) setIsAdmin(!!data.isAdmin); })
-        .catch(() => {});
-    }
-  }, []);
+    if (!token) { setUser(null); return; }
+    fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(d => setUser(d.user))
+      .catch(() => { setToken(''); setTok(''); setUser(null); });
+  }, [token]);
 
-  const handleAuth = (newToken, newUser, newIsAdmin) => {
-    setToken(newToken);
-    setUser(newUser);
-    setIsAdmin(!!newIsAdmin);
-    localStorage.setItem('daon_token', newToken);
-    localStorage.setItem('daon_user', JSON.stringify(newUser));
-    setShowAuth(false);
-    setRefreshKey(k => k + 1);
-    showToast('환영합니다, ' + newUser.name + '님');
-  };
+  const logout = () => { setToken(''); setTok(''); setUser(null); setToast({ m: '로그아웃', t: 'ok' }); };
+  const onAuth = (u) => { setUser(u); setTok(getToken()); setAuthOpen(false); setToast({ m: '환영합니다', t: 'ok' }); };
 
-  const handleLogout = () => {
-    setToken(null);
-    setUser(null);
-    setIsAdmin(false);
-    localStorage.removeItem('daon_token');
-    localStorage.removeItem('daon_user');
-    setPage('list');
-    setLockProduct(null);
-    setReadId(null);
-    setFlow('list');
-    setRefreshKey(k => k + 1);
-  };
-
-  const onSelectContent = (p) => {
-    if (p.purchased) {
-      setReadId(p.id);
-      setPage('read');
-      return;
-    }
-    if (!user) { setAuthMode('login'); setShowAuth(true); return; }
-    setLockProduct(p);
-    setFlow('lock');
-    setPage('unlock-flow');
-  };
+  const r = route;
+  let body = null;
+  if (r.name === 'home') body = <HomePage token={token} user={user} onOpen={id => navigate(`/content/${id}`)} />;
+  else if (r.name === 'content') body = (
+    <ContentPage
+      id={r.id} token={token}
+      onNeedAuth={() => { setAuthMode('login'); setAuthOpen(true); }}
+    />
+  );
+  else if (r.name === 'pay') {
+    if (!token || !user) { body = <div className="text-center py-20"><button onClick={() => { setAuthMode('login'); setAuthOpen(true); }} className="text-cyan-400">로그인 필요</button></div>; }
+    else body = <PayPage id={r.id} user={user} token={token} />;
+  } else if (r.name === 'success') {
+    if (!token) body = <div className="text-center py-20 text-slate-500">로그인 후 다시 시도해 주세요</div>;
+    else body = <SuccessPage token={token} onDone={() => navigate('/')} />;
+  } else if (r.name === 'fail') body = <FailPage onDone={() => navigate('/')} />;
+  else if (r.name === 'purchases') {
+    if (!token) body = <div className="text-center py-20"><button onClick={() => { setAuthMode('login'); setAuthOpen(true); }} className="text-cyan-400">로그인</button></div>;
+    else body = <PurchasesPage token={token} />;
+  }
 
   return (
-    <div className="min-h-screen text-slate-200">
-      {page !== 'payment-success' && (
-        <Header
-          user={user}
-          isAdmin={isAdmin}
-          page={page}
-          setPage={(p) => { setPage(p); if (p === 'list') { setLockProduct(null); setReadId(null); setFlow('list'); } }}
-          onOpenAuth={(m) => { setAuthMode(m); setShowAuth(true); }}
-          onLogout={handleLogout}
-        />
-      )}
-
-      <main>
-        {page === 'list' && (
-          <ContentListPage token={token} refreshKey={refreshKey} onSelect={onSelectContent} onNeedLogin={() => { setAuthMode('login'); setShowAuth(true); }} />
-        )}
-
-        {page === 'unlock-flow' && lockProduct && user && (
-          flow === 'lock' ? (
-            <LockIntro product={lockProduct} user={user} onBack={() => { setPage('list'); setLockProduct(null); }}
-              onPay={() => setFlow('pay')} />
-          ) : (
-            <CheckoutTossPage product={lockProduct} user={user} token={token}
-              onBack={() => setFlow('lock')}
-            />
-          )
-        )}
-
-        {page === 'read' && readId && user && (
-          <ReadContentPage contentId={readId} token={token} onBack={() => { setPage('list'); setReadId(null); }} showToast={showToast} />
-        )}
-
-        {page === 'orders' && user && <PurchasesPage token={token} />}
-
-        {page === 'admin' && user && isAdmin && (
-          <AdminPage token={token} showToast={showToast} onChanged={() => setRefreshKey(k => k + 1)} />
-        )}
-
-        {page === 'admin' && (!user || !isAdmin) && (
-          <div className="text-center py-20 text-slate-500">관리자만 접근할 수 있어요</div>
-        )}
-
-        {page === 'payment-success' && (
-          <PaymentSuccessPage
-            onViewPurchases={() => { window.history.replaceState({}, '', '/'); setPage('orders'); setRefreshKey(k => k + 1); }}
-            onToList={() => { window.history.replaceState({}, '', '/'); setPage('list'); setRefreshKey(k => k + 1); }}
-          />
-        )}
-
-        {page === 'read' && !user && (
-          <div className="text-center py-20">로그인이 필요해요</div>
-        )}
-      </main>
-
-      {showAuth && (
-        <AuthModal initialMode={authMode} onClose={() => setShowAuth(false)} onAuth={handleAuth} />
-      )}
-      {toast && <Toast key={toast.key} message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-    </div>
+    <>
+      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40">
+        <div className="max-w-3xl mx-auto flex items-center justify-between px-4 h-14">
+          <button type="button" onClick={() => navigate('/')} className="font-bold text-cyan-400">AI 노트 랩</button>
+          <nav className="flex items-center gap-3 text-sm">
+            {user ? (
+              <>
+                <span className="text-slate-500 hidden sm:inline">{user.name}</span>
+                <button type="button" onClick={() => navigate('/purchases')} className="text-slate-300 hover:text-white">구매 이력</button>
+                <button type="button" onClick={logout} className="text-slate-500">나가기</button>
+              </>
+            ) : (
+              <button type="button" onClick={() => { setAuthMode('login'); setAuthOpen(true); }} className="text-cyan-400">로그인</button>
+            )}
+          </nav>
+        </div>
+      </header>
+      <main>{body}</main>
+      {authOpen && <AuthModal mode={authMode} onClose={() => setAuthOpen(false)} onAuth={onAuth} />}
+      {toast && <Toast message={toast.m} type={toast.t} onClose={() => setToast(null)} />}
+    </>
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
 </script>
 </body>
 </html>
