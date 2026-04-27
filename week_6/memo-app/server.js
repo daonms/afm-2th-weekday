@@ -40,10 +40,14 @@ pool.on('error', (err) => {
 // ---------------------------------------------------------------------------
 let dbInitialized = false;
 
+// 테이블명: Supabase 공유 DB에 이전 버전의 `memo_app_memos`가 `id text` 스키마로
+// 존재해 INSERT 충돌이 발생하므로, 이 앱 전용으로 v2 테이블을 사용한다.
+const TABLE = 'memo_app_v2_memos';
+
 async function initDB() {
   if (dbInitialized) return;
   const createSQL = `
-    CREATE TABLE IF NOT EXISTS memo_app_memos (
+    CREATE TABLE IF NOT EXISTS ${TABLE} (
       id SERIAL PRIMARY KEY,
       title VARCHAR(200) NOT NULL DEFAULT '',
       content TEXT NOT NULL DEFAULT '',
@@ -53,7 +57,7 @@ async function initDB() {
   `;
   await pool.query(createSQL);
   dbInitialized = true;
-  console.log('[DB] memo_app_memos 테이블 준비 완료');
+  console.log(`[DB] ${TABLE} 테이블 준비 완료`);
 }
 
 // ---------------------------------------------------------------------------
@@ -85,7 +89,7 @@ app.use('/api', async (_req, res, next) => {
 app.get('/api/memos', async (_req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT id, title, content, created_at, updated_at FROM memo_app_memos ORDER BY updated_at DESC'
+      `SELECT id, title, content, created_at, updated_at FROM ${TABLE} ORDER BY updated_at DESC`
     );
     res.json({ success: true, data: rows });
   } catch (err) {
@@ -99,7 +103,7 @@ app.post('/api/memos', async (req, res) => {
   try {
     const { title = '', content = '' } = req.body || {};
     const { rows } = await pool.query(
-      `INSERT INTO memo_app_memos (title, content)
+      `INSERT INTO ${TABLE} (title, content)
        VALUES ($1, $2)
        RETURNING id, title, content, created_at, updated_at`,
       [String(title).slice(0, 200), String(content)]
@@ -122,7 +126,7 @@ app.put('/api/memos/:id', async (req, res) => {
     }
     const { title = '', content = '' } = req.body || {};
     const { rows } = await pool.query(
-      `UPDATE memo_app_memos
+      `UPDATE ${TABLE}
        SET title = $1, content = $2, updated_at = NOW()
        WHERE id = $3
        RETURNING id, title, content, created_at, updated_at`,
@@ -150,7 +154,7 @@ app.delete('/api/memos/:id', async (req, res) => {
         .json({ success: false, message: '유효하지 않은 id' });
     }
     const { rowCount } = await pool.query(
-      'DELETE FROM memo_app_memos WHERE id = $1',
+      `DELETE FROM ${TABLE} WHERE id = $1`,
       [id]
     );
     if (rowCount === 0) {

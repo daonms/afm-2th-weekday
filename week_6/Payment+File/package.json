@@ -1,0 +1,20 @@
+{
+  "name": "shop-app",
+  "version": "1.1.0",
+  "description": "다온 베이커리 쇼핑몰 (Express + Supabase + JWT + 토스페이먼츠 + ImageKit)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "imagekit": "^5.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.20.0"
+  }
+}

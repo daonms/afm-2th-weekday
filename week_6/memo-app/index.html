@@ -67,7 +67,9 @@
     // ========================================
     // API 설정
     // ========================================
-    const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:3000/api`;
+    // 로컬(node server.js): 현재 오리진의 /api (:3000에서 서빙됨)
+    // Vercel 배포: 같은 오리진의 /api — 상대경로가 양쪽 모두 동작한다.
+    const API_BASE_URL = '/api';
 
     // ========================================
     // 🎨 Design System Components

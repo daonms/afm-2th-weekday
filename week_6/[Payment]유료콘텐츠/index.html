@@ -326,14 +326,17 @@ function PayPage({ id, user, token }) {
 
   const pay = async () => {
     if (!widgetRef.current || !ready || !content) return;
+    const origin = window.location.origin;
+    const q = new URLSearchParams({ content_id: String(id) });
     sessionStorage.setItem('payContentId', String(id));
+    sessionStorage.setItem('payAmount', String(content.price));
     setPaying(true);
     try {
       await widgetRef.current.requestPayment({
         orderId: 'C_' + id + '_' + user.id + '_' + Date.now(),
         orderName: (content.title || '').slice(0, 80),
-        successUrl: window.location.origin + '/payment/success',
-        failUrl: window.location.origin + '/payment/fail',
+        successUrl: `${origin}/payment/success?${q.toString()}`,
+        failUrl: `${origin}/payment/fail?${q.toString()}`,
         customerName: user.name,
       });
     } catch (e) {
@@ -371,31 +374,60 @@ function PayPage({ id, user, token }) {
 function SuccessPage({ token, onDone }) {
   const [st, setSt] = useState('loading');
   const [info, setInfo] = useState(null);
+  const [errDetail, setErrDetail] = useState('');
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const paymentKey = q.get('paymentKey');
     const orderId = q.get('orderId');
-    const amount = Number(q.get('amount'));
-    const cid = sessionStorage.getItem('payContentId');
-    if (!paymentKey || !orderId || !cid || !Number.isFinite(amount)) { setSt('err'); return; }
+    let amount = Number(q.get('amount'));
+    const fromStore = sessionStorage.getItem('payAmount');
+    if (!Number.isFinite(amount) || amount <= 0) {
+      const a = fromStore != null ? Number(fromStore) : NaN;
+      if (Number.isFinite(a) && a > 0) amount = a;
+    }
+    const cid = q.get('content_id') || sessionStorage.getItem('payContentId');
+    if (!paymentKey || !orderId || !cid) {
+      setErrDetail('토스에서 돌아온 주소에 paymentKey·orderId가 없거나, 콘텐츠 정보가 없습니다. 결제 페이지에서 다시 시도해 주세요.');
+      setSt('err');
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setErrDetail('결제 금액을 확인할 수 없습니다. URL에 amount가 없으면 결제를 처음부터 다시 시도해 주세요.');
+      setSt('err');
+      return;
+    }
     fetch('/api/payment/confirm-content', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ paymentKey, orderId, amount, content_id: Number(cid) }),
     })
-      .then(r => r.json())
-      .then(d => {
-        if (d.success) { setInfo(d); setSt('ok'); sessionStorage.removeItem('payContentId'); }
-        else setSt('err');
+      .then(async r => {
+        const d = await r.json();
+        if (!r.ok) {
+          setErrDetail(d.error || `서버 응답 ${r.status}`);
+          setSt('err');
+          return;
+        }
+        if (d.success) {
+          setInfo(d);
+          setSt('ok');
+          sessionStorage.removeItem('payContentId');
+          sessionStorage.removeItem('payAmount');
+        } else {
+          setErrDetail(d.error || '승인 응답이 올바르지 않습니다');
+          setSt('err');
+        }
       })
-      .catch(() => setSt('err'));
+      .catch((e) => { setErrDetail(e?.message || '네트워크 오류'); setSt('err'); });
   }, [token]);
 
   if (st === 'loading') return <div className="text-center py-20 text-mist">토스 승인 후 DB에 열람권을 기록하는 중…</div>;
   if (st === 'err') return (
-    <div className="text-center py-20 px-4">
-      <p className="text-rose-600 mb-4">승인 또는 기록에 실패했습니다. (금액·로그인 상태를 확인하세요)</p>
+    <div className="text-center py-20 px-4 max-w-md mx-auto">
+      <p className="text-rose-600 mb-2 font-medium">열람권 기록에 실패했습니다</p>
+      {errDetail && <p className="text-mist text-sm mb-4 whitespace-pre-wrap">{errDetail}</p>}
+      {!errDetail && <p className="text-mist text-sm mb-4">금액·로그인·Vercel의 DATABASE_URL·토스 키를 확인하세요.</p>}
       <button type="button" onClick={onDone} className="text-indigo-600 font-medium underline">홈으로</button>
     </div>
   );
