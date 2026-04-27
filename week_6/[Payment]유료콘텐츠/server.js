@@ -1,4 +1,5 @@
 require("dotenv").config();
+const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -79,29 +80,58 @@ async function initDB() {
       items JSONB NOT NULL,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS shop_payment_intents (
+      order_id VARCHAR(80) PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES shop_users(id) ON DELETE CASCADE,
+      amount INTEGER NOT NULL,
+      product_id INTEGER REFERENCES shop_products(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS content_unlocks (
+      user_id INTEGER NOT NULL REFERENCES shop_users(id) ON DELETE CASCADE,
+      product_id INTEGER NOT NULL REFERENCES shop_products(id) ON DELETE CASCADE,
+      order_id VARCHAR(255),
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (user_id, product_id)
+    );
   `);
 
   // 기존 테이블에 stock 컬럼이 없을 수 있으므로 안전 추가
   await pool.query(`
     ALTER TABLE shop_products ADD COLUMN IF NOT EXISTS stock INTEGER NOT NULL DEFAULT 100;
   `);
+  await pool.query(`
+    ALTER TABLE shop_products ADD COLUMN IF NOT EXISTS content_body TEXT;
+  `);
+  await pool.query(`
+    ALTER TABLE shop_payment_intents ADD COLUMN IF NOT EXISTS product_id INTEGER REFERENCES shop_products(id) ON DELETE SET NULL;
+  `);
 
   const { rows } = await pool.query("SELECT COUNT(*) FROM shop_products");
   if (parseInt(rows[0].count) === 0) {
     await pool.query(`
-      INSERT INTO shop_products (name, price, image_url, description, category) VALUES
-      ('딸기 생크림 케이크', 38000, 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=400&auto=format&fit=crop', '신선한 딸기가 듬뿍 올라간 시그니처 케이크', '케이크'),
-      ('초코 가나슈 케이크', 35000, 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&auto=format&fit=crop', '진한 벨기에 초콜릿 가나슈 레이어 케이크', '케이크'),
-      ('마카롱 세트 (6개)', 18000, 'https://images.unsplash.com/photo-1558326567-98ae2405596b?w=400&auto=format&fit=crop', '바닐라·딸기·초코·피스타치오 등 6가지 맛 구성', '마카롱'),
-      ('버터 크로아상', 4500, 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&auto=format&fit=crop', '프랑스산 버터로 결을 살린 정통 크로아상', '빵'),
-      ('바스크 치즈케이크', 32000, 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=400&auto=format&fit=crop', '겉은 바삭, 속은 촉촉한 스페인식 치즈케이크', '케이크'),
-      ('레드벨벳 케이크', 40000, 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=400&auto=format&fit=crop', '크림치즈 프로스팅을 얹은 레드벨벳 레이어 케이크', '케이크'),
-      ('크렘 브륄레', 8500, 'https://images.unsplash.com/photo-1470124182917-cc6e71b22ecc?w=400&auto=format&fit=crop', '표면을 불로 그을려 바삭한 설탕층이 일품인 디저트', '디저트'),
-      ('티라미수', 9000, 'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=400&auto=format&fit=crop', '마스카포네 치즈와 에스프레소의 클래식 조화', '디저트'),
-      ('마들렌 세트 (8개)', 15000, 'https://images.unsplash.com/photo-1603532648955-039310d9ed75?w=400&auto=format&fit=crop', '촉촉한 레몬향 마들렌 8개 세트', '쿠키'),
-      ('에클레어', 6500, 'https://images.unsplash.com/photo-1526081347589-7fa3cb41b4b2?w=400&auto=format&fit=crop', '슈 반죽에 바닐라 크림을 가득 채운 프랑스 디저트', '디저트')
+      INSERT INTO shop_products (name, price, image_url, description, category, stock, content_body) VALUES
+      ('AI 프롬프트 엔지니어링 실전 노트', 4500, 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&auto=format&fit=crop',
+        '팀에서 바로 쓰는 시스템 프롬프트·RAG·평가 루프만 요약한 PDF 스타일 가이드입니다.',
+        '튜토리얼', 999,
+        '## 1. 시스템 프롬프트\\n- 역할·톤·금지 사항을 한 번에 쓴다.\\n- 예시: “한국어로, 코드는 코드 블록만.”\\n\\n## 2. RAG\\n- 청크 크기 400~800자, 겹침 15% 권장.\\n- 출처 토큰을 답 끝에 붙이면 환각이 줄어든다.\\n\\n## 3. 평가\\n- 10개의 고정 질문으로 회귀 점검, 점수는 매주만 비교.'),
+
+      ('1인 창업자를 위한 계약·세금 체크리스트', 9000, 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=400&auto=format&fit=crop',
+        '용역·SaaS·오픈마켓 정산을 가정한 필수 항목만 모았습니다. (법률·세무 자문이 아닙니다.)',
+        '가이드', 999,
+        '## A. 견적·계약\\n- 범위·수정 횟수·지연 합의를 문서에 남긴다.\\n- 정산일·환불·해지는 별도 조항.\\n\\n## B. 세무 메모\\n- 사업자·간이/일반, 현금영수증 의무는 업종·매출에 따라 다름.\\n- **반드시 세무사·국세청 안내로 확인하세요.**'),
+
+      ('주니어의 코드 리뷰 생존 전략', 3000, 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&auto=format&fit=crop',
+        'PR 설명, 커밋 쪼개기, 리뷰 답장 템플릿까지. 짧은 실무 텍스트 콘텐츠.',
+        '커리어', 999,
+        '### PR에 넣을 것\\n- 배경 3줄 / 변경 요약 / 스크린샷·재현 / 롤백 계획\\n\\n### 리뷰 코멘트\\n- “반영: …” / “질문: …” / “다음 티켓: …” 로 구분해 답한다.\\n\\n(본문은 예시이며, 팀 문화에 맞게 수정하세요.)'),
+
+      ('Figma to HTML 워크플로 90분', 12000, 'https://images.unsplash.com/photo-1609921212029-bb5a28e60960?w=400&auto=format&fit=crop',
+        '오토레이아웃·스펙 추출·클래스 네이밍까지. 미니 강의형 롱폼 (유료).',
+        '디자인', 999,
+        '1) 프레임 구조 먼저 읽기\\n2) 8pt 그리드·타이포 스케일 맞추기\\n3) Pretext/컴포넌트 쪼개기\\n4) 토큰(색·간격) 표로 뽑기\\n5) 퍼블 리뷰는 스크린샷 diff\\n\\n*본 콘텐츠는 학습용 예시 텍스트입니다.*')
     `);
-    console.log("✅ 상품 10개 시드 완료");
+    console.log("✅ 유료 콘텐츠 4개 시드 완료");
   }
   console.log("✅ DB 초기화 완료");
 }
@@ -119,6 +149,21 @@ function auth(req, res, next) {
   } catch {
     res.status(401).json({ error: "유효하지 않은 토큰입니다" });
   }
+}
+
+// 선택 로그인 (토큰 있으면 req.user)
+function authOptional(req, _res, next) {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (token) {
+    try {
+      req.user = jwt.verify(token, JWT_SECRET);
+    } catch {
+      req.user = null;
+    }
+  } else {
+    req.user = null;
+  }
+  next();
 }
 
 // 관리자 가드 (auth 뒤에 사용)
@@ -192,8 +237,8 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
-// 상품 목록 (공개) — 카테고리 필터 + 검색(q) 지원
-app.get("/api/products", async (req, res) => {
+// 콘텐츠 목록 — 미구매 시 content_body 제외, purchased 플래그
+app.get("/api/products", authOptional, async (req, res) => {
   try {
     const { category, q } = req.query;
     const conds = [];
@@ -208,10 +253,51 @@ app.get("/api/products", async (req, res) => {
     }
     const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
     const { rows } = await pool.query(
-      `SELECT * FROM shop_products ${where} ORDER BY id`,
+      `SELECT id, name, price, image_url, description, category, stock, content_body, created_at
+       FROM shop_products ${where} ORDER BY id`,
       params
     );
-    res.json({ data: rows });
+
+    let unlocked = new Set();
+    if (req.user) {
+      const { rows: u } = await pool.query(
+        "SELECT product_id FROM content_unlocks WHERE user_id = $1",
+        [req.user.id]
+      );
+      unlocked = new Set(u.map((x) => x.product_id));
+    }
+
+    const data = rows.map((r) => {
+      const purchased = unlocked.has(r.id);
+      const { content_body, ...rest } = r;
+      return {
+        ...rest,
+        purchased,
+        content_body: purchased ? (content_body || "") : null,
+      };
+    });
+    res.json({ data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 단일 콘텐츠 본문 (구매한 사용자만)
+app.get("/api/content/:id", auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: "잘못된 id" });
+    const { rows: ok } = await pool.query(
+      "SELECT 1 FROM content_unlocks WHERE user_id = $1 AND product_id = $2",
+      [req.user.id, id]
+    );
+    if (!ok.length) return res.status(403).json({ error: "구매한 콘텐츠만 열람할 수 있어요" });
+    const { rows } = await pool.query(
+      "SELECT id, name, description, content_body, image_url, category, price FROM shop_products WHERE id = $1",
+      [id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "콘텐츠를 찾을 수 없어요" });
+    res.json({ data: rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -239,13 +325,21 @@ app.post("/api/admin/upload", auth, adminOnly, upload.single("image"), async (re
 // ── 관리자: 상품 등록 ───────────────────────────────────
 app.post("/api/admin/products", auth, adminOnly, async (req, res) => {
   try {
-    const { name, price, image_url, description, category, stock } = req.body;
+    const { name, price, image_url, description, category, stock, content_body } = req.body;
     if (!name || !price || !category)
       return res.status(400).json({ error: "이름, 가격, 카테고리는 필수입니다" });
     const { rows } = await pool.query(
-      `INSERT INTO shop_products (name, price, image_url, description, category, stock)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [name, Number(price), image_url || null, description || null, category, Number(stock ?? 100)]
+      `INSERT INTO shop_products (name, price, image_url, description, category, stock, content_body)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [
+        name,
+        Number(price),
+        image_url || null,
+        description || null,
+        category,
+        Number(stock ?? 999),
+        content_body || null,
+      ]
     );
     res.status(201).json({ data: rows[0] });
   } catch (err) {
@@ -361,14 +455,88 @@ app.delete("/api/cart/:id", auth, async (req, res) => {
   }
 });
 
-// 토스페이먼츠 결제 승인 + 주문 저장
-app.post("/api/payment/confirm", auth, async (req, res) => {
-  const { paymentKey, orderId, amount } = req.body;
-  if (!paymentKey || !orderId || !amount)
+// 결제 직전: 토스에 넘길 orderId + 금액 + user_id (+ 단일 콘텐츠 product_id) 기록
+app.post("/api/payment/prepare", auth, async (req, res) => {
+  const amount = Math.round(Number((req.body && req.body.amount) ?? 0));
+  const productId =
+    req.body && req.body.productId != null ? parseInt(String(req.body.productId), 10) : null;
+
+  if (!Number.isFinite(amount) || amount < 1)
+    return res.status(400).json({ error: "금액이 올바르지 않습니다" });
+
+  try {
+    await pool.query(
+      `DELETE FROM shop_payment_intents WHERE created_at < NOW() - INTERVAL '40 minutes'`
+    );
+
+    if (productId && Number.isFinite(productId)) {
+      const { rows: pr } = await pool.query(
+        "SELECT id, price FROM shop_products WHERE id = $1",
+        [productId]
+      );
+      if (!pr.length) return res.status(404).json({ error: "콘텐츠를 찾을 수 없어요" });
+      if (pr[0].price !== amount)
+        return res.status(400).json({ error: "결제 금액이 콘텐츠 가격과 일치하지 않아요" });
+      const { rows: dup } = await pool.query(
+        "SELECT 1 FROM content_unlocks WHERE user_id = $1 AND product_id = $2",
+        [req.user.id, productId]
+      );
+      if (dup.length) return res.status(400).json({ error: "이미 구매한 콘텐츠예요" });
+    }
+
+    const orderId = "ORD_" + crypto.randomBytes(18).toString("base64url");
+    await pool.query(
+      `INSERT INTO shop_payment_intents (order_id, user_id, amount, product_id) VALUES ($1, $2, $3, $4)`,
+      [orderId, req.user.id, amount, productId || null]
+    );
+    res.json({ orderId, amount });
+  } catch (err) {
+    console.error("prepare:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 토스페이먼츠 결제 승인 + 주문 저장 (auth 불필요: shop_payment_intents 의 orderId 로 사용자 식별)
+app.post("/api/payment/confirm", async (req, res) => {
+  const paymentKey = req.body && req.body.paymentKey;
+  const orderId = req.body && req.body.orderId;
+  const amount = Math.round(Number((req.body && req.body.amount) ?? 0));
+  if (!paymentKey || !orderId || !Number.isFinite(amount) || amount < 1)
     return res.status(400).json({ error: "결제 정보가 올바르지 않습니다" });
 
   try {
-    // 1) 토스페이먼츠 서버에 승인 요청
+    const { rows: intentRows } = await pool.query(
+      `SELECT user_id, amount, product_id FROM shop_payment_intents WHERE order_id = $1`,
+      [orderId]
+    );
+    let userId;
+    const intentProductId =
+      intentRows.length && intentRows[0].product_id != null
+        ? intentRows[0].product_id
+        : null;
+
+    if (intentRows.length) {
+      if (intentRows[0].amount !== amount) {
+        return res.status(400).json({ error: "결제 금액이 주문과 일치하지 않습니다" });
+      }
+      userId = intentRows[0].user_id;
+    } else {
+      // 구버전: intent 없이 JWT만 쓰던 경우(로컬스토리지 토큰 있을 때)
+      const token = req.headers.authorization?.split(" ")[1];
+      if (!token) {
+        return res.status(400).json({
+          error:
+            "결제 세션이 없습니다. 장바구니에서 다시 결제하기를 눌러 주세요. (로그인 상태 유지)",
+        });
+      }
+      try {
+        userId = jwt.verify(token, JWT_SECRET).id;
+      } catch {
+        return res.status(401).json({ error: "로그인이 만료되었습니다. 다시 로그인 후 주문 내역을 확인해 주세요." });
+      }
+    }
+
+    // 1) 토스페이먼츠 승인
     const authHeader = "Basic " + Buffer.from(TOSS_SECRET_KEY + ":").toString("base64");
     const tossRes = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
       method: "POST",
@@ -378,30 +546,71 @@ app.post("/api/payment/confirm", auth, async (req, res) => {
     const tossData = await tossRes.json();
     if (!tossRes.ok) throw new Error(tossData.message || "토스 결제 승인 실패");
 
-    // 2) 장바구니 조회 → 주문 저장
-    const { rows: cartRows } = await pool.query(
-      `SELECT c.quantity, p.id AS product_id, p.name, p.price, p.image_url
-       FROM shop_cart c JOIN shop_products p ON c.product_id = p.id
-       WHERE c.user_id = $1`,
-      [req.user.id]
-    );
-    const items = cartRows.map(r => ({
-      product_id: r.product_id,
-      name: r.name,
-      price: Number(r.price),
-      quantity: r.quantity,
-    }));
+    if (intentRows.length) {
+      await pool.query(`DELETE FROM shop_payment_intents WHERE order_id = $1`, [orderId]);
+    }
+
+    let items;
+
+    if (intentProductId) {
+      const { rows: pr } = await pool.query(
+        "SELECT id, name, price FROM shop_products WHERE id = $1",
+        [intentProductId]
+      );
+      if (!pr.length) throw new Error("콘텐츠를 찾을 수 없습니다");
+      items = [
+        {
+          product_id: pr[0].id,
+          name: pr[0].name,
+          price: Number(pr[0].price),
+          quantity: 1,
+        },
+      ];
+    } else {
+      const { rows: cartRows } = await pool.query(
+        `SELECT c.quantity, p.id AS product_id, p.name, p.price, p.image_url
+         FROM shop_cart c JOIN shop_products p ON c.product_id = p.id
+         WHERE c.user_id = $1`,
+        [userId]
+      );
+      items = cartRows.map((r) => ({
+        product_id: r.product_id,
+        name: r.name,
+        price: Number(r.price),
+        quantity: r.quantity,
+      }));
+    }
 
     await pool.query(
       `INSERT INTO shop_orders (user_id, payment_key, order_id, amount, status, items)
        VALUES ($1,$2,$3,$4,'PAID',$5)`,
-      [req.user.id, paymentKey, orderId, amount, JSON.stringify(items)]
+      [userId, paymentKey, orderId, amount, JSON.stringify(items)]
     );
 
-    // 3) 장바구니 비우기
-    await pool.query("DELETE FROM shop_cart WHERE user_id=$1", [req.user.id]);
+    if (intentProductId) {
+      await pool.query(
+        `INSERT INTO content_unlocks (user_id, product_id, order_id)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id, product_id) DO NOTHING`,
+        [userId, intentProductId, orderId]
+      );
+    } else {
+      await pool.query("DELETE FROM shop_cart WHERE user_id=$1", [userId]);
+      const seen = new Set();
+      for (const it of items) {
+        const pid = it.product_id;
+        if (seen.has(pid)) continue;
+        seen.add(pid);
+        await pool.query(
+          `INSERT INTO content_unlocks (user_id, product_id, order_id)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (user_id, product_id) DO NOTHING`,
+          [userId, pid, orderId]
+        );
+      }
+    }
 
-    res.json({ success: true, orderId, amount, items });
+    res.json({ success: true, orderId, amount, items, unlockedProductId: intentProductId || null });
   } catch (err) {
     console.error("결제 오류:", err.message);
     res.status(500).json({ error: err.message });
@@ -425,7 +634,7 @@ app.get("*", (_req, res) => res.sendFile(path.join(__dirname, "index.html")));
 
 if (require.main === module) {
   app.listen(PORT, () =>
-    console.log(`🧁 다온 베이커리 서버 → http://localhost:${PORT}`)
+    console.log(`🔓 [Payment]유료콘텐츠 (토스) → http://localhost:${PORT}`)
   );
 }
 
