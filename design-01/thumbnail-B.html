@@ -19,158 +19,127 @@
       width: 1920px;
       height: 1080px;
       position: relative;
-      background: #0D0D0D;
+      background: #0A0A0A;
       font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
       overflow: hidden;
     }
 
     /* 배경 글로우 */
-    .canvas::before {
+    .bg-glow {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background:
+        radial-gradient(ellipse at 50% 50%, rgba(0,201,167,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 90% 20%, rgba(255,107,53,0.1) 0%, transparent 40%);
+    }
+
+    /* ── 스티브 잡스 사진 (중앙-왼쪽, 크게) ── */
+    .person-wrap {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 900px;
+      height: 1080px;
+      z-index: 3;
+      overflow: hidden;
+    }
+
+    .person-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+      filter: grayscale(30%) contrast(1.1);
+    }
+
+    /* 사진 오른쪽 페이드 */
+    .person-wrap::after {
       content: '';
       position: absolute;
       inset: 0;
-      background:
-        radial-gradient(ellipse at 20% 50%, rgba(0, 201, 167, 0.18) 0%, transparent 55%),
-        radial-gradient(ellipse at 85% 30%, rgba(255, 107, 53, 0.15) 0%, transparent 45%),
-        radial-gradient(ellipse at 60% 100%, rgba(80, 0, 200, 0.12) 0%, transparent 40%);
-      z-index: 1;
+      background: linear-gradient(
+        to right,
+        transparent 40%,
+        rgba(10,10,10,0.7) 72%,
+        #0A0A0A 100%
+      );
     }
 
-    /* 대각선 색 띠 */
-    .color-band {
+    /* 사진에 틸 컬러 오버레이 */
+    .person-tint {
       position: absolute;
-      top: -200px;
-      left: -100px;
-      width: 680px;
-      height: 1400px;
-      background: linear-gradient(135deg, #00C9A7 0%, #00A88F 60%, #007A6B 100%);
-      transform: rotate(8deg);
-      z-index: 2;
-      opacity: 0.92;
-    }
-
-    .color-band-shadow {
-      position: absolute;
-      top: -200px;
-      left: 460px;
-      width: 80px;
-      height: 1400px;
-      background: linear-gradient(to right, rgba(0,0,0,0.4), transparent);
-      transform: rotate(8deg);
-      z-index: 3;
-    }
-
-    /* ── 왼쪽 (틸 띠 위) 텍스트 ── */
-    .left-area {
-      position: absolute;
-      left: 72px;
-      top: 50%;
-      transform: translateY(-52%);
-      z-index: 10;
-      width: 480px;
-      text-align: left;
-    }
-
-    .ep-inline {
-      font-size: 30px;
-      font-weight: 900;
-      color: #000;
-      letter-spacing: 3px;
-      display: block;
-      margin-bottom: 24px;
-      opacity: 0.7;
-    }
-
-    .left-headline-1 {
-      font-size: 108px;
-      font-weight: 900;
-      color: #000;
-      line-height: 1.0;
-      letter-spacing: -3px;
-      display: block;
-    }
-
-    .left-headline-2 {
-      font-size: 108px;
-      font-weight: 900;
-      color: #000;
-      line-height: 1.0;
-      letter-spacing: -3px;
-      display: block;
-    }
-
-    .left-sub {
-      margin-top: 28px;
-      font-size: 34px;
-      font-weight: 700;
-      color: rgba(0,0,0,0.7);
-      letter-spacing: 0px;
+      left: 0;
+      top: 0;
+      width: 900px;
+      height: 1080px;
+      z-index: 4;
+      background: rgba(0, 201, 167, 0.12);
+      mix-blend-mode: screen;
+      pointer-events: none;
     }
 
     /* ── 오른쪽 메인 텍스트 ── */
-    .right-area {
+    .text-area {
       position: absolute;
-      right: 80px;
+      right: 72px;
       top: 50%;
       transform: translateY(-50%);
-      z-index: 5;
+      z-index: 6;
       text-align: right;
       width: 1020px;
     }
 
     .right-tag {
       display: inline-block;
-      border: 3px solid rgba(0, 201, 167, 0.6);
+      border: 3px solid rgba(0, 201, 167, 0.7);
       color: #00C9A7;
-      font-size: 30px;
+      font-size: 32px;
       font-weight: 700;
-      padding: 8px 24px;
+      padding: 8px 28px;
       border-radius: 50px;
       letter-spacing: 2px;
-      margin-bottom: 28px;
+      margin-bottom: 24px;
     }
 
-    .right-h1 {
-      font-size: 200px;
+    .h1 {
+      font-size: 210px;
       font-weight: 900;
       color: #fff;
-      line-height: 0.9;
+      line-height: 0.88;
       letter-spacing: -8px;
       display: block;
-      text-shadow: 0 0 80px rgba(0,201,167,0.3);
+      text-shadow: 0 0 80px rgba(0,201,167,0.2);
     }
 
-    .right-h2 {
-      font-size: 200px;
+    .h2 {
+      font-size: 210px;
       font-weight: 900;
       color: #FFED00;
-      line-height: 0.9;
+      line-height: 0.88;
       letter-spacing: -8px;
       display: block;
-      text-shadow: 0 0 60px rgba(255,237,0,0.4);
+      text-shadow: 0 0 60px rgba(255,237,0,0.45);
     }
 
-    .right-h3 {
-      font-size: 200px;
+    .h3 {
+      font-size: 210px;
       font-weight: 900;
       color: #fff;
-      line-height: 0.9;
+      line-height: 0.88;
       letter-spacing: -8px;
       display: block;
-      text-shadow: 0 0 80px rgba(0,201,167,0.3);
+      text-shadow: 0 0 80px rgba(0,201,167,0.2);
     }
 
-    .right-sub {
-      margin-top: 40px;
-      font-size: 44px;
+    .sub {
+      margin-top: 44px;
+      font-size: 48px;
       font-weight: 700;
-      color: rgba(255,255,255,0.6);
+      color: rgba(255,255,255,0.55);
     }
 
-    .right-sub strong {
-      color: #FF6B35;
-      font-weight: 900;
-    }
+    .sub strong { color: #FF6B35; font-weight: 900; }
 
     /* ── 에피소드 뱃지 ── */
     .episode-badge {
@@ -178,8 +147,8 @@
       top: 52px;
       right: 68px;
       z-index: 10;
-      width: 110px;
-      height: 110px;
+      width: 112px;
+      height: 112px;
       background: #00C9A7;
       border-radius: 50%;
       display: flex;
@@ -195,47 +164,53 @@
       line-height: 1;
     }
 
-    /* ── 하단 라인 ── */
+    /* ── 하단 컬러 라인 ── */
     .bottom-line {
       position: absolute;
       bottom: 0;
       left: 0;
       right: 0;
-      height: 6px;
+      height: 7px;
       background: linear-gradient(to right, #00C9A7 0%, #FFED00 50%, #FF6B35 100%);
       z-index: 10;
     }
 
-    /* ── 채널 태그 ── */
+    /* ── 채널명 ── */
     .channel-tag {
       position: absolute;
-      bottom: 48px;
+      bottom: 52px;
       right: 80px;
       z-index: 10;
-      color: rgba(255,255,255,0.5);
-      font-size: 28px;
+      color: rgba(255,255,255,0.45);
+      font-size: 30px;
       font-weight: 700;
       letter-spacing: 2px;
     }
 
-    /* ── 맥북 아이콘 (틸 영역) ── */
-    .macbook-icon {
+    /* ── 인물 이름 뱃지 ── */
+    .person-label {
       position: absolute;
-      bottom: 100px;
-      left: 68px;
+      bottom: 52px;
+      left: 52px;
       z-index: 10;
-      font-size: 68px;
-      opacity: 0.5;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      font-size: 28px;
+      font-weight: 700;
+      padding: 10px 24px;
+      border-radius: 8px;
+      letter-spacing: 1px;
+      border-left: 5px solid #00C9A7;
     }
 
-    /* 그리드 패턴 오버레이 */
+    /* 그리드 패턴 */
     .grid-overlay {
       position: absolute;
       inset: 0;
       z-index: 2;
       background-image:
-        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+        linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
       background-size: 60px 60px;
     }
   </style>
@@ -243,29 +218,22 @@
 <body>
   <div class="canvas">
 
-    <!-- 배경 그리드 -->
+    <div class="bg-glow"></div>
     <div class="grid-overlay"></div>
 
-    <!-- 대각선 틸 띠 -->
-    <div class="color-band"></div>
-    <div class="color-band-shadow"></div>
-
-    <!-- 왼쪽 틸 영역 텍스트 -->
-    <div class="left-area">
-      <span class="ep-inline">EP.31</span>
-      <span class="left-headline-1">맥북</span>
-      <span class="left-headline-2">M5</span>
-      <div class="left-sub">실사용 리뷰</div>
-      <div class="macbook-icon">💻</div>
+    <!-- 스티브 잡스 사진 -->
+    <div class="person-wrap">
+      <img src="./photos-gpt-2/gpt-steve-apple.png" alt="Steve Jobs holding apple">
     </div>
+    <div class="person-tint"></div>
 
     <!-- 오른쪽 메인 텍스트 -->
-    <div class="right-area">
+    <div class="text-area">
       <div class="right-tag">AI 벤치마크</div><br>
-      <span class="right-h1">애플이</span>
-      <span class="right-h2">물빵</span>
-      <span class="right-h3">했네요</span>
-      <div class="right-sub">AI 속도 <strong>x6배</strong> — 진짜일까?</div>
+      <span class="h1">애플이</span>
+      <span class="h2">물빵</span>
+      <span class="h3">했네요</span>
+      <div class="sub">AI 속도 <strong>x6배</strong> — 진짜일까?</div>
     </div>
 
     <!-- 에피소드 뱃지 -->
@@ -278,6 +246,9 @@
 
     <!-- 채널명 -->
     <div class="channel-tag">디자인 엔지니어</div>
+
+    <!-- 인물 라벨 -->
+    <div class="person-label">Steve Jobs, 2010</div>
 
   </div>
 </body>
