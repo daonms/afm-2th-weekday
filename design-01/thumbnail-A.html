@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920">
+  <title>썸네일 A — AI에 애플이 물빵했네요</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .canvas {
+      width: 1920px;
+      height: 1080px;
+      position: relative;
+      background: linear-gradient(135deg, #00C9A7 0%, #00A88F 45%, #007A6B 100%);
+      font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
+      overflow: hidden;
+    }
+
+    /* 배경 노이즈 텍스처 */
+    .canvas::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 70% 50%, rgba(0,0,0,0.35) 0%, transparent 65%),
+        radial-gradient(ellipse at 10% 80%, rgba(0,200,160,0.4) 0%, transparent 50%);
+      z-index: 1;
+    }
+
+    /* ── 왼쪽 맥북 일러스트 ── */
+    .macbook-wrap {
+      position: absolute;
+      left: -60px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 2;
+      width: 860px;
+    }
+
+    .macbook-screen {
+      width: 820px;
+      height: 510px;
+      background: #0D1117;
+      border-radius: 24px 24px 0 0;
+      border: 12px solid #1e1e1e;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-shadow: 0 0 60px rgba(0,0,0,0.6);
+    }
+
+    .screen-inner {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(160deg, #0D1117 0%, #161B22 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 30px;
+    }
+
+    .apple-logo {
+      font-size: 80px;
+      opacity: 0.9;
+    }
+
+    .chip-badge {
+      background: linear-gradient(90deg, #00C9A7, #00E5C8);
+      color: #000;
+      font-size: 28px;
+      font-weight: 900;
+      padding: 10px 28px;
+      border-radius: 50px;
+      letter-spacing: 1px;
+    }
+
+    .screen-text {
+      color: #8B949E;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+
+    .speed-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .bar-label { color: #58A6FF; font-size: 18px; font-weight: 700; }
+    .bar-track {
+      width: 320px;
+      height: 14px;
+      background: #21262D;
+      border-radius: 7px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      width: 88%;
+      height: 100%;
+      background: linear-gradient(90deg, #00C9A7, #00FF88);
+      border-radius: 7px;
+      animation: none;
+    }
+    .bar-pct { color: #00C9A7; font-size: 18px; font-weight: 900; }
+
+    .macbook-base {
+      width: 880px;
+      height: 28px;
+      background: linear-gradient(to bottom, #2a2a2a, #1a1a1a);
+      border-radius: 0 0 10px 10px;
+      margin-top: -2px;
+    }
+
+    .macbook-hinge {
+      width: 820px;
+      height: 10px;
+      background: #111;
+      margin: 0 auto;
+      border-radius: 0 0 8px 8px;
+    }
+
+    /* ── 오른쪽 텍스트 영역 ── */
+    .text-area {
+      position: absolute;
+      right: 80px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 3;
+      text-align: right;
+      width: 940px;
+    }
+
+    .tag {
+      display: inline-block;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      font-size: 32px;
+      font-weight: 700;
+      padding: 10px 28px;
+      border-radius: 50px;
+      letter-spacing: 2px;
+      margin-bottom: 32px;
+    }
+
+    .headline-1 {
+      font-size: 148px;
+      font-weight: 900;
+      color: #fff;
+      line-height: 1.0;
+      letter-spacing: -4px;
+      text-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      display: block;
+    }
+
+    .headline-2 {
+      font-size: 148px;
+      font-weight: 900;
+      color: #FFED00;
+      line-height: 1.0;
+      letter-spacing: -4px;
+      text-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      display: block;
+    }
+
+    .headline-3 {
+      font-size: 148px;
+      font-weight: 900;
+      color: #fff;
+      line-height: 1.0;
+      letter-spacing: -4px;
+      text-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      display: block;
+    }
+
+    .sub {
+      margin-top: 36px;
+      font-size: 46px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.8);
+      letter-spacing: 1px;
+    }
+
+    .accent-word {
+      color: #FF6B35;
+      font-weight: 900;
+    }
+
+    /* ── 에피소드 뱃지 ── */
+    .episode-badge {
+      position: absolute;
+      top: 48px;
+      right: 64px;
+      z-index: 10;
+      width: 100px;
+      height: 100px;
+      background: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+
+    .episode-num {
+      font-size: 46px;
+      font-weight: 900;
+      color: #000;
+      line-height: 1;
+    }
+
+    /* ── 하단 채널명 ── */
+    .channel-tag {
+      position: absolute;
+      bottom: 48px;
+      right: 80px;
+      z-index: 10;
+      background: rgba(0,0,0,0.5);
+      color: #fff;
+      font-size: 28px;
+      font-weight: 700;
+      padding: 10px 24px;
+      border-radius: 8px;
+      letter-spacing: 1px;
+    }
+
+    /* ── 왼쪽 상단 강의 뱃지 ── */
+    .lecture-badge {
+      position: absolute;
+      top: 48px;
+      left: 48px;
+      z-index: 10;
+      background: #FF6B35;
+      color: #fff;
+      font-size: 30px;
+      font-weight: 900;
+      padding: 12px 28px;
+      border-radius: 8px;
+      letter-spacing: 1px;
+    }
+
+    /* ── 세로 구분선 ── */
+    .divider {
+      position: absolute;
+      left: 840px;
+      top: 10%;
+      height: 80%;
+      width: 4px;
+      background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.3), transparent);
+      z-index: 3;
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas">
+
+    <!-- 구분선 -->
+    <div class="divider"></div>
+
+    <!-- 맥북 일러스트 -->
+    <div class="macbook-wrap">
+      <div class="macbook-screen">
+        <div class="screen-inner">
+          <div class="apple-logo">🍎</div>
+          <div class="chip-badge">M5 Pro</div>
+          <div class="screen-text">LLM 프로세서 벤치마크</div>
+          <div class="speed-bar">
+            <span class="bar-label">AI 연산</span>
+            <div class="bar-track"><div class="bar-fill"></div></div>
+            <span class="bar-pct">x6배↑</span>
+          </div>
+        </div>
+      </div>
+      <div class="macbook-hinge"></div>
+      <div class="macbook-base"></div>
+    </div>
+
+    <!-- 텍스트 영역 -->
+    <div class="text-area">
+      <div class="tag">맥북 M5 실사용 리뷰</div><br>
+      <span class="headline-1">애플이</span>
+      <span class="headline-2">물빵</span>
+      <span class="headline-3">했네요</span>
+      <div class="sub">AI 속도 <span class="accent-word">6배 빠른</span> 맥북의 진실</div>
+    </div>
+
+    <!-- 에피소드 뱃지 -->
+    <div class="episode-badge">
+      <span class="episode-num">31</span>
+    </div>
+
+    <!-- 강의 뱃지 -->
+    <div class="lecture-badge">강의도 합니다</div>
+
+    <!-- 채널명 -->
+    <div class="channel-tag">디자인 엔지니어</div>
+
+  </div>
+</body>
+</html>
