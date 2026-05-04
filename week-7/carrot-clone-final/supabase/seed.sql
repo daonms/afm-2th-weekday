@@ -1,0 +1,2 @@
+-- Optional seed file for local testing.
+-- This MVP relies on real authenticated users, so no sample rows are required.
