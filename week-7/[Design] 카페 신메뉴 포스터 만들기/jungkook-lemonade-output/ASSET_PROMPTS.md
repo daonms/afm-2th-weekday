@@ -4,15 +4,14 @@
 
 ```text
 Photorealistic vertical poster visual for a Korean cafe new menu.
-Subject: a stylish young K-pop male vocalist inspired mood, not a real celebrity likeness, drinking a sparkling golden lemonade through a straw.
-Composition: close-up side profile or partial face, focus on the lemonade glass, lemon slices, condensation, ice cubes, and stage-like golden light.
-Mood: premium, fresh, summer, K-pop stage lighting, golden hour, clean cafe advertising.
-Palette: lemon gold #FFD84D, black #111111, cream white #FFF8E8.
-The drink and lemon visual should fill more than 60% of the frame.
-Do not include readable text, Korean letters, BTS logo, Jungkook name, celebrity face match, watermark, brand marks, or album references.
+Subject: a premium grapefruit ade in a clear tall glass, filled with ice, grapefruit slices, and sparkling condensation.
+Composition: product photography, centered hero drink, bright natural highlights, elegant table surface, soft warm daylight, generous negative space on the left for poster text.
+Mood: premium, fresh, clean, summer cafe advertising, realistic commercial product shot.
+Palette: grapefruit coral, citrus orange, warm cream, soft neutral beige.
+Do not include readable text, logos, watermark, people, hands, or brand marks.
 Aspect ratio: 4:5.
 ```
 
 ## 실제 반영 자산
 
-- `assets/golden-lemonade-kpop-realistic.png`
+- `assets/premium-grapefruit-ade-gpt-image2.png`

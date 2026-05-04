@@ -2,8 +2,8 @@
 
 ## Realistic image source
 
-- usage file: `assets/grapefruit-sunset-ade-realistic.png`
-- source page: `https://img.bizthenaum.co.kr/data/img/1000012715/ori/1000012715_6.jpg`
-- direct image endpoint used: `https://img.bizthenaum.co.kr/data/img/1000012715/ori/1000012715_6.jpg`
-- license note: 사용자 지정 URL 이미지(사용자 요청으로 반영)
+- usage file: `assets/ai-celebrity-lemon-tea-realistic.png`
+- source: Codex image generation
+- source image path: `C:\\Users\\Leepro\\.codex\\generated_images\\019df273-8bb5-7a63-9c9a-a044b2c3c954\\ig_0117b2bdc129b7900169f892adbf588191b7126b9ea6cfdcea.png`
+- license note: generated asset copied into the project for poster use
 - applied date: 2026-05-04

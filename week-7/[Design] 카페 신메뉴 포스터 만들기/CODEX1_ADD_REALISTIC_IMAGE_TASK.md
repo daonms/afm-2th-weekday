@@ -2,10 +2,8 @@
 
 ## 배경
 
-현재 `[Design] 카페 신메뉴 포스터 만들기` 산출물은 CSS 일러스트 기반이다.  
-사용자가 **실사 이미지가 필요하다**고 요청했다.
-
-따라서 기존 포스터의 자몽/에이드 CSS 일러스트를 유지하거나 보조로 두되, 최종 포스터에는 **실사 스타일 신메뉴 이미지**가 반드시 포함되어야 한다.
+현재 `[Design] 카페 신메뉴 포스터 만들기` 산출물은 실사 이미지 중심이다.  
+이번 요청에서는 **가상의 AI 셀럽이 시원하게 레몬티를 마시는 분위기**로 포스터를 다시 맞춘다.
 
 ## 작업 위치
 
@@ -15,7 +13,7 @@ D:\다온\DAON_AI - 문서\afm-2th-weekday\week-7\[Design] 카페 신메뉴 포�
 
 ## 목표
 
-`자몽 선셋 에이드` 실사 이미지를 포스터의 메인 비주얼로 넣는다.
+`AI 셀럽 레몬티` 실사 이미지를 포스터의 메인 비주얼로 넣는다.
 
 필수 조건:
 
@@ -33,19 +31,19 @@ D:\다온\DAON_AI - 문서\afm-2th-weekday\week-7\[Design] 카페 신메뉴 포�
 저장 위치:
 
 ```text
-assets/grapefruit-sunset-ade-realistic.png
+assets/ai-celebrity-lemon-tea-realistic.png
 ```
 
 프롬프트:
 
 ```text
-Photorealistic product photo for a Korean cafe new menu poster.
-Subject: sparkling grapefruit ade in a tall clear glass, fresh grapefruit slices, ice cubes, visible carbonation bubbles, condensation on the glass, and a coral sunset-colored drink gradient.
-Composition: vertical 4:5, product centered-right, drink and grapefruit should fill more than 60% of the frame.
-Lighting: bright natural cafe window light, crisp highlights, appetizing, premium but fresh.
-Background: warm cream paper backdrop with subtle shadows, clean negative space for Korean text overlay.
-Palette: vivid grapefruit coral, warm cream, deep espresso-black accents.
-Do not include any readable text, Korean letters, logo, price, menu name, watermark, hands, people, or brand marks.
+Photorealistic cafe poster hero image for a Korean new menu campaign.
+Subject: a fictional adult Korean AI celebrity model gently sipping an iced lemon tea, with visible lemon slices, condensation, sparkling ice, and a refreshing summer mood.
+Composition: vertical 4:5, model on the right side, generous negative space on the left for poster typography, premium editorial advertising framing.
+Lighting: bright natural cafe window light, soft highlights, clean skin texture, crisp drink detail, luxurious but fresh.
+Background: warm cream and pale lemon backdrop with subtle shadows, elegant and uncluttered.
+Palette: vivid lemon yellow, warm cream, deep ink accents, a touch of mint.
+Do not include any readable text, Korean letters, logos, price, menu name, watermark, or brand marks.
 ```
 
 ### 2안 - 웹 실사 이미지 참고
@@ -95,9 +93,9 @@ exports/new-menu-poster.pdf
 
 ## 디자인 기준
 
-- 메인 카피 `여름엔, 자몽.`은 유지한다.
-- 메뉴명 `자몽 선셋 에이드`와 가격 `6,500원`은 유지한다.
-- 보조 정보 `5.4 - 5.31 · 하루 30잔 · 매장 한정`은 유지한다.
+- 메인 카피 `시원하게, 레몬티.`를 사용한다.
+- 메뉴명 `AI 셀럽 레몬티`와 가격 `6,800원`을 사용한다.
+- 보조 정보 `7.1 - 7.31 · ICE ONLY · 매장 한정 30잔`을 사용한다.
 - 컬러 팔레트 3색 이내 원칙은 유지한다.
 - 폰트 2개 이내 원칙은 유지한다.
 
@@ -153,4 +151,3 @@ http://127.0.0.1:4181/
 
 감독자 검토 필요 항목:
 ```
-

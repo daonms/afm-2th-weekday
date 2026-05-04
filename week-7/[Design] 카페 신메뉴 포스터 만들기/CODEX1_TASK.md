@@ -60,7 +60,7 @@ D:\다온\DAON_AI - 문서\afm-2th-weekday\.claude\agents\수업용\design-agent
 좋은 예시:
 
 ```text
-여름엔, 자몽.
+시원하게, 레몬티.
 ```
 
 피해야 할 예시:
@@ -191,4 +191,3 @@ Remaining submission items:
 
 사용자가 직접 해야 할 제출 작업:
 ```
-

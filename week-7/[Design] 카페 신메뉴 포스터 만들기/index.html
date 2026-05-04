@@ -3,15 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>자몽 선셋 에이드 신메뉴 포스터</title>
+  <title>AI 셀럽 레몬티 포스터</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Pretendard:wght@500;700;800;900&display=swap" rel="stylesheet">
   <style>
     :root {
-      --sunset-coral: #ff4f3e;
-      --cream: #fff4df;
-      --deep-ink: #17130f;
+      --lemon: #ffd84d;
+      --lemon-deep: #f3b81a;
+      --cream: #fff9e8;
+      --ink: #18140f;
+      --mint: #dff3c8;
       --font-display: "Black Han Sans", "Pretendard", system-ui, sans-serif;
       --font-body: "Pretendard", "Noto Sans KR", system-ui, sans-serif;
     }
@@ -21,86 +23,97 @@
       min-height: 100vh;
       display: grid;
       place-items: center;
-      background: #24201b;
-      color: var(--deep-ink);
+      background:
+        radial-gradient(circle at top left, rgba(255, 216, 77, 0.38), transparent 36%),
+        linear-gradient(160deg, #fffdf4 0%, #fff5cf 48%, #f7f1da 100%);
+      color: var(--ink);
       font-family: var(--font-body);
-      padding: 28px;
+      padding: 24px;
     }
     .poster {
       position: relative;
       width: 1080px;
       height: 1350px;
       overflow: hidden;
-      background: var(--cream);
-      box-shadow: 0 28px 90px rgba(0, 0, 0, 0.28);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.08)),
+        var(--cream);
+      box-shadow: 0 30px 90px rgba(39, 31, 16, 0.22);
+      border: 1px solid rgba(24, 20, 15, 0.08);
     }
-    .photo-wrap {
+    .visual {
       position: absolute;
       inset: 0;
       z-index: 1;
-      background-image: url("./assets/grapefruit-sunset-ade-realistic.png");
+      background-image: url("./assets/ai-celebrity-lemon-tea-realistic.png");
       background-size: cover;
-      background-position: center;
-      filter: saturate(0.95) brightness(0.82);
+      background-position: right center;
+      filter: saturate(1.02) contrast(1.02);
     }
-    .photo-wrap img {
-      position: absolute;
-      right: 22px;
-      bottom: 120px;
-      width: 800px;
-      height: auto;
-      max-height: 70%;
-      object-fit: contain;
-      display: block;
-      border-radius: 22px;
-      box-shadow: 0 28px 64px rgba(0, 0, 0, 0.35);
-    }
-    .photo-wrap::after {
+    .visual::before {
       content: "";
       position: absolute;
       inset: 0;
       background:
-        linear-gradient(100deg, rgba(23, 19, 15, 0.8) 0 44%, rgba(23, 19, 15, 0.12) 72%, rgba(23, 19, 15, 0.08) 100%),
-        linear-gradient(0deg, rgba(23, 19, 15, 0.42) 0%, rgba(23, 19, 15, 0.08) 42%);
+        linear-gradient(96deg, rgba(255, 249, 232, 0.98) 0 33%, rgba(255, 249, 232, 0.72) 44%, rgba(255, 249, 232, 0.18) 63%, rgba(255, 249, 232, 0.06) 100%),
+        linear-gradient(0deg, rgba(255, 216, 77, 0.08) 0%, rgba(255, 255, 255, 0.02) 50%, rgba(255, 216, 77, 0.18) 100%);
+      mix-blend-mode: screen;
+    }
+    .grain {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(255, 216, 77, 0.18), transparent 14%),
+        radial-gradient(circle at 14% 80%, rgba(243, 184, 26, 0.22), transparent 16%),
+        radial-gradient(circle at 76% 12%, rgba(223, 243, 200, 0.22), transparent 12%);
+      mix-blend-mode: multiply;
+      opacity: 0.8;
     }
     .content {
       position: relative;
       z-index: 2;
       height: 100%;
-      padding: 70px;
+      padding: 72px;
       display: grid;
       grid-template-rows: auto 1fr auto;
-      color: var(--cream);
+      color: var(--ink);
     }
     .eyebrow {
       display: inline-flex;
       width: max-content;
       margin: 0;
       padding: 12px 18px;
-      border-radius: 999px;
-      border: 2px solid var(--cream);
+      border: 2px solid rgba(24, 20, 15, 0.9);
+      background: rgba(255, 255, 255, 0.55);
       font-size: 17px;
       font-weight: 900;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
     h1 {
       margin: 24px 0 0;
       font-family: var(--font-display);
-      font-size: 158px;
-      line-height: 0.86;
+      font-size: 148px;
+      line-height: 0.84;
       font-weight: 400;
-      color: var(--cream);
+      color: var(--ink);
+      text-shadow: 0 8px 22px rgba(255, 255, 255, 0.4);
     }
-    h1 .coral { color: var(--sunset-coral); }
+    h1 .lemon {
+      color: #f5b700;
+    }
     .menu-name {
       margin: 24px 0 0;
       width: max-content;
       padding: 12px 16px;
-      background: var(--sunset-coral);
+      background: rgba(24, 20, 15, 0.95);
       color: var(--cream);
       font-size: 30px;
       font-weight: 900;
       line-height: 1;
+      letter-spacing: -0.02em;
     }
     .bottom {
       display: grid;
@@ -110,11 +123,11 @@
     }
     .info {
       margin: 0;
-      padding: 22px;
-      max-width: 560px;
-      background: rgba(23, 19, 15, 0.56);
-      border: 2px solid rgba(255, 244, 223, 0.45);
-      backdrop-filter: blur(3px);
+      padding: 22px 24px;
+      max-width: 590px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 2px solid rgba(24, 20, 15, 0.1);
+      backdrop-filter: blur(4px);
     }
     .desc {
       margin: 0 0 10px;
@@ -128,19 +141,20 @@
       font-size: 18px;
       line-height: 1.35;
       font-weight: 800;
-      color: rgba(255, 244, 223, 0.9);
+      color: rgba(24, 20, 15, 0.72);
       word-break: keep-all;
     }
     .price {
-      width: 224px;
-      height: 224px;
-      border-radius: 999px;
-      border: 10px solid var(--sunset-coral);
-      background: rgba(23, 19, 15, 0.88);
+      width: 232px;
+      height: 232px;
+      border-radius: 50%;
+      border: 10px solid var(--lemon-deep);
+      background: rgba(255, 255, 255, 0.92);
       display: grid;
       place-items: center;
       text-align: center;
       transform: rotate(5deg);
+      box-shadow: 0 18px 38px rgba(243, 184, 26, 0.22);
     }
     .price span {
       display: block;
@@ -148,6 +162,7 @@
       font-weight: 900;
       margin-bottom: 8px;
       letter-spacing: 0.08em;
+      color: #d08b00;
     }
     .price strong {
       display: block;
@@ -155,35 +170,53 @@
       font-weight: 950;
       line-height: 0.95;
       font-variant-numeric: tabular-nums;
+      color: var(--ink);
+    }
+    .badge {
+      position: absolute;
+      right: 70px;
+      top: 70px;
+      z-index: 3;
+      padding: 12px 16px;
+      background: rgba(24, 20, 15, 0.86);
+      color: var(--cream);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
     }
     @media (max-width: 1120px) {
-      body { padding: 0; background: var(--cream); }
-      .poster { width: 100vw; height: calc(100vw * 1.25); box-shadow: none; }
+      body { padding: 0; }
+      .poster { width: 100vw; height: calc(100vw * 1.25); box-shadow: none; border: 0; }
+      .content { padding: 7vw; }
       h1 { font-size: 14vw; }
+      .menu-name { font-size: 4vw; }
+      .desc { font-size: 2.8vw; }
+      .meta { font-size: 2vw; }
     }
   </style>
 </head>
 <body>
-  <main class="poster" aria-label="자몽 선셋 에이드 신메뉴 포스터">
-    <div class="photo-wrap">
-      <img src="./assets/grapefruit-sunset-ade-realistic.png" alt="자몽 선셋 에이드 실사 이미지" />
-    </div>
+  <main class="poster" aria-label="AI 셀럽 레몬티 신메뉴 포스터">
+    <div class="visual" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
+    <div class="badge">AI CELEB SPECIAL</div>
     <section class="content">
       <div>
-        <p class="eyebrow">5월 한정 신메뉴</p>
-        <h1>여름엔,<br><span class="coral">자몽.</span></h1>
-        <p class="menu-name">자몽 선셋 에이드</p>
+        <p class="eyebrow">7월 한정 신메뉴</p>
+        <h1>시원하게,<br><span class="lemon">레몬티.</span></h1>
+        <p class="menu-name">AI 셀럽 레몬티</p>
       </div>
       <div></div>
       <div class="bottom">
         <div class="info">
-          <p class="desc">생자몽 과즙과 탄산을 섞은 여름 한정 에이드</p>
-          <p class="meta">5.4 - 5.31 · 하루 30잔 · 매장 한정</p>
+          <p class="desc">가상의 AI 셀럽이 즐기는 청량한 수제 레몬티</p>
+          <p class="meta">7.1 - 7.31 · ICE ONLY · 매장 한정 30잔</p>
         </div>
-        <div class="price" aria-label="가격 6,500원">
+        <div class="price" aria-label="가격 6,800원">
           <div>
             <span>NEW</span>
-            <strong>6,500</strong>
+            <strong>6,800</strong>
           </div>
         </div>
       </div>

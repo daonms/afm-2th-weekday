@@ -1,11 +1,11 @@
 # [Design] 카페 신메뉴 포스터 만들기
 
-`자몽 선셋 에이드` 인스타 피드용 포스터(1080x1350) 산출물.
+`AI 셀럽 레몬티` 인스타 피드용 포스터(1080x1350) 산출물.
 
 ## 이번 수정 핵심
 
-- CSS 일러스트 중심에서 실사 이미지 중심 포스터로 변경
-- 메인 비주얼: `assets/grapefruit-sunset-ade-realistic.png`
+- 가상의 AI 셀럽이 레몬티를 마시는 실사 이미지 중심 포스터로 변경
+- 메인 비주얼: `assets/ai-celebrity-lemon-tea-realistic.png`
 - 한국어 텍스트는 모두 HTML/CSS 레이어로 유지
 
 ## 주요 파일
