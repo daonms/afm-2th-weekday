@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MyAide Agent Studio - 수업용</title>
+  <meta name="description" content="AFM Week 7 수업용 MyAide 에이전트·스킬 라우팅 실습 앱" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f766e'/%3E%3Ctext x='32' y='41' text-anchor='middle' font-size='30' font-family='Arial' font-weight='800' fill='white'%3EM%3C/text%3E%3C/svg%3E" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #637083;
+      --line: #d7dfeb;
+      --paper: #ffffff;
+      --wash: #eef3f7;
+      --teal: #0f766e;
+      --teal-soft: #e4f2ef;
+      --blue: #2563eb;
+      --blue-soft: #e8eefc;
+      --gold: #a16207;
+      --gold-soft: #fff6dc;
+      --rose: #be123c;
+      --rose-soft: #fff1f4;
+      --shadow: 0 16px 40px rgba(23, 32, 51, .08);
+    }
+
+    * { box-sizing: border-box; }
+    html { min-height: 100%; background: var(--wash); }
+    body {
+      margin: 0;
+      min-height: 100%;
+      color: var(--ink);
+      font-family: "Segoe UI", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+      background:
+        linear-gradient(120deg, rgba(15, 118, 110, .10), transparent 34%),
+        linear-gradient(300deg, rgba(37, 99, 235, .10), transparent 38%),
+        #eef3f7;
+    }
+
+    button, textarea, input { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+    }
+
+    .sidebar {
+      min-height: 100vh;
+      padding: 18px;
+      background: rgba(255, 255, 255, .86);
+      border-right: 1px solid rgba(215, 223, 235, .9);
+      backdrop-filter: blur(16px);
+      position: sticky;
+      top: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--teal), var(--blue));
+      box-shadow: var(--shadow);
+    }
+
+    .brand-title { font-size: 18px; font-weight: 900; line-height: 1.1; }
+    .brand-sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+    .mode-list { display: grid; gap: 8px; }
+    .mode-button {
+      min-height: 44px;
+      width: 100%;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 10px 11px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      background: transparent;
+      text-align: left;
+      font-weight: 800;
+    }
+
+    .mode-button:hover, .mode-button.active {
+      color: var(--ink);
+      background: var(--teal-soft);
+      border-color: #b9d8d2;
+    }
+
+    .main {
+      padding: 22px;
+      min-width: 0;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 3vw, 38px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .caption {
+      margin: 8px 0 0;
+      max-width: 820px;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      min-height: 40px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .btn-primary { color: white; background: var(--teal); }
+    .btn-primary:hover { background: #0b625c; }
+    .btn-blue { color: white; background: var(--blue); }
+    .btn-blue:hover { background: #1d4ed8; }
+    .btn-ghost { color: #334155; background: rgba(255, 255, 255, .86); border-color: var(--line); }
+    .btn-ghost:hover { background: #f8fafc; }
+    .btn-danger { color: var(--rose); background: var(--rose-soft); border-color: #fecdd3; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(340px, .95fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .stack { display: grid; gap: 14px; }
+
+    .panel {
+      background: rgba(255, 255, 255, .94);
+      border: 1px solid rgba(215, 223, 235, .95);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      min-height: 58px;
+      padding: 14px 15px 10px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid rgba(215, 223, 235, .65);
+    }
+
+    .panel-title { margin: 0; font-size: 16px; font-weight: 900; letter-spacing: 0; }
+    .panel-sub { margin: 4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .panel-body { padding: 15px; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .badge-teal { color: var(--teal); background: var(--teal-soft); }
+    .badge-blue { color: var(--blue); background: var(--blue-soft); }
+    .badge-gold { color: var(--gold); background: var(--gold-soft); }
+    .badge-rose { color: var(--rose); background: var(--rose-soft); }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .label {
+      color: #3d4b5f;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .textarea {
+      width: 100%;
+      min-height: 128px;
+      border: 1px solid #c6d1df;
+      border-radius: 8px;
+      padding: 11px 12px;
+      line-height: 1.58;
+      color: var(--ink);
+      background: white;
+      outline: none;
+      resize: vertical;
+    }
+
+    .textarea:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, .13);
+    }
+
+    .route-list { display: grid; gap: 10px; }
+    .route-item {
+      display: grid;
+      grid-template-columns: 32px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+    }
+
+    .step {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: var(--teal-soft);
+      color: var(--teal);
+      font-weight: 900;
+    }
+
+    .agent-card, .history-card, .check-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+      padding: 12px;
+    }
+
+    .agent-card {
+      display: grid;
+      gap: 8px;
+    }
+
+    .agent-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .agent-name { font-weight: 900; }
+    .mini {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .result {
+      min-height: 158px;
+      max-height: 420px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+      padding: 13px;
+      white-space: pre-wrap;
+      line-height: 1.58;
+      font-size: 14px;
+    }
+
+    .check-list { display: grid; gap: 8px; }
+    .check-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      line-height: 1.45;
+    }
+
+    .history-card { display: grid; gap: 6px; }
+    .history-title { font-weight: 900; }
+
+    .status {
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .icon { width: 17px; height: 17px; stroke-width: 2; flex: 0 0 auto; }
+
+    @media (max-width: 1040px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidebar { min-height: auto; position: relative; }
+      .mode-list { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+      .mode-button { justify-content: center; }
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 720px) {
+      .main { padding: 14px; }
+      .topbar { display: grid; }
+      .actions { justify-content: stretch; }
+      .btn { flex: 1 1 150px; }
+      .mode-list { grid-template-columns: 1fr 1fr; }
+      .mode-button { justify-content: flex-start; }
+      .sidebar { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">M</div>
+        <div>
+          <div class="brand-title">MyAide Agent Studio</div>
+          <div class="brand-sub">AFM Week 7 Classroom</div>
+        </div>
+      </div>
+      <div id="modeList" class="mode-list"></div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <h1>수업용 MyAide 라우팅 실습</h1>
+          <p class="caption">요청을 입력하면 에이전트 순서, 작업 지시서, 검토 항목, 수업용 결과 초안이 한 번에 생성됩니다.</p>
+        </div>
+        <div class="actions">
+          <button id="runBtn" class="btn btn-primary" type="button" title="분석 실행"><i data-lucide="play"></i>실행</button>
+          <button id="copyBtn" class="btn btn-ghost" type="button" title="작업 지시서 복사"><i data-lucide="copy"></i>복사</button>
+          <button id="downloadBtn" class="btn btn-ghost" type="button" title="Markdown 다운로드"><i data-lucide="download"></i>MD</button>
+        </div>
+      </div>
+
+      <div class="layout">
+        <section class="stack">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2 class="panel-title">작업 입력</h2>
+                <p class="panel-sub">현재 모드에 맞춘 기본값을 바로 수정할 수 있습니다.</p>
+              </div>
+              <span id="modeBadge" class="badge badge-teal">업무</span>
+            </div>
+            <div class="panel-body stack">
+              <label class="field">
+                <span class="label">사용자 요청</span>
+                <textarea id="taskInput" class="textarea"></textarea>
+              </label>
+              <label class="field">
+                <span class="label">예시 데이터</span>
+                <textarea id="dataInput" class="textarea"></textarea>
+              </label>
+              <div class="actions">
+                <button id="saveBtn" class="btn btn-blue" type="button" title="최근 기록에 저장"><i data-lucide="save"></i>저장</button>
+                <button id="resetBtn" class="btn btn-ghost" type="button" title="현재 모드 기본값 복원"><i data-lucide="rotate-ccw"></i>초기화</button>
+              </div>
+              <div id="status" class="status"><i data-lucide="activity"></i><span>준비됨</span></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2 class="panel-title">에이전트 라우팅</h2>
+                <p class="panel-sub">기획, 구현, AI, 검토, 배포 필요성을 기준으로 정렬합니다.</p>
+              </div>
+              <span id="routeBadge" class="badge badge-blue">0명</span>
+            </div>
+            <div class="panel-body">
+              <div id="routeList" class="route-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="stack">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2 class="panel-title">작업 지시서</h2>
+                <p class="panel-sub">다른 AI에게 이어 맡길 수 있는 실행 단위입니다.</p>
+              </div>
+              <span class="badge badge-gold">handoff</span>
+            </div>
+            <div class="panel-body">
+              <div id="workOrder" class="result"></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2 class="panel-title">결과 초안</h2>
+                <p class="panel-sub">현재 입력으로 수업용 산출물을 생성합니다.</p>
+              </div>
+              <span id="previewBadge" class="badge badge-teal">local</span>
+            </div>
+            <div class="panel-body">
+              <div id="preview" class="result"></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2 class="panel-title">검토 체크리스트</h2>
+                <p class="panel-sub">완료 전 확인할 항목입니다.</p>
+              </div>
+              <span class="badge badge-rose">review</span>
+            </div>
+            <div class="panel-body">
+              <div id="checkList" class="check-list"></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2 class="panel-title">최근 실습 기록</h2>
+                <p class="panel-sub">브라우저 localStorage에 남습니다.</p>
+              </div>
+              <span id="historyBadge" class="badge badge-blue">0개</span>
+            </div>
+            <div class="panel-body stack">
+              <div id="historyList" class="stack"></div>
+              <button id="clearHistoryBtn" class="btn btn-danger" type="button" title="최근 기록 삭제"><i data-lucide="trash-2"></i>기록 삭제</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "afm-week7-myaide-agent-studio-v2";
+
+    const AGENTS = [
+      { id: "planner", name: "기획자", icon: "map", badge: "PRD", skills: ["/office-hours", "/plan-ceo-review"], job: "목표, 사용자, 범위, 성공 기준을 정리합니다.", words: ["기획", "아이디어", "목표", "회의", "전략", "문제", "설계"] },
+      { id: "react", name: "single-react-dev", icon: "layout-dashboard", badge: "UI", skills: ["single-html", "responsive-ui"], job: "단일 HTML 앱의 화면과 상호작용을 구현합니다.", words: ["화면", "프론트", "ui", "앱", "버튼", "입력", "저장"] },
+      { id: "server", name: "single-server-specialist", icon: "server", badge: "API", skills: ["Node.js http", "REST API"], job: "서버나 저장소가 필요한지 판단하고 API 범위를 잡습니다.", words: ["서버", "api", "배포", "도메인", "저장", "파일"] },
+      { id: "ai", name: "AI-개발자", icon: "brain-circuit", badge: "AI", skills: ["prompt-design", "structured-output"], job: "분석, 요약, 초안 생성 로직을 설계합니다.", words: ["ai", "챗봇", "프롬프트", "요약", "분석", "성향", "notion", "전사"] },
+      { id: "reviewer", name: "검토자", icon: "shield-check", badge: "검토", skills: ["/review", "/investigate"], job: "품질, 안전, 민감정보, 빈 입력을 확인합니다.", words: ["검토", "리뷰", "버그", "보안", "확인"] },
+      { id: "deployer", name: "배포자", icon: "rocket", badge: "배포", skills: ["/ship", "/setup-deploy"], job: "정적 배포와 릴리즈 체크리스트를 정리합니다.", words: ["배포", "release", "vercel", "도메인", "운영"] }
+    ];
+
+    const MODES = {
+      personal: {
+        label: "개인",
+        icon: "sparkles",
+        seed: ["planner", "ai", "reviewer"],
+        task: "오늘 상태와 선호도를 바탕으로 하루 행동 추천을 만들어줘.",
+        data: "기분: 조금 피곤함\n좋아하는 것: 조용한 카페, 산책\n싫어하는 것: 갑작스러운 전화"
+      },
+      work: {
+        label: "업무",
+        icon: "briefcase-business",
+        seed: ["planner", "ai", "reviewer"],
+        task: "회의 자료와 이전 진행사항을 요약해서 다음 미팅 전략을 만들어줘.",
+        data: "회의 자료: 예산 증액 제안서\n이전 진행: CFO가 ROI 근거를 더 달라고 함\n목표: 다음 회의에서 자료 책임자와 일정 확정"
+      },
+      relation: {
+        label: "관계",
+        icon: "messages-square",
+        seed: ["planner", "ai", "reviewer"],
+        task: "내가 쓴 메시지를 상대 성향에 맞게 더 부드럽고 명확하게 고쳐줘.",
+        data: "상대: 친구 서영\n상대 선호: 짧고 다정한 말\n피해야 할 것: 훈계식 조언\n내 원문: 오늘 괜찮아? 너무 걱정돼."
+      },
+      profile: {
+        label: "성향분석",
+        icon: "scan-search",
+        seed: ["planner", "ai", "reviewer"],
+        task: "내 선천 성향과 후천 성향을 나눠서 업무 전략 가설을 만들어줘.",
+        data: "선천 성향: 혼자 정리한 뒤 말할 때 정확해짐, 갑작스러운 압박을 싫어함\n후천 성향: 최근에는 빠른 회의와 고객 대응이 늘어 결론을 먼저 말하려고 훈련 중\n좋아하는 방식: 숫자 근거, 체크리스트, 미리 공유된 아젠다\n싫어하는 방식: 즉석 결정 강요, 감정적인 압박\n최근 기록: CFO 미팅에서 ROI 질문을 받고 답변 자료 보완 필요"
+      },
+      notionMeeting: {
+        label: "Notion 회의",
+        icon: "mic-2",
+        seed: ["planner", "server", "ai", "reviewer"],
+        task: "Notion AI 회의 녹음 전사와 요약을 바탕으로 다음 회의 전략을 만들어줘.",
+        data: "Notion 페이지: https://notion.so/example-meeting\n동의 안내: 참석자에게 녹음과 전사 사용을 알림\n전사 붙여넣기: CFO는 ROI 근거가 부족하다고 했고, 영업팀은 일정 지연을 걱정함. 대표는 다음 회의 전까지 숫자 자료와 실행 일정을 보고 싶다고 말함.\nNotion 요약: 예산 증액은 보류, ROI 근거와 실행 일정 필요\n액션아이템: 1) ROI 1장 자료 작성 2) 일정 리스크 표 정리 3) 다음 회의에서 의사결정 기준 합의"
+      }
+    };
+
+    const state = {
+      mode: "work",
+      task: MODES.work.task,
+      data: MODES.work.data,
+      history: [],
+      route: [],
+      workOrder: "",
+      preview: "",
+      checklist: []
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const agentById = (id) => AGENTS.find((agent) => agent.id === id);
+
+    function icon(name) {
+      return `<i class="icon" data-lucide="${name}"></i>`;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[char]));
+    }
+
+    function findLine(data, labels) {
+      const lines = String(data || "").split(/\n/).map((line) => line.trim()).filter(Boolean);
+      const hit = lines.find((line) => labels.some((label) => line.startsWith(label)));
+      return hit ? hit.replace(/^[^:：]+[:：]\s*/, "") : "";
+    }
+
+    function compact(value, fallback) {
+      return String(value || "").trim() || fallback;
+    }
+
+    function chooseRoute(task, mode) {
+      const text = `${task} ${state.data} ${mode}`.toLowerCase();
+      const ids = new Set(MODES[mode].seed);
+      AGENTS.forEach((agent) => {
+        if (agent.words.some((word) => text.includes(word.toLowerCase()))) ids.add(agent.id);
+      });
+      ids.add("reviewer");
+      return [...ids].map(agentById).filter(Boolean).slice(0, 5);
+    }
+
+    function buildPersonalityReport(data) {
+      const innate = findLine(data, ["선천 성향", "기본 기질", "오래된 패턴"]);
+      const acquired = findLine(data, ["후천 성향", "최근 변화", "최근 역할"]);
+      const likes = findLine(data, ["좋아하는 방식", "좋아하는 것", "선호"]);
+      const dislikes = findLine(data, ["싫어하는 방식", "싫어하는 것", "피해야 할 것"]);
+      const recent = findLine(data, ["최근 기록", "업무 기록", "관계 기록"]);
+
+      return [
+        "성향분석 리포트",
+        "",
+        "간단 분석",
+        `- 선천 성향: ${compact(innate, "반복되는 기본 패턴을 입력하면 더 정확해집니다.")}`,
+        `- 후천 성향: ${compact(acquired, "최근 역할 변화와 스트레스 기록을 입력하면 분리할 수 있습니다.")}`,
+        "",
+        "심층 분석",
+        `- 선호 작동 방식: ${compact(likes, "좋아하는 방식이 없으면 회의/업무 결과에서 계속 학습합니다.")}`,
+        `- 피해야 할 방식: ${compact(dislikes, "싫어하는 표현과 압박 조건을 따로 저장하면 메시지 초안에 반영됩니다.")}`,
+        `- 누적 기록 단서: ${compact(recent, "최근 업무와 관계 기록이 쌓이면 후천 성향을 계속 업데이트합니다.")}`,
+        "",
+        "블라인드스팟 패널",
+        "- 분석가: 반복 패턴과 최근 변화가 섞이지 않게 분리합니다.",
+        "- 전략가: 다음 미팅에서 먼저 말할 근거와 보류할 결정을 나눕니다.",
+        "- 소통 코치: 상대가 받아들이기 쉬운 말의 순서를 제안합니다.",
+        "- 반대자: 내가 놓친 리스크와 과잉 확신을 점검합니다.",
+        "",
+        "전략 가설",
+        "이 결과는 성격 진단이 아니라 업무와 관계 대응을 돕는 전략 가설입니다."
+      ].join("\n");
+    }
+
+    function buildNotionMeetingReport(data) {
+      const notionPage = findLine(data, ["Notion 페이지", "노션 페이지", "페이지"]);
+      const consent = findLine(data, ["동의 안내", "참석자 안내", "녹음 안내"]);
+      const transcript = findLine(data, ["전사 붙여넣기", "전사", "Transcript"]);
+      const summary = findLine(data, ["Notion 요약", "요약"]);
+      const actions = findLine(data, ["액션아이템", "Action items", "후속 조치"]);
+
+      return [
+        "Notion AI 회의 녹음 전략화",
+        "",
+        "동의 안내",
+        `- ${compact(consent, "실제 녹음 전 참석자에게 녹음, 전사, 요약 사용을 알려야 합니다.")}`,
+        "",
+        "전사 붙여넣기",
+        `- ${compact(transcript, "Notion AI Meeting Notes에서 만든 전사나 핵심 발언을 여기에 붙여 넣습니다.")}`,
+        "",
+        "Notion 요약을 전략으로 전환",
+        `- 회의 요약: ${compact(summary, "요약이 없으면 전사에서 결정, 보류, 질문을 분리합니다.")}`,
+        `- 액션아이템: ${compact(actions, "담당자와 마감이 없는 항목은 다음 회의에서 확정해야 합니다.")}`,
+        `- 원본 링크: ${compact(notionPage, "Notion 페이지 링크를 넣으면 추적 근거로 남길 수 있습니다.")}`,
+        "",
+        "다음 회의 전략",
+        "1. 지난 회의 결정, 보류, 필요자료를 먼저 분리합니다.",
+        "2. 반대 질문을 먼저 꺼내고 숫자 근거와 실행 일정으로 답합니다.",
+        "3. 종료 전 담당자, 마감, 의사결정 기준을 문장으로 확정합니다.",
+        "",
+        "안전 원칙",
+        "수업용 버전은 녹음 파일을 받거나 외부로 전송하지 않습니다. 사용자가 붙여 넣은 텍스트만 로컬 화면에서 전략 가설로 정리합니다."
+      ].join("\n");
+    }
+
+    function buildGeneralPreview(mode, task, data) {
+      const current = MODES[mode].label;
+      const goal = findLine(data, ["목표", "요청", "내 원문"]) || task;
+      const risk = mode === "relation" ? "상대가 싫어하는 표현을 피하고, 승인 전 전송하지 않습니다." : "근거와 후속 행동이 분리되어야 합니다.";
+      return [
+        `${current} 실행 초안`,
+        "",
+        `핵심 목표: ${compact(goal, task)}`,
+        "",
+        "추천 응답 구조",
+        "1. 상황 요약",
+        "2. 바로 실행할 다음 행동",
+        "3. 확인이 필요한 질문",
+        "4. 검토자가 봐야 할 리스크",
+        "",
+        `주의: ${risk}`
+      ].join("\n");
+    }
+
+    function buildPracticePreview(mode, task, data) {
+      if (mode === "profile") return buildPersonalityReport(data);
+      if (mode === "notionMeeting") return buildNotionMeetingReport(data);
+      return buildGeneralPreview(mode, task, data);
+    }
+
+    function buildWorkOrder(mode, task, data, route) {
+      const skillList = [...new Set(route.flatMap((agent) => agent.skills))];
+      return [
+        `작업명: MyAide 수업용 ${MODES[mode].label} 기능 실습`,
+        "",
+        `목표: ${compact(task, "사용자 요청을 입력해야 합니다.")}`,
+        "",
+        "입력 데이터:",
+        compact(data, "입력 데이터가 없습니다."),
+        "",
+        `에이전트 순서: ${route.map((agent) => agent.name).join(" -> ")}`,
+        `사용 스킬: ${skillList.join(", ")}`,
+        "",
+        "구현 범위:",
+        "1. 사용자 입력을 기준으로 결과 초안을 생성한다.",
+        "2. 외부 전송은 하지 않고 로컬 화면에서만 처리한다.",
+        "3. 작업 지시서 복사, Markdown 다운로드, 최근 기록 저장을 지원한다.",
+        "",
+        "완료 기준:",
+        "- 학생이 어떤 에이전트가 왜 선택됐는지 설명할 수 있다.",
+        "- 결과 초안과 체크리스트가 화면에 표시된다.",
+        "- 새로고침 후에도 최근 작업이 localStorage에 남는다."
+      ].join("\n");
+    }
+
+    function buildChecklist(mode, route) {
+      const modeChecks = {
+        personal: ["오늘 상태와 선호/비선호가 결과에 반영됨", "행동 추천이 과도한 판단으로 보이지 않음"],
+        work: ["회의 자료, 이전 진행, 다음 목표가 분리됨", "다음 미팅에서 확인할 질문이 남음"],
+        relation: ["상대가 피하고 싶은 표현을 제거함", "사용자가 승인하기 전 전송하지 않음"],
+        profile: ["성향분석이 진단이 아니라 전략 가설로 표시됨", "선천/후천 성향을 섞지 않음"],
+        notionMeeting: ["녹음/전사 사용 동의 안내가 표시됨", "Notion 요약과 액션아이템이 분리됨"]
+      };
+      return [
+        "빈 입력 상태에서도 화면이 깨지지 않음",
+        "외부 API 호출 없이 로컬에서만 처리됨",
+        "작업 지시서 복사와 Markdown 다운로드가 동작함",
+        ...(modeChecks[mode] || []),
+        ...route.map((agent) => `${agent.name} 역할 확인: ${agent.job}`)
+      ];
+    }
+
+    function generate() {
+      state.task = $("taskInput").value.trim();
+      state.data = $("dataInput").value.trim();
+      state.route = chooseRoute(state.task, state.mode);
+      state.workOrder = buildWorkOrder(state.mode, state.task, state.data, state.route);
+      state.preview = buildPracticePreview(state.mode, state.task, state.data);
+      state.checklist = buildChecklist(state.mode, state.route);
+      persist();
+      renderResults();
+      setStatus("생성 완료");
+    }
+
+    function setMode(mode) {
+      state.mode = mode;
+      state.task = MODES[mode].task;
+      state.data = MODES[mode].data;
+      $("taskInput").value = state.task;
+      $("dataInput").value = state.data;
+      generate();
+      renderModes();
+    }
+
+    function saveRun() {
+      generate();
+      const item = {
+        id: Date.now(),
+        mode: state.mode,
+        task: state.task,
+        route: state.route.map((agent) => agent.name),
+        createdAt: new Date().toLocaleString("ko-KR")
+      };
+      state.history = [item, ...state.history].slice(0, 10);
+      persist();
+      renderHistory();
+      setStatus("최근 기록에 저장됨");
+    }
+
+    async function copyWorkOrder() {
+      generate();
+      try {
+        await navigator.clipboard.writeText(state.workOrder);
+        setStatus("작업 지시서 복사 완료");
+      } catch {
+        setStatus("복사 권한을 확인해야 합니다");
+      }
+    }
+
+    function downloadMarkdown() {
+      generate();
+      const content = [
+        "# MyAide 작업 지시서",
+        "",
+        state.workOrder,
+        "",
+        "## 결과 초안",
+        "",
+        state.preview,
+        "",
+        "## 검토 체크리스트",
+        "",
+        ...state.checklist.map((item) => `- ${item}`)
+      ].join("\n");
+      const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `myaide-${state.mode}-${Date.now()}.md`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setStatus("Markdown 다운로드 준비 완료");
+    }
+
+    function resetPreset() {
+      const preset = MODES[state.mode];
+      $("taskInput").value = preset.task;
+      $("dataInput").value = preset.data;
+      generate();
+    }
+
+    function clearHistory() {
+      state.history = [];
+      persist();
+      renderHistory();
+      setStatus("기록 삭제 완료");
+    }
+
+    function setStatus(message) {
+      $("status").innerHTML = `${icon("activity")}<span>${escapeHtml(message)}</span>`;
+      window.lucide?.createIcons();
+    }
+
+    function persist() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        mode: state.mode,
+        task: state.task,
+        data: state.data,
+        history: state.history
+      }));
+    }
+
+    function restore() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        state.mode = saved.mode && MODES[saved.mode] ? saved.mode : state.mode;
+        state.task = saved.task || MODES[state.mode].task;
+        state.data = saved.data || MODES[state.mode].data;
+        state.history = Array.isArray(saved.history) ? saved.history : [];
+      } catch {}
+    }
+
+    function renderModes() {
+      $("modeList").innerHTML = Object.entries(MODES).map(([id, mode]) => `
+        <button class="mode-button ${state.mode === id ? "active" : ""}" type="button" data-mode="${id}" title="${mode.label}">
+          ${icon(mode.icon)}
+          <span>${mode.label}</span>
+        </button>
+      `).join("");
+      document.querySelectorAll("[data-mode]").forEach((button) => {
+        button.addEventListener("click", () => setMode(button.dataset.mode));
+      });
+      $("modeBadge").textContent = MODES[state.mode].label;
+      window.lucide?.createIcons();
+    }
+
+    function renderResults() {
+      $("routeBadge").textContent = `${state.route.length}명`;
+      $("previewBadge").textContent = state.mode === "notionMeeting" ? "Notion" : "local";
+      $("workOrder").textContent = state.workOrder;
+      $("preview").textContent = state.preview;
+      $("routeList").innerHTML = state.route.map((agent, index) => `
+        <div class="route-item">
+          <div class="step">${index + 1}</div>
+          <div class="agent-card">
+            <div class="agent-row">
+              <div>
+                <div class="agent-name">${escapeHtml(agent.name)}</div>
+                <div class="mini">${escapeHtml(agent.job)}</div>
+              </div>
+              <span class="badge badge-blue">${icon(agent.icon)}${escapeHtml(agent.badge)}</span>
+            </div>
+            <div class="mini">사용 스킬: ${escapeHtml(agent.skills.join(", "))}</div>
+          </div>
+        </div>
+      `).join("");
+      $("checkList").innerHTML = state.checklist.map((item) => `
+        <div class="check-card">${icon("check-circle-2")}<span>${escapeHtml(item)}</span></div>
+      `).join("");
+      window.lucide?.createIcons();
+    }
+
+    function renderHistory() {
+      $("historyBadge").textContent = `${state.history.length}개`;
+      $("clearHistoryBtn").disabled = state.history.length === 0;
+      $("historyList").innerHTML = state.history.length
+        ? state.history.map((item) => `
+          <div class="history-card">
+            <div class="history-title">${escapeHtml(MODES[item.mode]?.label || "기록")} - ${escapeHtml(item.createdAt)}</div>
+            <div class="mini">${escapeHtml(item.task)}</div>
+            <div class="mini">라우팅: ${escapeHtml(item.route.join(" -> "))}</div>
+          </div>
+        `).join("")
+        : `<div class="result">아직 저장한 라우팅이 없습니다.</div>`;
+    }
+
+    function bindEvents() {
+      $("runBtn").addEventListener("click", generate);
+      $("copyBtn").addEventListener("click", copyWorkOrder);
+      $("downloadBtn").addEventListener("click", downloadMarkdown);
+      $("saveBtn").addEventListener("click", saveRun);
+      $("resetBtn").addEventListener("click", resetPreset);
+      $("clearHistoryBtn").addEventListener("click", clearHistory);
+      $("taskInput").addEventListener("input", generate);
+      $("dataInput").addEventListener("input", generate);
+    }
+
+    restore();
+    bindEvents();
+    renderModes();
+    $("taskInput").value = state.task;
+    $("dataInput").value = state.data;
+    generate();
+    renderHistory();
+  </script>
+</body>
+</html>
