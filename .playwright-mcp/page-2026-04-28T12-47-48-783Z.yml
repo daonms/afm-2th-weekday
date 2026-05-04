@@ -1,0 +1,553 @@
+- generic [ref=e2]:
+  - banner [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - button "가이드" [ref=e9] [cursor=pointer]:
+          - generic [ref=e12]:
+            - img
+        - generic [ref=e13]:
+          - link "YouTube 홈" [ref=e14] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e19]:
+              - img
+          - generic [ref=e20]: KR
+        - button "탐색 건너뛰기" [ref=e24] [cursor=pointer]:
+          - generic [ref=e25]: 탐색 건너뛰기
+      - generic [ref=e29]:
+        - search [ref=e30]:
+          - generic [ref=e31]:
+            - generic [ref=e32]:
+              - combobox "검색" [expanded] [ref=e34]
+              - button [ref=e37] [cursor=pointer]
+            - button "Search" [ref=e38] [cursor=pointer]:
+              - generic [ref=e41]:
+                - img
+        - generic [ref=e43]:
+          - button "음성으로 검색" [ref=e45] [cursor=pointer]
+          - tooltip "tooltip"
+      - generic [ref=e52]:
+        - button "설정" [ref=e57] [cursor=pointer]
+        - link "로그인" [ref=e61] [cursor=pointer]:
+          - /url: https://accounts.google.com/ServiceLogin?service=youtube&uilel=3&passive=true&continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26app%3Ddesktop%26hl%3Dko%26next%3Dhttps%253A%252F%252Fwww.youtube.com%252F%2540design-engineer%252Fvideos&hl=ko&ec=65620
+          - generic [ref=e64]: 로그인
+  - navigation [ref=e68]:
+    - generic [ref=e69]:
+      - link "홈" [ref=e71] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e73]: 홈
+      - link "Shorts" [ref=e75] [cursor=pointer]:
+        - /url: /shorts/
+        - generic [ref=e77]: Shorts
+      - link "구독" [ref=e79] [cursor=pointer]:
+        - /url: /feed/subscriptions
+        - generic [ref=e81]: 구독
+      - link "내 페이지" [ref=e83] [cursor=pointer]:
+        - /url: /feed/you
+        - generic [ref=e85]: 내 페이지
+  - generic [ref=e86]:
+    - main [ref=e87]:
+      - generic [ref=e94]:
+        - generic [ref=e110]:
+          - heading "디자인 엔지니어" [level=1] [ref=e112]
+          - generic [ref=e113]:
+            - group [ref=e114]:
+              - generic [ref=e115]: "@design-engineer"
+            - generic [ref=e116]: •
+            - group [ref=e117]:
+              - generic "구독자 1.4만명" [ref=e118]
+              - generic [ref=e119]: •
+              - generic [ref=e120]: 동영상 178개
+          - generic [ref=e122] [cursor=pointer]:
+            - generic [ref=e124]: 채널 자세히 알아보기
+            - 'button "설명: 채널 자세히 알아보기... 탭하여 자세히 알아보세요." [ref=e125]':
+              - generic [ref=e126]: ...더보기
+          - generic [ref=e127]:
+            - link "harbor.school" [ref=e130] [cursor=pointer]:
+              - /url: https://www.youtube.com/redirect?event=channel_header&redir_token=QUFFLUhqbkRFaUlTMkhZMm1raW9SZlFPNUNYX2o1ZnBNQXxBQ3Jtc0trWVp0NGJoczJkM1NUVlk2SW5NSXZhbFVKUzRUVVVTdFpPc0h1aFdESktPNTk4Mk1pMThycHctMHlzdDRQcmd6dFBFTHFMSG9BaE9sYjQtN25GSlZFeTBwUEdlM2NhMU9kRlg2SEplYTdoX2ZFSmtWOA&q=https%3A%2F%2Fharbor.school%2F
+            - button "외 링크 1개" [ref=e133] [cursor=pointer]
+          - generic [ref=e134]:
+            - button "구독" [ref=e137] [cursor=pointer]:
+              - generic [ref=e138]: 구독
+            - button "이 채널 가입" [ref=e144] [cursor=pointer]:
+              - generic [ref=e147]: 가입
+        - tablist [ref=e154]:
+          - tablist [ref=e158]:
+            - tab "홈" [ref=e159] [cursor=pointer]:
+              - generic [ref=e160]: 홈
+            - tab "동영상" [selected] [ref=e161] [cursor=pointer]:
+              - generic [ref=e162]: 동영상
+            - tab "Shorts" [ref=e163] [cursor=pointer]:
+              - generic [ref=e164]: Shorts
+            - tab "라이브" [ref=e165] [cursor=pointer]:
+              - generic [ref=e166]: 라이브
+            - tab "재생목록" [ref=e167] [cursor=pointer]:
+              - generic [ref=e168]: 재생목록
+            - tab "게시물" [ref=e169] [cursor=pointer]:
+              - generic [ref=e170]: 게시물
+            - tab "스토어" [ref=e171] [cursor=pointer]:
+              - generic [ref=e172]: 스토어
+            - button "검색" [ref=e176] [cursor=pointer]:
+              - generic [ref=e179]:
+                - img
+      - generic [ref=e185]:
+        - tablist [ref=e188]:
+          - combobox [ref=e192] [cursor=pointer]:
+            - generic [ref=e194]: 최신순
+          - tab "회원 전용" [ref=e202] [cursor=pointer]:
+            - generic [ref=e204]: 회원 전용
+          - tab "공개" [ref=e211] [cursor=pointer]:
+            - generic [ref=e213]: 공개
+        - generic [ref=e217]:
+          - generic [ref=e221] [cursor=pointer]:
+            - link [ref=e222]:
+              - /url: /watch?v=EhwncVrCkqA
+              - generic [ref=e229]: 10:18
+            - generic [ref=e231]:
+              - generic [ref=e232]:
+                - heading "Seedance 2.0 드디어 ComfyUI 에서 사용해봤습니다 10분 18초" [level=3] [ref=e233]:
+                  - link "Seedance 2.0 드디어 ComfyUI 에서 사용해봤습니다 10분 18초" [ref=e234]:
+                    - /url: /watch?v=EhwncVrCkqA
+                    - text: Seedance 2.0 드디어 ComfyUI 에서 사용해봤습니다
+                - group [ref=e237]:
+                  - generic [ref=e238]: 조회수 332회
+                  - generic [ref=e239]: •
+                  - generic [ref=e240]: 2일 전
+              - button "추가 작업" [ref=e243]
+          - generic [ref=e252] [cursor=pointer]:
+            - link [ref=e253]:
+              - /url: /watch?v=92Q_eOHE7I8
+              - generic [ref=e260]: 13:11
+            - generic [ref=e262]:
+              - generic [ref=e263]:
+                - heading "디자이너 분들 이제.. 13분 11초" [level=3] [ref=e264]:
+                  - link "디자이너 분들 이제.. 13분 11초" [ref=e265]:
+                    - /url: /watch?v=92Q_eOHE7I8
+                    - text: 디자이너 분들 이제..
+                - group [ref=e268]:
+                  - generic [ref=e269]: 조회수 4.7천회
+                  - generic [ref=e270]: •
+                  - generic [ref=e271]: 7일 전
+              - button "추가 작업" [ref=e274]
+          - generic [ref=e283] [cursor=pointer]:
+            - link [ref=e284]:
+              - /url: /watch?v=PaxOEpm2NDg&pp=0gcJCdQKAYcqIYzv
+              - generic [ref=e291]: 16:08
+            - generic [ref=e293]:
+              - generic [ref=e294]:
+                - heading "이 여자 유튜버, 진짜가 아닙니다 16분" [level=3] [ref=e295]:
+                  - link "이 여자 유튜버, 진짜가 아닙니다 16분" [ref=e296]:
+                    - /url: /watch?v=PaxOEpm2NDg&pp=0gcJCdQKAYcqIYzv
+                    - text: 이 여자 유튜버, 진짜가 아닙니다
+                - group [ref=e299]:
+                  - generic [ref=e300]: 조회수 3.7천회
+                  - generic [ref=e301]: •
+                  - generic [ref=e302]: 9일 전
+              - button "추가 작업" [ref=e305]
+          - generic [ref=e314] [cursor=pointer]:
+            - link [ref=e315]:
+              - /url: /watch?v=l8fZi1oOfwo
+              - generic [ref=e322]: 13:00
+            - generic [ref=e324]:
+              - generic [ref=e325]:
+                - heading "오픈클로로 실제 회사 홈페이지를 개편해 봤습니다 (코드 0줄, 2시간) 13분" [level=3] [ref=e326]:
+                  - link "오픈클로로 실제 회사 홈페이지를 개편해 봤습니다 (코드 0줄, 2시간) 13분" [ref=e327]:
+                    - /url: /watch?v=l8fZi1oOfwo
+                    - text: 오픈클로로 실제 회사 홈페이지를 개편해 봤습니다 (코드 0줄, 2시간)
+                - group [ref=e330]:
+                  - generic [ref=e331]: 조회수 3.1천회
+                  - generic [ref=e332]: •
+                  - generic [ref=e333]: 1개월 전
+              - button "추가 작업" [ref=e336]
+          - generic [ref=e345] [cursor=pointer]:
+            - link [ref=e346]:
+              - /url: /watch?v=aK0GJbTsxho
+              - generic [ref=e353]: 11:43
+            - generic [ref=e355]:
+              - generic [ref=e356]:
+                - heading "편집 노예 드디어 탈출 11분 43초" [level=3] [ref=e357]:
+                  - link "편집 노예 드디어 탈출 11분 43초" [ref=e358]:
+                    - /url: /watch?v=aK0GJbTsxho
+                    - text: 편집 노예 드디어 탈출
+                - group [ref=e361]:
+                  - generic [ref=e362]: 조회수 2.2천회
+                  - generic [ref=e363]: •
+                  - generic [ref=e364]: 1개월 전
+              - button "추가 작업" [ref=e367]
+          - generic [ref=e376] [cursor=pointer]:
+            - link [ref=e377]:
+              - /url: /watch?v=EsqhYic02tc
+              - generic [ref=e384]: 1:31:00
+            - generic [ref=e386]:
+              - generic [ref=e387]:
+                - heading "[무편집본] 제 AI 비서 '클라라' 를 만들었습니다 (feat. OpenClaw) 1시간 31분" [level=3] [ref=e388]:
+                  - link "[무편집본] 제 AI 비서 '클라라' 를 만들었습니다 (feat. OpenClaw) 1시간 31분" [ref=e389]:
+                    - /url: /watch?v=EsqhYic02tc
+                    - text: "[무편집본] 제 AI 비서 '클라라' 를 만들었습니다 (feat. OpenClaw)"
+                - generic [ref=e391]:
+                  - group [ref=e392]:
+                    - generic [ref=e393]: 2개월 전
+                  - group [ref=e394]:
+                    - generic [ref=e399]: 회원 전용
+              - button "추가 작업" [ref=e402]
+          - generic [ref=e411] [cursor=pointer]:
+            - link [ref=e412]:
+              - /url: /watch?v=3XhbI597gm8
+              - generic [ref=e419]: 18:57
+            - generic [ref=e421]:
+              - generic [ref=e422]:
+                - heading "제 AI 비서 '클라라' 를 만들었습니다 (feat. OpenClaw) 18분" [level=3] [ref=e423]:
+                  - link "제 AI 비서 '클라라' 를 만들었습니다 (feat. OpenClaw) 18분" [ref=e424]:
+                    - /url: /watch?v=3XhbI597gm8
+                    - text: 제 AI 비서 '클라라' 를 만들었습니다 (feat. OpenClaw)
+                - group [ref=e427]:
+                  - generic [ref=e428]: 조회수 7.4만회
+                  - generic [ref=e429]: •
+                  - generic [ref=e430]: 2개월 전
+              - button "추가 작업" [ref=e433]
+          - generic [ref=e442] [cursor=pointer]:
+            - link [ref=e443]:
+              - /url: /watch?v=KLBu52Oa0sg
+              - generic [ref=e450]: 15:35
+            - generic [ref=e452]:
+              - generic [ref=e453]:
+                - heading "세무사 저는 더 안 씁니다.. 15분" [level=3] [ref=e454]:
+                  - link "세무사 저는 더 안 씁니다.. 15분" [ref=e455]:
+                    - /url: /watch?v=KLBu52Oa0sg
+                    - text: 세무사 저는 더 안 씁니다..
+                - group [ref=e458]:
+                  - generic [ref=e459]: 조회수 535회
+                  - generic [ref=e460]: •
+                  - generic [ref=e461]: 3개월 전
+              - button "추가 작업" [ref=e464]
+          - generic [ref=e473] [cursor=pointer]:
+            - link [ref=e474]:
+              - /url: /watch?v=PS6O0zh-EAw
+              - generic [ref=e481]: 17:20
+            - generic [ref=e483]:
+              - generic [ref=e484]:
+                - heading "클로드 코드로 AI 개발팀을 만들어 봤습니다 17분" [level=3] [ref=e485]:
+                  - link "클로드 코드로 AI 개발팀을 만들어 봤습니다 17분" [ref=e486]:
+                    - /url: /watch?v=PS6O0zh-EAw
+                    - text: 클로드 코드로 AI 개발팀을 만들어 봤습니다
+                - group [ref=e489]:
+                  - generic [ref=e490]: 조회수 8.7천회
+                  - generic [ref=e491]: •
+                  - generic [ref=e492]: 3개월 전
+              - button "추가 작업" [ref=e495]
+          - generic [ref=e504] [cursor=pointer]:
+            - link [ref=e505]:
+              - /url: /watch?v=14Y0lIZtOI8
+              - generic [ref=e512]: 14:19
+            - generic [ref=e514]:
+              - generic [ref=e515]:
+                - heading "ComfyUI 시작하시는 분들 위한 영상 (무료 Comfy Cloud 워크플로우 팩 포함) 14분 19초" [level=3] [ref=e516]:
+                  - link "ComfyUI 시작하시는 분들 위한 영상 (무료 Comfy Cloud 워크플로우 팩 포함) 14분 19초" [ref=e517]:
+                    - /url: /watch?v=14Y0lIZtOI8
+                    - text: ComfyUI 시작하시는 분들 위한 영상 (무료 Comfy Cloud 워크플로우 팩 포함)
+                - group [ref=e520]:
+                  - generic [ref=e521]: 조회수 4.8천회
+                  - generic [ref=e522]: •
+                  - generic [ref=e523]: 3개월 전
+              - button "추가 작업" [ref=e526]
+          - generic [ref=e535] [cursor=pointer]:
+            - link [ref=e536]:
+              - /url: /watch?v=NpVqcu-C1FA
+              - generic [ref=e543]: 4:35
+            - generic [ref=e545]:
+              - generic [ref=e546]:
+                - heading "Qwen-2512 이미지 모델 릴리즈 4분 35초" [level=3] [ref=e547]:
+                  - link "Qwen-2512 이미지 모델 릴리즈 4분 35초" [ref=e548]:
+                    - /url: /watch?v=NpVqcu-C1FA
+                    - text: Qwen-2512 이미지 모델 릴리즈
+                - group [ref=e551]:
+                  - generic [ref=e552]: 조회수 408회
+                  - generic [ref=e553]: •
+                  - generic [ref=e554]: 3개월 전
+              - button "추가 작업" [ref=e557]
+          - generic [ref=e566] [cursor=pointer]:
+            - link [ref=e567]:
+              - /url: /watch?v=IiLrFu5mHiQ
+              - generic [ref=e574]: 17:22
+            - generic [ref=e576]:
+              - generic [ref=e577]:
+                - heading "런팟 이렇게 쉬워졌다고요? 17분" [level=3] [ref=e578]:
+                  - link "런팟 이렇게 쉬워졌다고요? 17분" [ref=e579]:
+                    - /url: /watch?v=IiLrFu5mHiQ
+                    - text: 런팟 이렇게 쉬워졌다고요?
+                - group [ref=e582]:
+                  - generic [ref=e583]: 조회수 1.7천회
+                  - generic [ref=e584]: •
+                  - generic [ref=e585]: 3개월 전
+              - button "추가 작업" [ref=e588]
+          - generic [ref=e597] [cursor=pointer]:
+            - link [ref=e598]:
+              - /url: /watch?v=eFOxeGIUW3c
+              - generic [ref=e605]: 23:19
+            - generic [ref=e607]:
+              - generic [ref=e608]:
+                - heading "AI 에게 블랙홀을 코딩해보라고 했습니다 23분" [level=3] [ref=e609]:
+                  - link "AI 에게 블랙홀을 코딩해보라고 했습니다 23분" [ref=e610]:
+                    - /url: /watch?v=eFOxeGIUW3c
+                    - text: AI 에게 블랙홀을 코딩해보라고 했습니다
+                - group [ref=e613]:
+                  - generic [ref=e614]: 조회수 727회
+                  - generic [ref=e615]: •
+                  - generic [ref=e616]: 3개월 전
+              - button "추가 작업" [ref=e619]
+          - generic [ref=e628] [cursor=pointer]:
+            - link [ref=e629]:
+              - /url: /watch?v=8ob5suy6NFc
+              - generic [ref=e636]: 20:07
+            - generic [ref=e638]:
+              - generic [ref=e639]:
+                - heading "Z Image.. Flux 2 망한것 같아요 20분" [level=3] [ref=e640]:
+                  - link "Z Image.. Flux 2 망한것 같아요 20분" [ref=e641]:
+                    - /url: /watch?v=8ob5suy6NFc
+                    - text: Z Image.. Flux 2 망한것 같아요
+                - group [ref=e644]:
+                  - generic [ref=e645]: 조회수 6.8천회
+                  - generic [ref=e646]: •
+                  - generic [ref=e647]: 4개월 전
+              - button "추가 작업" [ref=e650]
+          - generic [ref=e659] [cursor=pointer]:
+            - link [ref=e660]:
+              - /url: /watch?v=aAA924Ex2yw
+              - generic [ref=e667]: 16:09
+            - generic [ref=e669]:
+              - generic [ref=e670]:
+                - heading "AI 로 웹사이트를 만드는 방법 총정리 (초보/중급/고급 + 실무팁) 16분" [level=3] [ref=e671]:
+                  - link "AI 로 웹사이트를 만드는 방법 총정리 (초보/중급/고급 + 실무팁) 16분" [ref=e672]:
+                    - /url: /watch?v=aAA924Ex2yw
+                    - text: AI 로 웹사이트를 만드는 방법 총정리 (초보/중급/고급 + 실무팁)
+                - group [ref=e675]:
+                  - generic [ref=e676]: 조회수 1.7만회
+                  - generic [ref=e677]: •
+                  - generic [ref=e678]: 5개월 전
+              - button "추가 작업" [ref=e681]
+          - generic [ref=e690] [cursor=pointer]:
+            - link [ref=e691]:
+              - /url: /watch?v=RghHSTXrWOU&pp=0gcJCdQKAYcqIYzv
+              - generic [ref=e698]: 11:07
+            - generic [ref=e700]:
+              - generic [ref=e701]:
+                - heading "AI에 애플이 몰빵했네요 11분 7초" [level=3] [ref=e702]:
+                  - link "AI에 애플이 몰빵했네요 11분 7초" [ref=e703]:
+                    - /url: /watch?v=RghHSTXrWOU&pp=0gcJCdQKAYcqIYzv
+                    - text: AI에 애플이 몰빵했네요
+                - group [ref=e706]:
+                  - generic [ref=e707]: 조회수 1.3천회
+                  - generic [ref=e708]: •
+                  - generic [ref=e709]: 6개월 전
+              - button "추가 작업" [ref=e712]
+          - generic [ref=e721] [cursor=pointer]:
+            - link [ref=e722]:
+              - /url: /watch?v=Xjfq_02Ie4Y
+              - generic [ref=e729]: 9:49
+            - generic [ref=e731]:
+              - generic [ref=e732]:
+                - heading "근황.. 저 유튜브 이제 9분 49초" [level=3] [ref=e733]:
+                  - link "근황.. 저 유튜브 이제 9분 49초" [ref=e734]:
+                    - /url: /watch?v=Xjfq_02Ie4Y
+                    - text: 근황.. 저 유튜브 이제
+                - group [ref=e737]:
+                  - generic [ref=e738]: 조회수 471회
+                  - generic [ref=e739]: •
+                  - generic [ref=e740]: 6개월 전
+              - button "추가 작업" [ref=e743]
+          - generic [ref=e752] [cursor=pointer]:
+            - link [ref=e753]:
+              - /url: /watch?v=5gJoG2pZr0Q
+              - generic [ref=e760]: 54:16
+            - generic [ref=e762]:
+              - generic [ref=e763]:
+                - heading "애플 맥북 셋업 풀타임 (생산성 & 개발용 셋업) 54분" [level=3] [ref=e764]:
+                  - link "애플 맥북 셋업 풀타임 (생산성 & 개발용 셋업) 54분" [ref=e765]:
+                    - /url: /watch?v=5gJoG2pZr0Q
+                    - text: 애플 맥북 셋업 풀타임 (생산성 & 개발용 셋업)
+                - group [ref=e768]:
+                  - generic [ref=e769]: 조회수 576회
+                  - generic [ref=e770]: •
+                  - generic [ref=e771]: 7개월 전
+              - button "추가 작업" [ref=e774]
+          - generic [ref=e783] [cursor=pointer]:
+            - link [ref=e784]:
+              - /url: /watch?v=zBkgKv_uBJQ
+              - generic [ref=e791]: 16:26
+            - generic [ref=e793]:
+              - generic [ref=e794]:
+                - heading "AI 일관성 = 나노 바나나 (끝) 16분" [level=3] [ref=e795]:
+                  - link "AI 일관성 = 나노 바나나 (끝) 16분" [ref=e796]:
+                    - /url: /watch?v=zBkgKv_uBJQ
+                    - text: AI 일관성 = 나노 바나나 (끝)
+                - group [ref=e799]:
+                  - generic [ref=e800]: 조회수 2.1천회
+                  - generic [ref=e801]: •
+                  - generic [ref=e802]: 8개월 전
+              - button "추가 작업" [ref=e805]
+          - generic [ref=e814] [cursor=pointer]:
+            - link [ref=e815]:
+              - /url: /watch?v=CgOg48_V6vI
+              - generic [ref=e822]: 11:32
+            - generic [ref=e824]:
+              - generic [ref=e825]:
+                - heading "Flux 이제 끝? Qwen Image 모델 등장 11분 32초" [level=3] [ref=e826]:
+                  - link "Flux 이제 끝? Qwen Image 모델 등장 11분 32초" [ref=e827]:
+                    - /url: /watch?v=CgOg48_V6vI
+                    - text: Flux 이제 끝? Qwen Image 모델 등장
+                - group [ref=e830]:
+                  - generic [ref=e831]: 조회수 3.1천회
+                  - generic [ref=e832]: •
+                  - generic [ref=e833]: 8개월 전
+              - button "추가 작업" [ref=e836]
+          - generic [ref=e845] [cursor=pointer]:
+            - link [ref=e846]:
+              - /url: /watch?v=_YusfRyF-w4
+              - generic [ref=e853]: 14:41
+            - generic [ref=e855]:
+              - generic [ref=e856]:
+                - heading "실제 사진을 AI 로 가장 확실하게 만드는 방법 (Flux Krea 등장) 14분 41초" [level=3] [ref=e857]:
+                  - link "실제 사진을 AI 로 가장 확실하게 만드는 방법 (Flux Krea 등장) 14분 41초" [ref=e858]:
+                    - /url: /watch?v=_YusfRyF-w4
+                    - text: 실제 사진을 AI 로 가장 확실하게 만드는 방법 (Flux Krea 등장)
+                - group [ref=e861]:
+                  - generic [ref=e862]: 조회수 2.8천회
+                  - generic [ref=e863]: •
+                  - generic [ref=e864]: 8개월 전
+              - button "추가 작업" [ref=e867]
+          - generic [ref=e876] [cursor=pointer]:
+            - link [ref=e877]:
+              - /url: /watch?v=jFTbsJZI_U4
+              - generic [ref=e884]: 17:44
+            - generic [ref=e886]:
+              - generic [ref=e887]:
+                - heading "아무것도 모르는 사람이 5분안에 웹사이트 만들기 (feat. 프레이머) 17분" [level=3] [ref=e888]:
+                  - link "아무것도 모르는 사람이 5분안에 웹사이트 만들기 (feat. 프레이머) 17분" [ref=e889]:
+                    - /url: /watch?v=jFTbsJZI_U4
+                    - text: 아무것도 모르는 사람이 5분안에 웹사이트 만들기 (feat. 프레이머)
+                - group [ref=e892]:
+                  - generic [ref=e893]: 조회수 2.1천회
+                  - generic [ref=e894]: •
+                  - generic [ref=e895]: 9개월 전
+              - button "추가 작업" [ref=e898]
+          - generic [ref=e907] [cursor=pointer]:
+            - link [ref=e908]:
+              - /url: /watch?v=g40ZCGtXDn4
+              - generic [ref=e915]: 21:46
+            - generic [ref=e917]:
+              - generic [ref=e918]:
+                - heading "2026 프레이머 업데이트 모두 반영 (입문자를 위한 필수 5개념) 21분" [level=3] [ref=e919]:
+                  - link "2026 프레이머 업데이트 모두 반영 (입문자를 위한 필수 5개념) 21분" [ref=e920]:
+                    - /url: /watch?v=g40ZCGtXDn4
+                    - text: 2026 프레이머 업데이트 모두 반영 (입문자를 위한 필수 5개념)
+                - group [ref=e923]:
+                  - generic [ref=e924]: 조회수 1.3천회
+                  - generic [ref=e925]: •
+                  - generic [ref=e926]: 9개월 전
+              - button "추가 작업" [ref=e929]
+          - generic [ref=e938] [cursor=pointer]:
+            - link [ref=e939]:
+              - /url: /watch?v=2Qk4RmzhFlw
+              - generic [ref=e946]: 16:41
+            - generic [ref=e948]:
+              - generic [ref=e949]:
+                - heading "GPT 이미지 끝... Flux Kontext DEV 모델 풀렸네요 16분" [level=3] [ref=e950]:
+                  - link "GPT 이미지 끝... Flux Kontext DEV 모델 풀렸네요 16분" [ref=e951]:
+                    - /url: /watch?v=2Qk4RmzhFlw
+                    - text: GPT 이미지 끝... Flux Kontext DEV 모델 풀렸네요
+                - group [ref=e954]:
+                  - generic [ref=e955]: 조회수 5.1천회
+                  - generic [ref=e956]: •
+                  - generic [ref=e957]: 10개월 전
+              - button "추가 작업" [ref=e960]
+          - generic [ref=e969] [cursor=pointer]:
+            - link [ref=e970]:
+              - /url: /watch?v=0fz2cyBknJ0&pp=0gcJCdQKAYcqIYzv
+              - generic [ref=e977]: 16:01
+            - generic [ref=e979]:
+              - generic [ref=e980]:
+                - 'heading "Google이 이 악물고 준비한 영상 AI 서비스: Flow 16분" [level=3] [ref=e981]':
+                  - 'link "Google이 이 악물고 준비한 영상 AI 서비스: Flow 16분" [ref=e982]':
+                    - /url: /watch?v=0fz2cyBknJ0&pp=0gcJCdQKAYcqIYzv
+                    - text: "Google이 이 악물고 준비한 영상 AI 서비스: Flow"
+                - group [ref=e985]:
+                  - generic [ref=e986]: 조회수 5.2천회
+                  - generic [ref=e987]: •
+                  - generic [ref=e988]: 11개월 전
+              - button "추가 작업" [ref=e991]
+          - generic [ref=e1000] [cursor=pointer]:
+            - link [ref=e1001]:
+              - /url: /watch?v=5morORO-BUk
+              - generic [ref=e1008]: 10:27
+            - generic [ref=e1010]:
+              - generic [ref=e1011]:
+                - heading "Google은 오디오와 비디오를 한 번에 AI로 찍어냅니다 10분 27초" [level=3] [ref=e1012]:
+                  - link "Google은 오디오와 비디오를 한 번에 AI로 찍어냅니다 10분 27초" [ref=e1013]:
+                    - /url: /watch?v=5morORO-BUk
+                    - text: Google은 오디오와 비디오를 한 번에 AI로 찍어냅니다
+                - group [ref=e1016]:
+                  - generic [ref=e1017]: 조회수 1천회
+                  - generic [ref=e1018]: •
+                  - generic [ref=e1019]: 11개월 전
+              - button "추가 작업" [ref=e1022]
+          - generic [ref=e1031] [cursor=pointer]:
+            - link [ref=e1032]:
+              - /url: /watch?v=IG_3bt30bWI
+              - generic [ref=e1039]: 13:27
+            - generic [ref=e1041]:
+              - generic [ref=e1042]:
+                - heading "하버스쿨 ComfyUI 템플릿 무료 공개 & Workflow 모듈 13분 27초" [level=3] [ref=e1043]:
+                  - link "하버스쿨 ComfyUI 템플릿 무료 공개 & Workflow 모듈 13분 27초" [ref=e1044]:
+                    - /url: /watch?v=IG_3bt30bWI
+                    - text: 하버스쿨 ComfyUI 템플릿 무료 공개 & Workflow 모듈
+                - generic [ref=e1046]:
+                  - group [ref=e1047]:
+                    - generic [ref=e1048]: 11개월 전
+                  - group [ref=e1049]:
+                    - generic [ref=e1054]: 회원 전용
+              - button "추가 작업" [ref=e1057]
+          - generic [ref=e1066] [cursor=pointer]:
+            - link [ref=e1067]:
+              - /url: /watch?v=WY_3bHpEZEI
+              - generic [ref=e1074]: 13:06
+            - generic [ref=e1076]:
+              - generic [ref=e1077]:
+                - heading "ComfyUI 워크플로우 만들기가 이렇게 쉽습니다 13분 6초" [level=3] [ref=e1078]:
+                  - link "ComfyUI 워크플로우 만들기가 이렇게 쉽습니다 13분 6초" [ref=e1079]:
+                    - /url: /watch?v=WY_3bHpEZEI
+                    - text: ComfyUI 워크플로우 만들기가 이렇게 쉽습니다
+                - group [ref=e1082]:
+                  - generic [ref=e1083]: 조회수 2.4천회
+                  - generic [ref=e1084]: •
+                  - generic [ref=e1085]: 11개월 전
+              - button "추가 작업" [ref=e1088]
+          - generic [ref=e1097] [cursor=pointer]:
+            - link [ref=e1098]:
+              - /url: /watch?v=515Wb6eX2as
+              - generic [ref=e1105]: 10:28
+            - generic [ref=e1107]:
+              - generic [ref=e1108]:
+                - heading "내친김에 직접 만들어본다, 내 알고리즘에 자꾸 뜨는 이탈리안 브레인롯이 뭐냐? 10분 28초" [level=3] [ref=e1109]:
+                  - link "내친김에 직접 만들어본다, 내 알고리즘에 자꾸 뜨는 이탈리안 브레인롯이 뭐냐? 10분 28초" [ref=e1110]:
+                    - /url: /watch?v=515Wb6eX2as
+                    - text: 내친김에 직접 만들어본다, 내 알고리즘에 자꾸 뜨는 이탈리안 브레인롯이 뭐냐?
+                - group [ref=e1113]:
+                  - generic [ref=e1114]: 조회수 1.6천회
+                  - generic [ref=e1115]: •
+                  - generic [ref=e1116]: 11개월 전
+              - button "추가 작업" [ref=e1119]
+          - generic [ref=e1128] [cursor=pointer]:
+            - link [ref=e1129]:
+              - /url: /watch?v=ZfyeUhv_CFU
+              - generic [ref=e1136]: 19:04
+            - generic [ref=e1138]:
+              - generic [ref=e1139]:
+                - heading "GPT 모델.. ComfyUI 에서 사용 가능하다고요? 19분" [level=3] [ref=e1140]:
+                  - link "GPT 모델.. ComfyUI 에서 사용 가능하다고요? 19분" [ref=e1141]:
+                    - /url: /watch?v=ZfyeUhv_CFU
+                    - text: GPT 모델.. ComfyUI 에서 사용 가능하다고요?
+                - group [ref=e1144]:
+                  - generic [ref=e1145]: 조회수 1.2천회
+                  - generic [ref=e1146]: •
+                  - generic [ref=e1147]: 1년 전
+              - button "추가 작업" [ref=e1150]
+    - text: •

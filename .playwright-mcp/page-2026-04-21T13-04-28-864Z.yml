@@ -1,0 +1,138 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - button "🧁 다온 베이커리" [ref=e6] [cursor=pointer]:
+        - text: 🧁
+        - generic [ref=e7]: 다온 베이커리
+      - navigation [ref=e8]:
+        - button "상품 목록" [ref=e9] [cursor=pointer]
+        - generic [ref=e10]:
+          - button "로그인" [ref=e11] [cursor=pointer]
+          - button "회원가입" [ref=e12] [cursor=pointer]
+  - main [ref=e13]:
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - heading "🧁 다온 베이커리" [level=1] [ref=e17]
+        - paragraph [ref=e18]: 매일 신선하게 구운 디저트를 만나보세요
+        - paragraph [ref=e19]:
+          - text: 💡 장바구니를 이용하려면
+          - button "로그인" [ref=e20] [cursor=pointer]
+          - text: 이 필요해요
+      - generic [ref=e21]:
+        - button "전체" [ref=e22] [cursor=pointer]
+        - button "케이크" [ref=e23] [cursor=pointer]
+        - button "마카롱" [ref=e24] [cursor=pointer]
+        - button "빵" [ref=e25] [cursor=pointer]
+        - button "디저트" [ref=e26] [cursor=pointer]
+        - button "쿠키" [ref=e27] [cursor=pointer]
+      - generic [ref=e28]:
+        - generic [ref=e29]:
+          - img "딸기 생크림 케이크" [ref=e31]
+          - generic [ref=e32]:
+            - text: 케이크
+            - heading "딸기 생크림 케이크" [level=3] [ref=e33]
+            - paragraph [ref=e34]: 신선한 딸기가 듬뿍 올라간 시그니처 케이크
+            - generic [ref=e35]:
+              - generic [ref=e36]: ₩38,000
+              - button "🛒 담기" [ref=e37] [cursor=pointer]
+        - generic [ref=e38]:
+          - img "초코 가나슈 케이크" [ref=e40]
+          - generic [ref=e41]:
+            - text: 케이크
+            - heading "초코 가나슈 케이크" [level=3] [ref=e42]
+            - paragraph [ref=e43]: 진한 벨기에 초콜릿 가나슈 레이어 케이크
+            - generic [ref=e44]:
+              - generic [ref=e45]: ₩35,000
+              - button "🛒 담기" [ref=e46] [cursor=pointer]
+        - generic [ref=e47]:
+          - img "마카롱 세트 (6개)" [ref=e49]
+          - generic [ref=e50]:
+            - text: 마카롱
+            - heading "마카롱 세트 (6개)" [level=3] [ref=e51]
+            - paragraph [ref=e52]: 바닐라·딸기·초코·피스타치오 등 6가지 맛 구성
+            - generic [ref=e53]:
+              - generic [ref=e54]: ₩18,000
+              - button "🛒 담기" [ref=e55] [cursor=pointer]
+        - generic [ref=e56]:
+          - img "버터 크로아상" [ref=e58]
+          - generic [ref=e59]:
+            - text: 빵
+            - heading "버터 크로아상" [level=3] [ref=e60]
+            - paragraph [ref=e61]: 프랑스산 버터로 결을 살린 정통 크로아상
+            - generic [ref=e62]:
+              - generic [ref=e63]: ₩4,500
+              - button "🛒 담기" [ref=e64] [cursor=pointer]
+        - generic [ref=e65]:
+          - img "바스크 치즈케이크" [ref=e67]
+          - generic [ref=e68]:
+            - text: 케이크
+            - heading "바스크 치즈케이크" [level=3] [ref=e69]
+            - paragraph [ref=e70]: 겉은 바삭, 속은 촉촉한 스페인식 치즈케이크
+            - generic [ref=e71]:
+              - generic [ref=e72]: ₩32,000
+              - button "🛒 담기" [ref=e73] [cursor=pointer]
+        - generic [ref=e74]:
+          - img "레드벨벳 케이크" [ref=e76]
+          - generic [ref=e77]:
+            - text: 케이크
+            - heading "레드벨벳 케이크" [level=3] [ref=e78]
+            - paragraph [ref=e79]: 크림치즈 프로스팅을 얹은 레드벨벳 레이어 케이크
+            - generic [ref=e80]:
+              - generic [ref=e81]: ₩40,000
+              - button "🛒 담기" [ref=e82] [cursor=pointer]
+        - generic [ref=e83]:
+          - img "크렘 브륄레" [ref=e85]
+          - generic [ref=e86]:
+            - text: 디저트
+            - heading "크렘 브륄레" [level=3] [ref=e87]
+            - paragraph [ref=e88]: 표면을 불로 그을려 바삭한 설탕층이 일품인 디저트
+            - generic [ref=e89]:
+              - generic [ref=e90]: ₩8,500
+              - button "🛒 담기" [ref=e91] [cursor=pointer]
+        - generic [ref=e92]:
+          - img "티라미수" [ref=e94]
+          - generic [ref=e95]:
+            - text: 디저트
+            - heading "티라미수" [level=3] [ref=e96]
+            - paragraph [ref=e97]: 마스카포네 치즈와 에스프레소의 클래식 조화
+            - generic [ref=e98]:
+              - generic [ref=e99]: ₩9,000
+              - button "🛒 담기" [ref=e100] [cursor=pointer]
+        - generic [ref=e101]:
+          - img "마들렌 세트 (8개)" [ref=e103]
+          - generic [ref=e104]:
+            - text: 쿠키
+            - heading "마들렌 세트 (8개)" [level=3] [ref=e105]
+            - paragraph [ref=e106]: 촉촉한 레몬향 마들렌 8개 세트
+            - generic [ref=e107]:
+              - generic [ref=e108]: ₩15,000
+              - button "🛒 담기" [ref=e109] [cursor=pointer]
+        - generic [ref=e110]:
+          - img "에클레어" [ref=e112]
+          - generic [ref=e113]:
+            - text: 디저트
+            - heading "에클레어" [level=3] [ref=e114]
+            - paragraph [ref=e115]: 슈 반죽에 바닐라 크림을 가득 채운 프랑스 디저트
+            - generic [ref=e116]:
+              - generic [ref=e117]: ₩6,500
+              - button "🛒 담기" [ref=e118] [cursor=pointer]
+  - generic [ref=e120]:
+    - generic [ref=e121]:
+      - generic [ref=e122]: 🧁
+      - heading "회원가입" [level=2] [ref=e135]
+      - paragraph [ref=e124]: 다온 베이커리에 오신 걸 환영해요
+    - generic [ref=e141]: 이미 사용 중인 이메일입니다
+    - generic [ref=e125]:
+      - generic [ref=e136]:
+        - generic [ref=e137]: 이름
+        - textbox "홍길동" [ref=e138]: 테스트유저
+      - generic [ref=e126]:
+        - generic [ref=e127]: 이메일
+        - textbox "example@email.com" [ref=e128]: test@daon.com
+      - generic [ref=e129]:
+        - generic [ref=e130]: 비밀번호
+        - textbox "••••••••" [ref=e131]: test1234
+      - button "회원가입" [ref=e139] [cursor=pointer]
+    - paragraph [ref=e133]:
+      - text: 이미 회원이신가요?
+      - button "로그인" [ref=e140] [cursor=pointer]

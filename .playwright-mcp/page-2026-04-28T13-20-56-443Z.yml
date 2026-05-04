@@ -1,0 +1,319 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - link "shadcn/ui" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - img
+          - generic [ref=e7]: shadcn/ui
+        - navigation [ref=e8]:
+          - link "Docs" [ref=e9] [cursor=pointer]:
+            - /url: /docs/installation
+          - link "Components" [ref=e10] [cursor=pointer]:
+            - /url: /docs/components
+          - link "Blocks" [ref=e11] [cursor=pointer]:
+            - /url: /blocks
+          - link "Charts" [ref=e12] [cursor=pointer]:
+            - /url: /charts/area
+          - link "Directory" [ref=e13] [cursor=pointer]:
+            - /url: /docs/directory
+          - link "Create" [ref=e14] [cursor=pointer]:
+            - /url: /create
+        - generic [ref=e15]:
+          - button "Search documentation..." [ref=e17]:
+            - generic [ref=e18]: Search documentation...
+          - link "113k" [ref=e19] [cursor=pointer]:
+            - /url: https://github.com/shadcn-ui/ui
+            - img
+            - generic [ref=e20]: 113k
+          - button "Toggle layout" [ref=e21]:
+            - generic [ref=e22]: Toggle layout
+            - img
+          - button "Toggle theme" [ref=e23]:
+            - img
+            - generic [ref=e24]: Toggle theme
+          - link "New" [ref=e26] [cursor=pointer]:
+            - /url: /create
+            - img
+            - text: New
+    - main [ref=e27]:
+      - generic [ref=e28]:
+        - generic [ref=e31]:
+          - link "Introducing Sera" [ref=e32] [cursor=pointer]:
+            - /url: /sera
+            - text: Introducing Sera
+            - img
+          - heading "The Foundation for your Design System" [level=1] [ref=e33]
+          - paragraph [ref=e34]: A set of beautifully designed components that you can customize, extend, and build on. Start here then make it your own. Open Source. Open Code.
+          - generic [ref=e35]:
+            - link "New Project" [ref=e36] [cursor=pointer]:
+              - /url: /create
+            - link "View Components" [ref=e37] [cursor=pointer]:
+              - /url: /docs/components
+        - generic [ref=e41]:
+          - generic [ref=e45]:
+            - group "Payment Method" [ref=e46]:
+              - generic [ref=e47]: Payment Method
+              - paragraph [ref=e48]: All transactions are secure and encrypted
+              - generic [ref=e49]:
+                - group [ref=e50]:
+                  - generic [ref=e51]: Name on Card
+                  - textbox "Name on Card" [ref=e52]:
+                    - /placeholder: John Doe
+                - generic [ref=e53]:
+                  - group [ref=e54]:
+                    - generic [ref=e55]: Card Number
+                    - textbox "Card Number" [ref=e56]:
+                      - /placeholder: 1234 5678 9012 3456
+                    - paragraph [ref=e57]: Enter your 16-digit number.
+                  - group [ref=e58]:
+                    - generic [ref=e59]: CVV
+                    - textbox "CVV" [ref=e60]:
+                      - /placeholder: "123"
+                - generic [ref=e61]:
+                  - group [ref=e62]:
+                    - generic [ref=e63]: Month
+                    - combobox "Month" [ref=e64]:
+                      - generic: MM
+                      - img
+                    - combobox [ref=e65]
+                  - group [ref=e66]:
+                    - generic [ref=e67]: Year
+                    - combobox "Year" [ref=e68]:
+                      - generic: YYYY
+                      - img
+                    - combobox [ref=e69]
+            - group "Billing Address" [ref=e71]:
+              - generic [ref=e72]: Billing Address
+              - paragraph [ref=e73]: The billing address associated with your payment method
+              - group [ref=e75]:
+                - checkbox "Same as shipping address" [checked] [ref=e76]:
+                  - generic:
+                    - img
+                - checkbox [checked]
+                - generic [ref=e77]: Same as shipping address
+            - group [ref=e79]:
+              - group [ref=e81]:
+                - generic [ref=e82]: Comments
+                - textbox "Comments" [ref=e83]:
+                  - /placeholder: Add any additional comments
+            - group [ref=e84]:
+              - button "Submit" [ref=e85]
+              - button "Cancel" [ref=e86]
+          - generic [ref=e87]:
+            - generic [ref=e88]:
+              - generic [ref=e89]:
+                - generic [ref=e91]:
+                  - generic [ref=e93]: CN
+                  - generic [ref=e95]: LR
+                  - generic [ref=e97]: ER
+                - generic [ref=e98]: No Team Members
+                - generic [ref=e99]: Invite your team to collaborate on this project.
+              - button "Invite Members" [ref=e101]:
+                - img
+                - text: Invite Members
+            - generic [ref=e102]:
+              - generic [ref=e103]:
+                - status "Loading"
+                - text: Syncing
+              - generic [ref=e104]:
+                - status "Loading"
+                - text: Updating
+              - generic [ref=e105]:
+                - status "Loading"
+                - text: Loading
+            - group [ref=e106]:
+              - group [ref=e107]:
+                - button "Add" [ref=e108]:
+                  - img
+              - group [ref=e109]:
+                - group [ref=e110]:
+                  - textbox "Send a message..." [ref=e111]
+                  - group [ref=e112]:
+                    - button "Voice Mode" [ref=e113]:
+                      - img
+            - group [ref=e115]:
+              - generic [ref=e116]: Price Range
+              - paragraph [ref=e117]: Set your budget range ($200 - 800).
+              - generic "Price Range" [ref=e118]
+            - generic [ref=e121]:
+              - group [ref=e122]:
+                - textbox "Search..." [ref=e123]
+                - group [ref=e124]:
+                  - img [ref=e125]
+                - group [ref=e128]: 12 results
+              - group [ref=e129]:
+                - textbox "example.com" [ref=e130]
+                - group [ref=e131]:
+                  - generic [ref=e132]: https://
+                - group [ref=e133]:
+                  - button "Info" [ref=e134]:
+                    - img
+              - group [ref=e135]:
+                - textbox "Ask, Search or Chat..." [ref=e136]
+                - group [ref=e137]:
+                  - button "Add" [ref=e138]:
+                    - img
+                  - button "Auto" [ref=e139]
+                  - generic [ref=e140]: 52% used
+                  - button "Send" [ref=e141]:
+                    - img
+                    - generic [ref=e142]: Send
+              - group [ref=e143]:
+                - textbox "@shadcn" [ref=e144]
+                - group [ref=e145]:
+                  - img [ref=e147]
+          - generic [ref=e149]:
+            - generic [ref=e150]:
+              - generic [ref=e151]: Input Secure
+              - group [ref=e152]:
+                - textbox "Input Secure" [ref=e153]
+                - group [ref=e154]:
+                  - button "Info" [ref=e155]:
+                    - img
+                - group [ref=e156]: https://
+                - group [ref=e157]:
+                  - button "Favorite" [ref=e158]:
+                    - img
+            - generic [ref=e159]:
+              - generic [ref=e160]:
+                - generic [ref=e161]:
+                  - generic [ref=e162]: Two-factor authentication
+                  - paragraph [ref=e163]: Verify via email or phone number.
+                - button "Enable" [ref=e165]
+              - link "Your profile has been verified." [ref=e166] [cursor=pointer]:
+                - /url: "#"
+                - generic [ref=e167]:
+                  - img
+                - generic [ref=e169]: Your profile has been verified.
+                - img [ref=e171]
+            - generic [ref=e174]: Appearance Settings
+            - group [ref=e175]:
+              - generic [ref=e176]:
+                - group "Compute Environment" [ref=e177]:
+                  - generic [ref=e178]: Compute Environment
+                  - paragraph [ref=e179]: Select the compute environment for your cluster.
+                  - radiogroup [ref=e180]:
+                    - group [ref=e182]:
+                      - generic [ref=e183]:
+                        - generic [ref=e184]: Kubernetes
+                        - paragraph [ref=e185]: Run GPU workloads on a K8s configured cluster. This is the default.
+                      - radio "Kubernetes" [checked] [ref=e186]
+                      - radio [checked]
+                    - group [ref=e190]:
+                      - generic [ref=e191]:
+                        - generic [ref=e192]: Virtual Machine
+                        - paragraph [ref=e193]: Access a VM configured cluster to run workloads. (Coming soon)
+                      - radio "Virtual Machine" [ref=e194]
+                      - radio
+                - group [ref=e196]:
+                  - generic [ref=e197]:
+                    - generic [ref=e198]: Number of GPUs
+                    - paragraph [ref=e199]: You can add more later.
+                  - group [ref=e200]:
+                    - textbox "Number of GPUs" [ref=e201]: "8"
+                    - button "Decrement" [ref=e202]:
+                      - img
+                    - button "Increment" [ref=e203]:
+                      - img
+                - group [ref=e205]:
+                  - generic [ref=e206]:
+                    - generic [ref=e207]: Wallpaper Tinting
+                    - paragraph [ref=e208]: Allow the wallpaper to be tinted.
+                  - switch "Wallpaper Tinting" [checked] [ref=e209]
+                  - checkbox [checked]
+          - generic [ref=e210]:
+            - group [ref=e212]:
+              - generic [ref=e213]: Prompt
+              - group [ref=e214]:
+                - textbox "Prompt" [ref=e215]:
+                  - /placeholder: Ask, search, or make anything...
+                - group [ref=e216]:
+                  - button "Add context" [ref=e217]:
+                    - img
+                    - text: Add context
+                - group [ref=e219]:
+                  - button "Attach file" [ref=e220]:
+                    - img
+                  - button "Auto" [ref=e221]
+                  - button "All Sources" [ref=e222]:
+                    - img
+                    - text: All Sources
+                  - button "Send" [ref=e223]:
+                    - img
+            - group [ref=e224]:
+              - group [ref=e225]:
+                - button "Go Back" [ref=e226]:
+                  - img
+              - group [ref=e227]:
+                - button "Archive" [ref=e228]
+                - button "Report" [ref=e229]
+              - group [ref=e230]:
+                - button "Snooze" [ref=e231]
+                - button "More Options" [ref=e232]:
+                  - img
+            - group [ref=e234]:
+              - checkbox "I agree to the terms and conditions" [checked] [ref=e235]:
+                - generic:
+                  - img
+              - checkbox [checked]
+              - generic [ref=e236]: I agree to the terms and conditions
+            - generic [ref=e237]:
+              - group [ref=e238]:
+                - group [ref=e239]:
+                  - button "1" [ref=e240]
+                  - button "2" [ref=e241]
+                  - button "3" [ref=e242]
+                - group [ref=e243]:
+                  - button "Previous" [ref=e244]:
+                    - img
+                  - button "Next" [ref=e245]:
+                    - img
+              - group [ref=e246]:
+                - button "Copilot" [ref=e247]:
+                  - img
+                  - text: Copilot
+                - button "Open Popover" [ref=e248]:
+                  - img
+            - group "How did you hear about us?" [ref=e253]:
+              - generic [ref=e254]: How did you hear about us?
+              - paragraph [ref=e255]: Select the option that best describes how you heard about us.
+              - generic [ref=e256]:
+                - group [ref=e258]:
+                  - checkbox "Social Media" [checked] [ref=e259]:
+                    - generic:
+                      - img
+                  - checkbox [checked]
+                  - generic [ref=e260]: Social Media
+                - group [ref=e262]:
+                  - checkbox "Search Engine" [ref=e263]
+                  - checkbox
+                  - generic [ref=e264]: Search Engine
+                - group [ref=e266]:
+                  - checkbox "Referral" [ref=e267]
+                  - checkbox
+                  - generic [ref=e268]: Referral
+                - group [ref=e270]:
+                  - checkbox "Other" [ref=e271]
+                  - checkbox
+                  - generic [ref=e272]: Other
+            - generic [ref=e273]:
+              - generic [ref=e274]:
+                - generic [ref=e275]:
+                  - status "Loading"
+                - generic [ref=e276]: Processing your request
+                - generic [ref=e277]: Please wait while we process your request. Do not refresh the page.
+              - button "Cancel" [ref=e279]
+    - contentinfo [ref=e280]:
+      - generic [ref=e283]:
+        - text: Built by
+        - link "shadcn" [ref=e284] [cursor=pointer]:
+          - /url: https://twitter.com/shadcn
+        - text: at
+        - link "Vercel" [ref=e285] [cursor=pointer]:
+          - /url: https://vercel.com/new?utm_source=shadcn_site&utm_medium=web&utm_campaign=docs_cta_deploy_now_callout
+        - text: . The source code is available on
+        - link "GitHub" [ref=e286] [cursor=pointer]:
+          - /url: https://github.com/shadcn-ui/ui
+        - text: .
+  - region "Notifications alt+T"

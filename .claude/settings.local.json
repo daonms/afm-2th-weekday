@@ -77,7 +77,18 @@
       "mcp__playwright__browser_take_screenshot",
       "mcp__playwright__browser_snapshot",
       "mcp__playwright__browser_click",
-      "mcp__playwright__browser_file_upload"
+      "mcp__playwright__browser_file_upload",
+      "mcp__playwright__browser_fill_form",
+      "Bash(xargs -I{} taskkill //PID {} //F sleep 1 cd \"D:/다온/DAON_AI - 문서/afm-2th-weekday/week_6/쇼핑몰 \\(결제 포함\\)\")",
+      "mcp__playwright__browser_handle_dialog",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_evaluate",
+      "Skill(ship)",
+      "Bash(tar -czf - server.js index.html package.json package-lock.json Dockerfile docker-compose.yml Caddyfile .dockerignore)",
+      "mcp__claude_ai_Google_Drive__search_files",
+      "mcp__claude_ai_Google_Drive__get_file_metadata",
+      "mcp__playwright__browser_run_code",
+      "Bash(pkill -f \"python.*7788\")"
     ]
   }
 }

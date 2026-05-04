@@ -6,13 +6,17 @@ const path = require("path");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
-const ImageKit = require("imagekit");
 const { Pool } = require("pg");
+const { createClient } = require("@supabase/supabase-js");
+const { normalizeProductImages, sanitizeChatMessage } = require("./shop-utils");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || "daon-bakery-secret-2026";
 const TOSS_SECRET_KEY = process.env.TOSS_SECRET_KEY || "test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6";
+const SUPABASE_URL = process.env.SUPABASE_URL || "";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const SUPABASE_STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "shop-images";
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "daon@daonms.com")
   .split(",")
   .map(s => s.trim().toLowerCase())
@@ -23,14 +27,12 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
-// ImageKit 클라이언트 (관리자 이미지 업로드용)
-const imagekit = process.env.IMAGEKIT_PUBLIC_KEY
-  ? new ImageKit({
-      publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
-      privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
-      urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
-    })
-  : null;
+const supabase =
+  SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      })
+    : null;
 
 // multer 메모리 스토리지 (서버리스/Vercel 호환). 5MB 제한.
 const upload = multer({
@@ -41,6 +43,52 @@ const upload = multer({
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
+
+function getStorageObjectPath(productId, fileName, index) {
+  const safeName = String(fileName || "image")
+    .replace(/[^\w.\-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const ext = path.extname(safeName) || ".jpg";
+  const base = path.basename(safeName, ext).slice(0, 40) || "image";
+  return `products/${productId || "draft"}/${Date.now()}_${index}_${base}${ext}`;
+}
+
+async function ensureStorageBucket() {
+  if (!supabase) return;
+  const { data, error } = await supabase.storage.listBuckets();
+  if (error) throw error;
+  const exists = (data || []).some((bucket) => bucket.id === SUPABASE_STORAGE_BUCKET || bucket.name === SUPABASE_STORAGE_BUCKET);
+  if (exists) return;
+  const { error: createError } = await supabase.storage.createBucket(SUPABASE_STORAGE_BUCKET, {
+    public: true,
+    allowedMimeTypes: ["image/png", "image/jpeg", "image/webp", "image/gif", "image/avif"],
+    fileSizeLimit: "5MB",
+  });
+  if (createError && !String(createError.message || "").toLowerCase().includes("already exists")) {
+    throw createError;
+  }
+}
+
+async function uploadProductImage(file, productId, index) {
+  if (!supabase) {
+    throw new Error("Supabase Storage 환경변수가 설정되지 않았습니다");
+  }
+  const objectPath = getStorageObjectPath(productId, file.originalname, index);
+  const { error } = await supabase.storage.from(SUPABASE_STORAGE_BUCKET).upload(objectPath, file.buffer, {
+    contentType: file.mimetype || "application/octet-stream",
+    upsert: false,
+  });
+  if (error) throw error;
+  const { data } = supabase.storage.from(SUPABASE_STORAGE_BUCKET).getPublicUrl(objectPath);
+  return {
+    url: data.publicUrl,
+    path: objectPath,
+    name: file.originalname,
+    size: file.size,
+    type: file.mimetype,
+  };
+}
 
 // DB 초기화 (테이블 생성 + 상품 시드)
 async function initDB() {
@@ -57,6 +105,7 @@ async function initDB() {
       name VARCHAR(255) NOT NULL,
       price INTEGER NOT NULL,
       image_url TEXT,
+      image_urls JSONB NOT NULL DEFAULT '[]'::jsonb,
       description TEXT,
       category VARCHAR(100),
       stock INTEGER NOT NULL DEFAULT 100,
@@ -94,6 +143,15 @@ async function initDB() {
       created_at TIMESTAMPTZ DEFAULT NOW(),
       PRIMARY KEY (user_id, product_id)
     );
+    CREATE TABLE IF NOT EXISTS product_chat_messages (
+      id SERIAL PRIMARY KEY,
+      product_id INTEGER NOT NULL REFERENCES shop_products(id) ON DELETE CASCADE,
+      user_id INTEGER REFERENCES shop_users(id) ON DELETE CASCADE,
+      user_name VARCHAR(100) NOT NULL,
+      message TEXT NOT NULL,
+      is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
   `);
 
   // 기존 테이블에 stock 컬럼이 없을 수 있으므로 안전 추가
@@ -104,29 +162,48 @@ async function initDB() {
     ALTER TABLE shop_products ADD COLUMN IF NOT EXISTS content_body TEXT;
   `);
   await pool.query(`
+    ALTER TABLE shop_products ADD COLUMN IF NOT EXISTS image_urls JSONB NOT NULL DEFAULT '[]'::jsonb;
+  `);
+  await pool.query(`
     ALTER TABLE shop_payment_intents ADD COLUMN IF NOT EXISTS product_id INTEGER REFERENCES shop_products(id) ON DELETE SET NULL;
   `);
+  await pool.query(`
+    UPDATE shop_products
+       SET image_urls = CASE
+         WHEN image_url IS NULL THEN '[]'::jsonb
+         ELSE jsonb_build_array(image_url)
+       END
+     WHERE (image_urls IS NULL OR image_urls = '[]'::jsonb) AND image_url IS NOT NULL;
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_product_chat_messages_product_id_id
+      ON product_chat_messages (product_id, id);
+  `);
+
+  await ensureStorageBucket().catch((err) => {
+    console.warn("Supabase Storage bucket 확인 실패:", err.message);
+  });
 
   const { rows } = await pool.query("SELECT COUNT(*) FROM shop_products");
   if (parseInt(rows[0].count) === 0) {
     await pool.query(`
-      INSERT INTO shop_products (name, price, image_url, description, category, stock, content_body) VALUES
-      ('AI 프롬프트 엔지니어링 실전 노트', 4500, 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&auto=format&fit=crop',
+      INSERT INTO shop_products (name, price, image_url, image_urls, description, category, stock, content_body) VALUES
+      ('AI 프롬프트 엔지니어링 실전 노트', 4500, 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&auto=format&fit=crop', jsonb_build_array('https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&auto=format&fit=crop'),
         '팀에서 바로 쓰는 시스템 프롬프트·RAG·평가 루프만 요약한 PDF 스타일 가이드입니다.',
         '튜토리얼', 999,
         '## 1. 시스템 프롬프트\\n- 역할·톤·금지 사항을 한 번에 쓴다.\\n- 예시: “한국어로, 코드는 코드 블록만.”\\n\\n## 2. RAG\\n- 청크 크기 400~800자, 겹침 15% 권장.\\n- 출처 토큰을 답 끝에 붙이면 환각이 줄어든다.\\n\\n## 3. 평가\\n- 10개의 고정 질문으로 회귀 점검, 점수는 매주만 비교.'),
 
-      ('1인 창업자를 위한 계약·세금 체크리스트', 9000, 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=400&auto=format&fit=crop',
+      ('1인 창업자를 위한 계약·세금 체크리스트', 9000, 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=400&auto=format&fit=crop', jsonb_build_array('https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=400&auto=format&fit=crop'),
         '용역·SaaS·오픈마켓 정산을 가정한 필수 항목만 모았습니다. (법률·세무 자문이 아닙니다.)',
         '가이드', 999,
         '## A. 견적·계약\\n- 범위·수정 횟수·지연 합의를 문서에 남긴다.\\n- 정산일·환불·해지는 별도 조항.\\n\\n## B. 세무 메모\\n- 사업자·간이/일반, 현금영수증 의무는 업종·매출에 따라 다름.\\n- **반드시 세무사·국세청 안내로 확인하세요.**'),
 
-      ('주니어의 코드 리뷰 생존 전략', 3000, 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&auto=format&fit=crop',
+      ('주니어의 코드 리뷰 생존 전략', 3000, 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&auto=format&fit=crop', jsonb_build_array('https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&auto=format&fit=crop'),
         'PR 설명, 커밋 쪼개기, 리뷰 답장 템플릿까지. 짧은 실무 텍스트 콘텐츠.',
         '커리어', 999,
         '### PR에 넣을 것\\n- 배경 3줄 / 변경 요약 / 스크린샷·재현 / 롤백 계획\\n\\n### 리뷰 코멘트\\n- “반영: …” / “질문: …” / “다음 티켓: …” 로 구분해 답한다.\\n\\n(본문은 예시이며, 팀 문화에 맞게 수정하세요.)'),
 
-      ('Figma to HTML 워크플로 90분', 12000, 'https://images.unsplash.com/photo-1609921212029-bb5a28e60960?w=400&auto=format&fit=crop',
+      ('Figma to HTML 워크플로 90분', 12000, 'https://images.unsplash.com/photo-1609921212029-bb5a28e60960?w=400&auto=format&fit=crop', jsonb_build_array('https://images.unsplash.com/photo-1609921212029-bb5a28e60960?w=400&auto=format&fit=crop'),
         '오토레이아웃·스펙 추출·클래스 네이밍까지. 미니 강의형 롱폼 (유료).',
         '디자인', 999,
         '1) 프레임 구조 먼저 읽기\\n2) 8pt 그리드·타이포 스케일 맞추기\\n3) Pretext/컴포넌트 쪼개기\\n4) 토큰(색·간격) 표로 뽑기\\n5) 퍼블 리뷰는 스크린샷 diff\\n\\n*본 콘텐츠는 학습용 예시 텍스트입니다.*')
@@ -253,7 +330,7 @@ app.get("/api/products", authOptional, async (req, res) => {
     }
     const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
     const { rows } = await pool.query(
-      `SELECT id, name, price, image_url, description, category, stock, content_body, created_at
+      `SELECT id, name, price, image_url, image_urls, description, category, stock, content_body, created_at
        FROM shop_products ${where} ORDER BY id`,
       params
     );
@@ -269,9 +346,12 @@ app.get("/api/products", authOptional, async (req, res) => {
 
     const data = rows.map((r) => {
       const purchased = unlocked.has(r.id);
-      const { content_body, ...rest } = r;
+      const images = normalizeProductImages(r);
+      const { content_body, image_url, image_urls, ...rest } = r;
       return {
         ...rest,
+        image_url: images[0] || image_url || null,
+        image_urls: images,
         purchased,
         content_body: purchased ? (content_body || "") : null,
       };
@@ -293,31 +373,83 @@ app.get("/api/content/:id", auth, async (req, res) => {
     );
     if (!ok.length) return res.status(403).json({ error: "구매한 콘텐츠만 열람할 수 있어요" });
     const { rows } = await pool.query(
-      "SELECT id, name, description, content_body, image_url, category, price FROM shop_products WHERE id = $1",
+      "SELECT id, name, description, content_body, image_url, image_urls, category, price FROM shop_products WHERE id = $1",
       [id]
     );
     if (!rows.length) return res.status(404).json({ error: "콘텐츠를 찾을 수 없어요" });
-    res.json({ data: rows[0] });
+    const images = normalizeProductImages(rows[0]);
+    res.json({
+      data: {
+        ...rows[0],
+        image_url: images[0] || rows[0].image_url || null,
+        image_urls: images,
+      },
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ── 관리자: 이미지 업로드 ───────────────────────────────
-app.post("/api/admin/upload", auth, adminOnly, upload.single("image"), async (req, res) => {
-  if (!imagekit)
-    return res.status(500).json({ error: "ImageKit 환경변수가 설정되지 않았습니다" });
-  if (!req.file) return res.status(400).json({ error: "이미지 파일이 없습니다" });
+// ── 상품 상세 내부 문의 채팅 ─────────────────────────────
+app.get("/api/products/:id/chat", auth, async (req, res) => {
   try {
-    const safeName = (req.file.originalname || "image").replace(/[^\w.\-]/g, "_");
-    const result = await imagekit.upload({
-      file: req.file.buffer,
-      fileName: `${Date.now()}_${safeName}`,
-      folder: "/afm-shop",
-    });
-    res.json({ url: result.url, fileId: result.fileId, name: result.name });
+    const productId = parseInt(req.params.id, 10);
+    if (!productId) return res.status(400).json({ error: "잘못된 상품 id" });
+    const afterId = req.query.afterId ? parseInt(String(req.query.afterId), 10) : 0;
+    const limit = req.query.limit ? Math.min(parseInt(String(req.query.limit), 10) || 20, 50) : 20;
+    const params = [productId];
+    let where = "WHERE product_id = $1";
+    if (afterId > 0) {
+      params.push(afterId);
+      where += ` AND id > $${params.length}`;
+    }
+    const { rows } = await pool.query(
+      `SELECT id, product_id, user_id, user_name, message, is_admin, created_at
+       FROM product_chat_messages ${where}
+       ORDER BY id ASC
+       LIMIT ${limit}`,
+      params
+    );
+    res.json({ data: rows });
   } catch (err) {
-    console.error("ImageKit 업로드 오류:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/products/:id/chat", auth, async (req, res) => {
+  try {
+    const productId = parseInt(req.params.id, 10);
+    if (!productId) return res.status(400).json({ error: "잘못된 상품 id" });
+    const message = sanitizeChatMessage(req.body?.message);
+    if (!message) return res.status(400).json({ error: "메시지를 입력하세요" });
+    const isAdmin = ADMIN_EMAILS.includes(String(req.user.email || "").toLowerCase());
+    const { rows } = await pool.query(
+      `INSERT INTO product_chat_messages (product_id, user_id, user_name, message, is_admin)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, product_id, user_id, user_name, message, is_admin, created_at`,
+      [productId, req.user.id, req.user.name, message, isAdmin]
+    );
+    res.status(201).json({ data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── 관리자: 이미지 업로드 (Supabase Storage) ────────────
+app.post("/api/admin/upload", auth, adminOnly, upload.array("images", 3), async (req, res) => {
+  if (!supabase)
+    return res.status(500).json({ error: "Supabase Storage 환경변수가 설정되지 않았습니다" });
+  if (!req.files || !req.files.length) return res.status(400).json({ error: "이미지 파일이 없습니다" });
+  if (req.files.length > 3) return res.status(400).json({ error: "이미지는 상품당 최대 3장까지 업로드할 수 있습니다" });
+  try {
+    await ensureStorageBucket();
+    const uploaded = [];
+    for (const [index, file] of req.files.entries()) {
+      uploaded.push(await uploadProductImage(file, req.body.productId || "draft", index));
+    }
+    res.json({ data: uploaded });
+  } catch (err) {
+    console.error("Supabase Storage 업로드 오류:", err.message);
     res.status(500).json({ error: "업로드 실패: " + err.message });
   }
 });
@@ -325,16 +457,18 @@ app.post("/api/admin/upload", auth, adminOnly, upload.single("image"), async (re
 // ── 관리자: 상품 등록 ───────────────────────────────────
 app.post("/api/admin/products", auth, adminOnly, async (req, res) => {
   try {
-    const { name, price, image_url, description, category, stock, content_body } = req.body;
+    const { name, price, image_url, image_urls, description, category, stock, content_body } = req.body;
     if (!name || !price || !category)
       return res.status(400).json({ error: "이름, 가격, 카테고리는 필수입니다" });
+    const images = normalizeProductImages({ image_url, image_urls });
     const { rows } = await pool.query(
-      `INSERT INTO shop_products (name, price, image_url, description, category, stock, content_body)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      `INSERT INTO shop_products (name, price, image_url, image_urls, description, category, stock, content_body)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
       [
         name,
         Number(price),
-        image_url || null,
+        images[0] || image_url || null,
+        JSON.stringify(images),
         description || null,
         category,
         Number(stock ?? 999),

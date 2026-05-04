@@ -32,6 +32,230 @@ const STATUS_META = {
   CANCELED: { label: '취소', cls: 'bg-red-500/20 text-red-300' },
 };
 
+const MAX_PRODUCT_IMAGES = 3;
+const CHAT_POLL_MS = 4000;
+
+function normalizeProductImages(product) {
+  const seen = new Set();
+  const out = [];
+  const add = (value) => {
+    if (typeof value !== 'string') return;
+    const url = value.trim();
+    if (!url || seen.has(url)) return;
+    seen.add(url);
+    out.push(url);
+  };
+
+  const raw = product?.image_urls;
+  if (Array.isArray(raw)) raw.forEach(add);
+  else if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) parsed.forEach(add);
+      else add(raw);
+    } catch {
+      add(raw);
+    }
+  }
+
+  add(product?.image_url);
+  return out.slice(0, MAX_PRODUCT_IMAGES);
+}
+
+function getPrimaryProductImage(product) {
+  return normalizeProductImages(product)[0] || '';
+}
+
+function ProductGallery({ product }) {
+  const images = normalizeProductImages(product);
+  if (!images.length) {
+    return (
+      <div className="w-full aspect-[16/10] rounded-2xl bg-slate-800 border border-white/10 flex items-center justify-center text-5xl">
+        🖼️
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="w-full aspect-[16/10] rounded-2xl overflow-hidden bg-slate-800 border border-white/10">
+        <img src={images[0]} alt="" className="w-full h-full object-cover" />
+      </div>
+      {images.length > 1 && (
+        <div className={`grid gap-2 ${images.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+          {images.map((src, idx) => (
+            <div key={src} className="aspect-square rounded-xl overflow-hidden bg-slate-800 border border-white/10">
+              <img src={src} alt={`상품 이미지 ${idx + 1}`} className="w-full h-full object-cover" />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProductInquiryChatPanel({ productId, token, user, title = '문의 채팅' }) {
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+  const [lastId, setLastId] = useState(0);
+  const listRef = useRef(null);
+
+  useEffect(() => {
+    setMessages([]);
+    setText('');
+    setError('');
+    setLastId(0);
+    setLoading(!!token);
+  }, [productId, token]);
+
+  const loadMessages = useCallback(async (mode = 'poll') => {
+    if (!productId || !token) return;
+    try {
+      if (mode === 'initial') setLoading(true);
+      const afterId = mode === 'poll' ? lastId : 0;
+      const res = await fetch(`/api/products/${productId}/chat?afterId=${afterId}&limit=20`, {
+        headers: { Authorization: 'Bearer ' + token },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '채팅을 불러오지 못했어요');
+      const incoming = data.data || [];
+      if (mode === 'initial') {
+        setMessages(incoming);
+      } else if (incoming.length) {
+        setMessages(curr => {
+          const seen = new Set(curr.map(m => m.id));
+          const merged = [...curr];
+          incoming.forEach((msg) => {
+            if (!seen.has(msg.id)) merged.push(msg);
+          });
+          return merged;
+        });
+      }
+      if (incoming.length) setLastId(incoming[incoming.length - 1].id);
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      if (mode === 'initial') setLoading(false);
+    }
+  }, [lastId, productId, token]);
+
+  useEffect(() => {
+    if (!productId || !token) return;
+    let active = true;
+    (async () => {
+      if (!active) return;
+      await loadMessages('initial');
+      if (!active) return;
+      const timer = setInterval(() => {
+        loadMessages('poll');
+      }, CHAT_POLL_MS);
+      listRef.current = timer;
+    })();
+    return () => {
+      active = false;
+      if (listRef.current) clearInterval(listRef.current);
+      listRef.current = null;
+    };
+  }, [loadMessages, productId, token]);
+
+  useEffect(() => {
+    const box = document.getElementById(`chat-scroll-${productId}`);
+    if (box) box.scrollTop = box.scrollHeight;
+  }, [messages, productId]);
+
+  const sendMessage = async (e) => {
+    e.preventDefault();
+    const trimmed = text.trim();
+    if (!trimmed || !token) return;
+    setSending(true);
+    try {
+      const res = await fetch(`/api/products/${productId}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token,
+        },
+        body: JSON.stringify({ message: trimmed }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '전송에 실패했어요');
+      setMessages(curr => [...curr, data.data]);
+      setLastId(data.data.id);
+      setText('');
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <section className="glass rounded-2xl p-4 md:p-5 border border-white/10">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div>
+          <h3 className="text-white font-semibold">{title}</h3>
+          <p className="text-xs text-slate-500">상세 화면 안에서 폴링으로만 갱신돼요</p>
+        </div>
+        <span className="text-[11px] px-2 py-1 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-400/20">polling</span>
+      </div>
+
+      <div id={`chat-scroll-${productId}`} className="max-h-72 overflow-y-auto space-y-2 pr-1">
+        {loading ? (
+          <div className="text-sm text-slate-500 py-8 text-center">채팅을 불러오는 중...</div>
+        ) : messages.length === 0 ? (
+          <div className="text-sm text-slate-500 py-8 text-center">아직 대화가 없어요. 첫 질문을 남겨보세요.</div>
+        ) : (
+          messages.map(msg => {
+            const mine = msg.user_id === user?.id;
+            const admin = !!msg.is_admin;
+            const bubbleCls = mine
+              ? 'ml-auto bg-cyan-500/15 border-cyan-400/20 text-cyan-50'
+              : admin
+                ? 'bg-amber-500/15 border-amber-400/20 text-amber-50'
+                : 'bg-white/5 border-white/10 text-slate-100';
+            return (
+              <div key={msg.id} className={`max-w-[85%] rounded-2xl border px-3 py-2 text-sm ${bubbleCls}`}>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="font-semibold text-[11px] uppercase tracking-wide">
+                    {mine ? '나' : msg.user_name}
+                    {admin ? ' · 관리자' : ''}
+                  </span>
+                  <span className="text-[10px] text-slate-400">{new Date(msg.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                <p className="whitespace-pre-wrap leading-relaxed">{msg.message}</p>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {error && <div className="mt-3 text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</div>}
+
+      <form onSubmit={sendMessage} className="mt-3 flex gap-2">
+        <input
+          value={text}
+          onChange={e => setText(e.target.value)}
+          placeholder="문의 내용을 입력하세요"
+          className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+        />
+        <button
+          type="submit"
+          disabled={sending || !text.trim() || !token}
+          className="shrink-0 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold px-4 py-2 rounded-xl disabled:opacity-50"
+        >
+          {sending ? '전송 중' : '전송'}
+        </button>
+      </form>
+      {!token && <p className="mt-2 text-xs text-slate-500">채팅은 로그인 후 사용할 수 있어요.</p>}
+    </section>
+  );
+}
+
 function Toast({ message, type, onClose }) {
   useEffect(() => {
     const t = setTimeout(onClose, 3200);
@@ -170,7 +394,7 @@ function ContentListPage({ token, onSelect, onNeedLogin, refreshKey }) {
           <button key={p.id} type="button" onClick={() => onSelect(p)}
             className="text-left glass rounded-2xl overflow-hidden card-hover fade-in p-0 border border-white/10">
             <div className="aspect-[16/10] relative bg-slate-800">
-              <img src={p.image_url} alt="" className="w-full h-full object-cover opacity-90"
+              <img src={getPrimaryProductImage(p)} alt="" className="w-full h-full object-cover opacity-90"
                 onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
               <div className="hidden absolute inset-0 items-center justify-center text-4xl bg-slate-800">📄</div>
               <span className={`absolute top-3 right-3 text-xs font-bold px-2.5 py-1 rounded-full ${
@@ -198,26 +422,38 @@ function ContentListPage({ token, onSelect, onNeedLogin, refreshKey }) {
   );
 }
 
-function LockIntro({ product, onPay, onBack, user }) {
+function LockIntro({ product, onPay, onBack, user, token }) {
   return (
-    <div className="max-w-lg mx-auto px-4 py-10 fade-in">
+    <div className="max-w-3xl mx-auto px-4 py-10 fade-in space-y-5">
       <button type="button" onClick={onBack} className="text-slate-400 text-sm hover:text-white mb-6">← 목록</button>
-      <div className="glass rounded-3xl p-8 text-center border border-amber-500/30">
-        <div className="text-6xl mb-4">🔒</div>
-        <h1 className="text-2xl font-bold text-white mb-2">이 콘텐츠는 잠겨 있어요</h1>
-        <p className="text-slate-400 text-sm mb-6">결제 완료 시 이 기기·계정에서 언제든지 전체 본문을 읽을 수 있어요.</p>
-        <div className="text-left glass rounded-2xl p-4 mb-6 border border-white/10">
-          <p className="text-xs text-slate-500 mb-1">콘텐츠</p>
-          <p className="text-white font-semibold">{product.name}</p>
-          <p className="text-slate-500 text-sm mt-2 line-clamp-3">{product.description}</p>
-          <p className="text-cyan-400 font-bold text-xl mt-4">₩{Number(product.price).toLocaleString()}</p>
+      <div className="glass rounded-3xl p-5 md:p-8 border border-amber-500/30 space-y-6">
+        <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-6 items-start">
+          <div className="space-y-4">
+            <ProductGallery product={product} />
+            <div className="text-left">
+              <h1 className="text-2xl font-bold text-white mb-2">{product.name}</h1>
+              <p className="text-slate-400 text-sm leading-relaxed">{product.description}</p>
+              <div className="flex items-center gap-3 mt-4">
+                <span className="text-cyan-400 font-bold text-xl">₩{Number(product.price).toLocaleString()}</span>
+                <span className="text-xs px-2 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10">{product.category}</span>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-center">
+              <div className="text-5xl mb-3">🔒</div>
+              <h2 className="text-xl font-bold text-white mb-2">이 콘텐츠는 잠겨 있어요</h2>
+              <p className="text-slate-400 text-sm">결제 완료 시 이 기기·계정에서 언제든지 전체 본문을 읽을 수 있어요.</p>
+              {user && (
+                <button type="button" onClick={onPay}
+                  className="mt-5 w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-900 font-bold py-4 rounded-2xl shadow-lg">
+                  토스로 결제하고 열기
+                </button>
+              )}
+            </div>
+            <ProductInquiryChatPanel productId={product.id} token={token} user={user} title="상품 문의" />
+          </div>
         </div>
-        {user && (
-          <button type="button" onClick={onPay}
-            className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-900 font-bold py-4 rounded-2xl shadow-lg">
-            토스로 결제하고 열기
-          </button>
-        )}
       </div>
     </div>
   );
@@ -308,7 +544,7 @@ function CheckoutTossPage({ product, user, token, onBack, onStartPay, widgetRefS
   );
 }
 
-function ReadContentPage({ contentId, token, onBack, showToast }) {
+function ReadContentPage({ contentId, token, onBack, showToast, user }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
 
@@ -333,15 +569,20 @@ function ReadContentPage({ contentId, token, onBack, showToast }) {
     <div className="flex justify-center py-24 text-5xl animate-pulse text-slate-500">📖</div>
   );
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 fade-in">
+    <div className="max-w-4xl mx-auto px-4 py-8 fade-in space-y-6">
       <button type="button" onClick={onBack} className="text-slate-400 text-sm hover:text-white mb-6">← 목록</button>
-      {data.image_url && (
-        <img src={data.image_url} alt="" className="w-full aspect-video object-cover rounded-2xl mb-6 border border-white/10" />
-      )}
-      <h1 className="text-3xl font-bold text-white mb-2">{data.name}</h1>
-      <p className="text-slate-500 text-sm mb-8">{data.description}</p>
-      <div className="glass rounded-2xl p-6 md:p-8 border border-emerald-500/20 text-slate-200 body-text text-[15px]">
-        {data.content_body || '(본문이 비어 있어요. 관리자가 등록한 내용이 여기에 표시됩니다.)'}
+      <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-6 items-start">
+        <div className="space-y-5">
+          <ProductGallery product={data} />
+          <div className="glass rounded-2xl p-6 md:p-8 border border-emerald-500/20 text-slate-200 body-text text-[15px]">
+            <h1 className="text-3xl font-bold text-white mb-2">{data.name}</h1>
+            <p className="text-slate-500 text-sm mb-6">{data.description}</p>
+            {data.content_body || '(본문이 비어 있어요. 관리자가 등록한 내용이 여기에 표시됩니다.)'}
+          </div>
+        </div>
+        <div className="space-y-4">
+          <ProductInquiryChatPanel productId={data.id} token={token} user={user} title="상품 문의" />
+        </div>
       </div>
     </div>
   );
@@ -476,11 +717,66 @@ function AdminPage({ token, showToast, onChanged }) {
 }
 
 function AdminNewContent({ token, showToast, onCreated }) {
-  const [form, setForm] = useState({ name: '', price: '', category: '튜토리얼', description: '', content_body: '', image_url: '' });
+  const [form, setForm] = useState({
+    name: '',
+    price: '',
+    category: '튜토리얼',
+    description: '',
+    content_body: '',
+    image_urls: [],
+  });
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadError, setUploadError] = useState('');
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const uploadSelectedFiles = async () => {
+    if (!selectedFiles.length) {
+      setUploadError('업로드할 이미지를 먼저 선택하세요.');
+      return;
+    }
+    if (form.image_urls.length + selectedFiles.length > MAX_PRODUCT_IMAGES) {
+      setUploadError(`상품당 이미지는 최대 ${MAX_PRODUCT_IMAGES}장까지 올릴 수 있어요.`);
+      return;
+    }
+
+    setUploading(true);
+    setUploadError('');
+    try {
+      const formData = new FormData();
+      selectedFiles.slice(0, MAX_PRODUCT_IMAGES - form.image_urls.length).forEach(file => {
+        formData.append('images', file);
+      });
+      const res = await fetch('/api/admin/upload', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '업로드 실패');
+      const uploaded = (data.data || []).map(item => item.url).filter(Boolean);
+      setForm(f => ({ ...f, image_urls: [...f.image_urls, ...uploaded].slice(0, MAX_PRODUCT_IMAGES) }));
+      setSelectedFiles([]);
+      showToast('이미지 업로드 완료');
+    } catch (err) {
+      setUploadError(err.message);
+      showToast(err.message, 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = (index) => {
+    setForm(f => ({ ...f, image_urls: f.image_urls.filter((_, i) => i !== index) }));
+  };
+
   const submit = async (e) => {
     e.preventDefault();
+    if (!form.image_urls.length) {
+      showToast('이미지를 최소 1장 업로드하세요', 'error');
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch('/api/admin/products', {
@@ -492,14 +788,17 @@ function AdminNewContent({ token, showToast, onCreated }) {
           category: form.category,
           description: form.description,
           content_body: form.content_body,
-          image_url: form.image_url || 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800',
+          image_url: form.image_urls[0],
+          image_urls: form.image_urls,
           stock: 999,
         }),
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error);
       showToast('등록 완료');
-      setForm({ name: '', price: '', category: '튜토리얼', description: '', content_body: '', image_url: '' });
+      setForm({ name: '', price: '', category: '튜토리얼', description: '', content_body: '', image_urls: [] });
+      setSelectedFiles([]);
+      setUploadError('');
       onCreated?.();
     } catch (err) { showToast(err.message, 'error'); }
     finally { setSubmitting(false); }
@@ -525,8 +824,48 @@ function AdminNewContent({ token, showToast, onCreated }) {
         <textarea required rows="2" value={form.description} onChange={e => set('description', e.target.value)} className="w-full mt-1 bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-white" />
       </div>
       <div>
-        <label className="text-sm text-slate-400">이미지 URL (선택)</label>
-        <input value={form.image_url} onChange={e => set('image_url', e.target.value)} placeholder="https://..." className="w-full mt-1 bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-white text-sm" />
+        <label className="text-sm text-slate-400">상품 이미지 업로드</label>
+        <div className="mt-1 rounded-xl border border-dashed border-slate-600 bg-slate-900/60 p-4 space-y-3">
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={e => setSelectedFiles(Array.from(e.target.files || []).slice(0, MAX_PRODUCT_IMAGES))}
+            className="block w-full text-sm text-slate-400 file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-500 file:px-4 file:py-2 file:font-semibold file:text-slate-900 hover:file:bg-cyan-400"
+          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={uploadSelectedFiles}
+              disabled={uploading || selectedFiles.length === 0 || form.image_urls.length >= MAX_PRODUCT_IMAGES}
+              className="bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold px-4 py-2 rounded-xl disabled:opacity-50"
+            >
+              {uploading ? '업로드 중...' : '선택 이미지 업로드'}
+            </button>
+            <span className="text-xs text-slate-500">{form.image_urls.length}/{MAX_PRODUCT_IMAGES}장 등록됨</span>
+          </div>
+          {selectedFiles.length > 0 && (
+            <p className="text-xs text-slate-500">선택한 파일: {selectedFiles.map(file => file.name).join(', ')}</p>
+          )}
+          {uploadError && <p className="text-sm text-red-300">{uploadError}</p>}
+          {form.image_urls.length > 0 && (
+            <div className="grid grid-cols-3 gap-2">
+              {form.image_urls.map((src, idx) => (
+                <div key={src} className="relative aspect-square rounded-lg overflow-hidden border border-white/10">
+                  <img src={src} alt={`업로드 이미지 ${idx + 1}`} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(idx)}
+                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white text-xs"
+                    aria-label={`이미지 ${idx + 1} 삭제`}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       <div>
         <label className="text-sm text-cyan-300">전체 본문 (유료) * — 결제 후에만 공개</label>
@@ -690,7 +1029,7 @@ function App() {
 
         {page === 'unlock-flow' && lockProduct && user && (
           flow === 'lock' ? (
-            <LockIntro product={lockProduct} user={user} onBack={() => { setPage('list'); setLockProduct(null); }}
+            <LockIntro product={lockProduct} user={user} token={token} onBack={() => { setPage('list'); setLockProduct(null); }}
               onPay={() => setFlow('pay')} />
           ) : (
             <CheckoutTossPage product={lockProduct} user={user} token={token}
@@ -700,7 +1039,7 @@ function App() {
         )}
 
         {page === 'read' && readId && user && (
-          <ReadContentPage contentId={readId} token={token} onBack={() => { setPage('list'); setReadId(null); }} showToast={showToast} />
+          <ReadContentPage contentId={readId} token={token} user={user} onBack={() => { setPage('list'); setReadId(null); }} showToast={showToast} />
         )}
 
         {page === 'orders' && user && <PurchasesPage token={token} />}

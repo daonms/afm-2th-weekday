@@ -1,0 +1,43 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - button "🧁 다온 베이커리" [ref=e6] [cursor=pointer]:
+        - text: 🧁
+        - generic [ref=e7]: 다온 베이커리
+      - navigation [ref=e8]:
+        - button "상품 목록" [ref=e9] [cursor=pointer]
+        - button "🛒 장바구니 2" [active] [ref=e153] [cursor=pointer]:
+          - text: 🛒 장바구니
+          - generic [ref=e146]: "2"
+        - button "📦 주문내역" [ref=e147] [cursor=pointer]
+        - generic [ref=e10]:
+          - generic [ref=e148]: 테스트유저님
+          - button "로그아웃" [ref=e149] [cursor=pointer]
+  - main [ref=e13]:
+    - generic [ref=e157]:
+      - generic [ref=e158]:
+        - heading "🛒 내 장바구니" [level=1] [ref=e159]
+        - paragraph [ref=e160]: 테스트유저님 · 상품 1종 2개
+      - generic [ref=e162]:
+        - img "딸기 생크림 케이크" [ref=e163]
+        - generic [ref=e164]:
+          - text: 케이크
+          - heading "딸기 생크림 케이크" [level=3] [ref=e165]
+          - paragraph [ref=e166]: ₩76,000
+          - paragraph [ref=e167]: ₩38,000 × 2
+        - generic [ref=e168]:
+          - button "×" [ref=e169] [cursor=pointer]
+          - generic [ref=e170]:
+            - button "−" [ref=e171] [cursor=pointer]
+            - generic [ref=e172]: "2"
+            - button "+" [ref=e173] [cursor=pointer]
+      - generic [ref=e174]:
+        - heading "주문 내역" [level=3] [ref=e175]
+        - generic [ref=e177]:
+          - generic [ref=e178]: 딸기 생크림 케이크 × 2
+          - generic [ref=e179]: ₩76,000
+        - generic [ref=e180]:
+          - generic [ref=e181]: 총 합계
+          - generic [ref=e182]: ₩76,000
+        - button "💳 76,000원 결제하기" [ref=e183] [cursor=pointer]
+        - paragraph [ref=e184]: 토스페이먼츠 테스트 결제

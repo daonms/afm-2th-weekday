@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
 
-COPY server.js index.html ./
+COPY server.js shop-utils.js index.html ./
 
 ENV NODE_ENV=production
 ENV PORT=3001

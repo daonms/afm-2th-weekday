@@ -1,0 +1,15 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - button "🧁 다온 베이커리" [ref=e6] [cursor=pointer]:
+        - text: 🧁
+        - generic [ref=e7]: 다온 베이커리
+      - navigation [ref=e8]:
+        - button "상품 목록" [ref=e9] [cursor=pointer]
+        - generic [ref=e10]:
+          - button "로그인" [ref=e11] [cursor=pointer]
+          - button "회원가입" [ref=e12] [cursor=pointer]
+  - main [ref=e13]:
+    - generic [ref=e14]:
+      - generic [ref=e15]: 🧁
+      - paragraph [ref=e16]: 상품을 불러오는 중...

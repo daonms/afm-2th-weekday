@@ -1,0 +1,21 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - button "🧁 다온 베이커리" [ref=e6] [cursor=pointer]:
+        - text: 🧁
+        - generic [ref=e7]: 다온 베이커리
+      - navigation [ref=e8]:
+        - button "상품 목록" [ref=e9] [cursor=pointer]
+        - button "🛒 장바구니 2" [ref=e19] [cursor=pointer]:
+          - text: 🛒 장바구니
+          - generic [ref=e20]: "2"
+        - button "📦 주문내역" [active] [ref=e11] [cursor=pointer]
+        - generic [ref=e12]:
+          - generic [ref=e13]: 테스트유저님
+          - button "로그아웃" [ref=e14] [cursor=pointer]
+  - main [ref=e15]:
+    - generic [ref=e21]:
+      - heading "📦 주문 내역" [level=1] [ref=e22]
+      - generic [ref=e23]:
+        - generic [ref=e24]: 📭
+        - paragraph [ref=e25]: 아직 주문 내역이 없어요

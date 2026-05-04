@@ -1,0 +1,334 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e6]:
+      - img [ref=e9]
+      - generic [ref=e11]: Acme Inc.
+    - button "Quick Create" [ref=e13] [cursor=pointer]:
+      - img [ref=e15]
+      - text: Quick Create
+    - navigation [ref=e17]:
+      - generic [ref=e18]:
+        - button "Dashboard" [ref=e19] [cursor=pointer]:
+          - img [ref=e21]
+          - generic [ref=e26]: Dashboard
+        - button "Lifecycle" [ref=e27] [cursor=pointer]:
+          - img [ref=e29]
+          - generic [ref=e32]: Lifecycle
+        - button "Analytics" [ref=e33] [cursor=pointer]:
+          - img [ref=e35]
+          - generic [ref=e37]: Analytics
+        - button "Projects" [ref=e38] [cursor=pointer]:
+          - img [ref=e40]
+          - generic [ref=e42]: Projects
+        - button "Team" [ref=e43] [cursor=pointer]:
+          - img [ref=e45]
+          - generic [ref=e50]: Team
+      - generic [ref=e51]:
+        - paragraph [ref=e52]: Documents
+        - generic [ref=e53]:
+          - button "Data Library" [ref=e54] [cursor=pointer]:
+            - img [ref=e56]
+            - generic [ref=e60]: Data Library
+          - button "Reports" [ref=e61] [cursor=pointer]:
+            - img [ref=e63]
+            - generic [ref=e66]: Reports
+          - button "Word Assistant" [ref=e67] [cursor=pointer]:
+            - img [ref=e69]
+            - generic [ref=e73]: Word Assistant
+          - button "More" [ref=e74] [cursor=pointer]:
+            - img [ref=e76]
+            - generic [ref=e80]: More
+    - generic [ref=e81]:
+      - generic [ref=e82]:
+        - button "Settings" [ref=e83] [cursor=pointer]:
+          - img [ref=e85]
+          - generic [ref=e88]: Settings
+        - button "Get Help" [ref=e89] [cursor=pointer]:
+          - img [ref=e91]
+          - generic [ref=e94]: Get Help
+        - button "Search" [ref=e95] [cursor=pointer]:
+          - img [ref=e97]
+          - generic [ref=e100]: Search
+      - generic [ref=e102]:
+        - generic [ref=e103]: DM
+        - generic [ref=e104]:
+          - paragraph [ref=e105]: daon
+          - paragraph [ref=e106]: m@daonms.com
+        - img [ref=e108]
+  - generic [ref=e111]:
+    - banner [ref=e112]:
+      - heading "Documents" [level=1] [ref=e114]
+      - generic [ref=e115]:
+        - button "GitHub" [ref=e116] [cursor=pointer]:
+          - img [ref=e118]
+          - generic [ref=e119]: GitHub
+        - button "Toggle theme" [ref=e120] [cursor=pointer]:
+          - img [ref=e122]
+    - main [ref=e124]:
+      - generic [ref=e125]:
+        - generic [ref=e126]:
+          - button "Outline" [ref=e127] [cursor=pointer]:
+            - img [ref=e129]
+            - text: Outline
+          - button "Past Performance" [ref=e132] [cursor=pointer]:
+            - img [ref=e134]
+            - text: Past Performance
+          - button "Key Personnel" [ref=e138] [cursor=pointer]:
+            - img [ref=e140]
+            - text: Key Personnel
+          - button "Focus Documents" [ref=e144] [cursor=pointer]:
+            - img [ref=e146]
+            - text: Focus Documents
+        - generic [ref=e151]:
+          - button "Filter" [ref=e152] [cursor=pointer]:
+            - img [ref=e154]
+            - generic [ref=e156]: Filter
+          - button "Customize Columns" [ref=e157] [cursor=pointer]:
+            - img [ref=e159]
+            - generic [ref=e161]: Customize Columns
+      - generic [ref=e162]:
+        - generic [ref=e163]:
+          - generic [ref=e164]:
+            - generic [ref=e165]:
+              - paragraph [ref=e166]: Total Revenue
+              - generic [ref=e167]:
+                - img [ref=e169]
+                - text: +12.5%
+            - generic [ref=e172]: $1,250.00
+          - generic [ref=e173]:
+            - generic [ref=e174]:
+              - text: Trending up this month
+              - img [ref=e176]
+            - paragraph [ref=e179]: Visitors for the last 6 months
+        - generic [ref=e180]:
+          - generic [ref=e181]:
+            - generic [ref=e182]:
+              - paragraph [ref=e183]: New Customers
+              - generic [ref=e184]:
+                - img [ref=e186]
+                - text: "-20%"
+            - generic [ref=e189]: 1,234
+          - generic [ref=e190]:
+            - generic [ref=e191]:
+              - text: Down 20% this period
+              - img [ref=e193]
+            - paragraph [ref=e196]: Acquisition needs attention
+        - generic [ref=e197]:
+          - generic [ref=e198]:
+            - generic [ref=e199]:
+              - paragraph [ref=e200]: Active Accounts
+              - generic [ref=e201]:
+                - img [ref=e203]
+                - text: +12.5%
+            - generic [ref=e206]: 45,678
+          - generic [ref=e207]:
+            - generic [ref=e208]:
+              - text: Strong user retention
+              - img [ref=e210]
+            - paragraph [ref=e213]: Engagement exceeds targets
+        - generic [ref=e214]:
+          - generic [ref=e215]:
+            - generic [ref=e216]:
+              - paragraph [ref=e217]: Growth Rate
+              - generic [ref=e218]:
+                - img [ref=e220]
+                - text: +4.5%
+            - generic [ref=e223]: 4.5%
+          - generic [ref=e224]:
+            - generic [ref=e225]:
+              - text: Steady performance
+              - img [ref=e227]
+            - paragraph [ref=e230]: Meets growth projections
+      - generic [ref=e231]:
+        - generic [ref=e232]:
+          - generic [ref=e233]:
+            - heading "Total Visitors" [level=3] [ref=e234]
+            - paragraph [ref=e235]: Total for the last 3 months
+          - generic [ref=e236]:
+            - button "Last 7 days" [ref=e237] [cursor=pointer]
+            - button "Last 30 days" [ref=e238] [cursor=pointer]
+            - button "Last 3 months" [ref=e239] [cursor=pointer]
+        - generic [ref=e243]:
+          - generic [ref=e246]: Desktop
+          - generic [ref=e249]: Mobile
+      - generic [ref=e250]:
+        - generic [ref=e251]:
+          - generic [ref=e252]:
+            - heading "Recent Transactions" [level=3] [ref=e253]
+            - paragraph [ref=e254]: A list of the most recent invoices.
+          - generic [ref=e255]:
+            - generic [ref=e256]:
+              - button "All" [ref=e257] [cursor=pointer]
+              - button "Paid" [ref=e258] [cursor=pointer]
+              - button "Pending" [ref=e259] [cursor=pointer]
+              - button "Failed" [ref=e260] [cursor=pointer]
+            - button "Customize" [ref=e261] [cursor=pointer]:
+              - img [ref=e263]
+              - generic [ref=e264]: Customize
+            - button "Add Section" [ref=e265] [cursor=pointer]:
+              - img [ref=e267]
+              - generic [ref=e268]: Add Section
+        - table [ref=e270]:
+          - rowgroup [ref=e271]:
+            - row "Invoice Customer Status Method Date Amount" [ref=e272]:
+              - columnheader [ref=e273]:
+                - checkbox [ref=e274]
+              - columnheader "Invoice" [ref=e275]
+              - columnheader "Customer" [ref=e276]
+              - columnheader "Status" [ref=e277]
+              - columnheader "Method" [ref=e278]
+              - columnheader "Date" [ref=e279]
+              - columnheader "Amount" [ref=e280]
+              - columnheader [ref=e281]
+          - rowgroup [ref=e282]:
+            - row "INV-1042 Olivia Martin olivia@example.com Paid Credit Card Apr 24, 2026 $1,999.00" [ref=e283]:
+              - cell [ref=e284]:
+                - checkbox [ref=e285]
+              - cell "INV-1042" [ref=e286]
+              - cell "Olivia Martin olivia@example.com" [ref=e287]:
+                - generic [ref=e288]:
+                  - generic [ref=e289]: Olivia Martin
+                  - generic [ref=e290]: olivia@example.com
+              - cell "Paid" [ref=e291]:
+                - generic [ref=e292]:
+                  - img [ref=e294]
+                  - text: Paid
+              - cell "Credit Card" [ref=e297]
+              - cell "Apr 24, 2026" [ref=e298]
+              - cell "$1,999.00" [ref=e299]
+              - cell [ref=e300]:
+                - button [ref=e301] [cursor=pointer]:
+                  - img [ref=e303]
+            - row "INV-1041 Jackson Lee jackson@example.com Pending PayPal Apr 23, 2026 $39.00" [ref=e307]:
+              - cell [ref=e308]:
+                - checkbox [ref=e309]
+              - cell "INV-1041" [ref=e310]
+              - cell "Jackson Lee jackson@example.com" [ref=e311]:
+                - generic [ref=e312]:
+                  - generic [ref=e313]: Jackson Lee
+                  - generic [ref=e314]: jackson@example.com
+              - cell "Pending" [ref=e315]:
+                - generic [ref=e316]:
+                  - img [ref=e318]
+                  - text: Pending
+              - cell "PayPal" [ref=e321]
+              - cell "Apr 23, 2026" [ref=e322]
+              - cell "$39.00" [ref=e323]
+              - cell [ref=e324]:
+                - button [ref=e325] [cursor=pointer]:
+                  - img [ref=e327]
+            - row "INV-1040 Isabella Nguyen isabella@example.com Paid Bank Transfer Apr 22, 2026 $299.00" [ref=e331]:
+              - cell [ref=e332]:
+                - checkbox [ref=e333]
+              - cell "INV-1040" [ref=e334]
+              - cell "Isabella Nguyen isabella@example.com" [ref=e335]:
+                - generic [ref=e336]:
+                  - generic [ref=e337]: Isabella Nguyen
+                  - generic [ref=e338]: isabella@example.com
+              - cell "Paid" [ref=e339]:
+                - generic [ref=e340]:
+                  - img [ref=e342]
+                  - text: Paid
+              - cell "Bank Transfer" [ref=e345]
+              - cell "Apr 22, 2026" [ref=e346]
+              - cell "$299.00" [ref=e347]
+              - cell [ref=e348]:
+                - button [ref=e349] [cursor=pointer]:
+                  - img [ref=e351]
+            - row "INV-1039 William Kim william@example.com Failed Credit Card Apr 22, 2026 $99.00" [ref=e355]:
+              - cell [ref=e356]:
+                - checkbox [ref=e357]
+              - cell "INV-1039" [ref=e358]
+              - cell "William Kim william@example.com" [ref=e359]:
+                - generic [ref=e360]:
+                  - generic [ref=e361]: William Kim
+                  - generic [ref=e362]: william@example.com
+              - cell "Failed" [ref=e363]:
+                - generic [ref=e364]:
+                  - img [ref=e366]
+                  - text: Failed
+              - cell "Credit Card" [ref=e370]
+              - cell "Apr 22, 2026" [ref=e371]
+              - cell "$99.00" [ref=e372]
+              - cell [ref=e373]:
+                - button [ref=e374] [cursor=pointer]:
+                  - img [ref=e376]
+            - row "INV-1038 Sofia Davis sofia@example.com Paid Apple Pay Apr 21, 2026 $549.00" [ref=e380]:
+              - cell [ref=e381]:
+                - checkbox [ref=e382]
+              - cell "INV-1038" [ref=e383]
+              - cell "Sofia Davis sofia@example.com" [ref=e384]:
+                - generic [ref=e385]:
+                  - generic [ref=e386]: Sofia Davis
+                  - generic [ref=e387]: sofia@example.com
+              - cell "Paid" [ref=e388]:
+                - generic [ref=e389]:
+                  - img [ref=e391]
+                  - text: Paid
+              - cell "Apple Pay" [ref=e394]
+              - cell "Apr 21, 2026" [ref=e395]
+              - cell "$549.00" [ref=e396]
+              - cell [ref=e397]:
+                - button [ref=e398] [cursor=pointer]:
+                  - img [ref=e400]
+            - row "INV-1037 Liam Johnson liam@example.com Paid Credit Card Apr 20, 2026 $2,400.00" [ref=e404]:
+              - cell [ref=e405]:
+                - checkbox [ref=e406]
+              - cell "INV-1037" [ref=e407]
+              - cell "Liam Johnson liam@example.com" [ref=e408]:
+                - generic [ref=e409]:
+                  - generic [ref=e410]: Liam Johnson
+                  - generic [ref=e411]: liam@example.com
+              - cell "Paid" [ref=e412]:
+                - generic [ref=e413]:
+                  - img [ref=e415]
+                  - text: Paid
+              - cell "Credit Card" [ref=e418]
+              - cell "Apr 20, 2026" [ref=e419]
+              - cell "$2,400.00" [ref=e420]
+              - cell [ref=e421]:
+                - button [ref=e422] [cursor=pointer]:
+                  - img [ref=e424]
+            - row "INV-1036 Emma Brown emma@example.com Pending Bank Transfer Apr 19, 2026 $760.00" [ref=e428]:
+              - cell [ref=e429]:
+                - checkbox [ref=e430]
+              - cell "INV-1036" [ref=e431]
+              - cell "Emma Brown emma@example.com" [ref=e432]:
+                - generic [ref=e433]:
+                  - generic [ref=e434]: Emma Brown
+                  - generic [ref=e435]: emma@example.com
+              - cell "Pending" [ref=e436]:
+                - generic [ref=e437]:
+                  - img [ref=e439]
+                  - text: Pending
+              - cell "Bank Transfer" [ref=e442]
+              - cell "Apr 19, 2026" [ref=e443]
+              - cell "$760.00" [ref=e444]
+              - cell [ref=e445]:
+                - button [ref=e446] [cursor=pointer]:
+                  - img [ref=e448]
+            - row "INV-1035 Noah Wilson noah@example.com Paid Stripe Apr 18, 2026 $120.00" [ref=e452]:
+              - cell [ref=e453]:
+                - checkbox [ref=e454]
+              - cell "INV-1035" [ref=e455]
+              - cell "Noah Wilson noah@example.com" [ref=e456]:
+                - generic [ref=e457]:
+                  - generic [ref=e458]: Noah Wilson
+                  - generic [ref=e459]: noah@example.com
+              - cell "Paid" [ref=e460]:
+                - generic [ref=e461]:
+                  - img [ref=e463]
+                  - text: Paid
+              - cell "Stripe" [ref=e466]
+              - cell "Apr 18, 2026" [ref=e467]
+              - cell "$120.00" [ref=e468]
+              - cell [ref=e469]:
+                - button [ref=e470] [cursor=pointer]:
+                  - img [ref=e472]
+        - generic [ref=e476]:
+          - generic [ref=e477]: Showing 8 of 8 entries
+          - generic [ref=e478]:
+            - button [ref=e479] [cursor=pointer]:
+              - img [ref=e481]
+            - button [ref=e483] [cursor=pointer]:
+              - img [ref=e485]
