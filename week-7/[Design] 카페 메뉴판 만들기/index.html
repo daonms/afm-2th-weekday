@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>고메정식당 교대본점 네이버 메뉴 웹앱</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Pretendard:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: #f7f1e6;
+      --surface: #fffaf0;
+      --ink: #201a15;
+      --muted: #6e6258;
+      --line: rgba(32, 26, 21, 0.13);
+      --fire: #9b3125;
+      --green: #0a7a47;
+      --gold: #bc8a3c;
+      --shadow: 0 22px 70px rgba(32, 26, 21, 0.16);
+      --font-title: "Noto Serif KR", serif;
+      --font-body: "Pretendard", "Noto Sans KR", system-ui, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(90deg, rgba(32, 26, 21, 0.035) 1px, transparent 1px),
+        linear-gradient(rgba(32, 26, 21, 0.028) 1px, transparent 1px),
+        var(--paper);
+      background-size: 32px 32px;
+      color: var(--ink);
+      font-family: var(--font-body);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 292px minmax(0, 1fr) 330px;
+    }
+
+    .brand-panel {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 34px 30px;
+      background: var(--ink);
+      color: var(--surface);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 28px;
+    }
+
+    .naver-source {
+      display: inline-flex;
+      width: max-content;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 12px;
+      border: 1px solid rgba(255, 250, 240, 0.2);
+      color: #b8f3d1;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+    }
+
+    .naver-source span {
+      display: grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      background: var(--green);
+      color: white;
+      font-weight: 950;
+    }
+
+    h1 {
+      margin: 24px 0 0;
+      font-family: var(--font-title);
+      font-size: 42px;
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    .brand-copy {
+      margin: 18px 0 0;
+      color: rgba(255, 250, 240, 0.72);
+      font-size: 14px;
+      line-height: 1.7;
+      font-weight: 700;
+    }
+
+    .info-stack {
+      display: grid;
+      gap: 10px;
+      align-self: end;
+      color: rgba(255, 250, 240, 0.72);
+      font-size: 13px;
+      line-height: 1.55;
+      font-weight: 700;
+    }
+
+    .info-stack strong {
+      display: block;
+      color: var(--surface);
+      font-size: 15px;
+      margin-bottom: 2px;
+    }
+
+    .main {
+      min-width: 0;
+      padding: 34px;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      padding: 12px 0 20px;
+      background: linear-gradient(to bottom, var(--paper) 82%, rgba(247, 241, 230, 0));
+    }
+
+    .search-box {
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+      height: 52px;
+      padding: 0 18px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      box-shadow: 0 12px 34px rgba(32, 26, 21, 0.08);
+    }
+
+    .search-icon {
+      width: 18px;
+      height: 18px;
+      border: 3px solid var(--green);
+      border-radius: 50%;
+      position: relative;
+    }
+
+    .search-icon::after {
+      content: "";
+      position: absolute;
+      width: 9px;
+      height: 3px;
+      right: -8px;
+      bottom: -4px;
+      background: var(--green);
+      transform: rotate(45deg);
+      transform-origin: left center;
+    }
+
+    .search-box input {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--ink);
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .tabs {
+      display: inline-flex;
+      gap: 6px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      box-shadow: 0 12px 34px rgba(32, 26, 21, 0.08);
+    }
+
+    .tab {
+      min-width: 88px;
+      height: 40px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .tab.active {
+      background: var(--ink);
+      color: var(--surface);
+    }
+
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      padding-bottom: 34px;
+    }
+
+    .menu-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 112px;
+      gap: 18px;
+      min-height: 172px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .menu-card.hidden {
+      display: none;
+    }
+
+    .menu-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      height: 22px;
+      padding: 0 8px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .pill.rep {
+      border-color: rgba(10, 122, 71, 0.25);
+      color: var(--green);
+      background: rgba(10, 122, 71, 0.07);
+    }
+
+    .pill.sig {
+      border-color: rgba(155, 49, 37, 0.25);
+      color: var(--fire);
+      background: rgba(155, 49, 37, 0.07);
+    }
+
+    .menu-card h2 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.25;
+      letter-spacing: 0;
+      font-weight: 950;
+    }
+
+    .menu-card p {
+      margin: 8px 0 16px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+      font-weight: 650;
+    }
+
+    .card-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .price {
+      color: var(--ink);
+      font-size: 21px;
+      line-height: 1;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .add-btn {
+      width: 34px;
+      height: 34px;
+      border: 0;
+      background: var(--fire);
+      color: white;
+      font-size: 22px;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .thumb {
+      position: relative;
+      align-self: stretch;
+      min-height: 126px;
+      overflow: hidden;
+      background: #e9d8bd;
+    }
+
+    .thumb img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+
+    .thumb::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border: 1px solid rgba(32, 26, 21, 0.1);
+      pointer-events: none;
+    }
+
+    .order-panel {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 18px;
+      padding: 34px 28px;
+      background: var(--surface);
+      border-left: 1px solid var(--line);
+      box-shadow: -18px 0 56px rgba(32, 26, 21, 0.08);
+    }
+
+    .order-panel h2 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.2;
+      font-weight: 950;
+    }
+
+    .order-note {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+      font-weight: 700;
+    }
+
+    .cart {
+      display: grid;
+      align-content: start;
+      gap: 10px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .cart-empty,
+    .cart-row {
+      border: 1px solid var(--line);
+      padding: 14px;
+      background: #fffdf7;
+    }
+
+    .cart-empty {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      font-weight: 700;
+    }
+
+    .cart-row {
+      display: grid;
+      gap: 8px;
+    }
+
+    .cart-row strong {
+      font-size: 14px;
+      line-height: 1.35;
+      font-weight: 900;
+    }
+
+    .cart-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .stepper {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+    }
+
+    .stepper button {
+      width: 28px;
+      height: 28px;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      font-weight: 900;
+    }
+
+    .stepper span {
+      min-width: 26px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .cart-price {
+      font-size: 14px;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .total-box {
+      display: grid;
+      gap: 14px;
+      border-top: 2px solid var(--ink);
+      padding-top: 18px;
+    }
+
+    .total-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 950;
+    }
+
+    .total-line strong {
+      font-size: 28px;
+      color: var(--fire);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .primary-action {
+      height: 50px;
+      border: 0;
+      background: var(--ink);
+      color: var(--surface);
+      font-size: 15px;
+      font-weight: 950;
+    }
+
+    .source-note {
+      color: var(--muted);
+      font-size: 11.5px;
+      line-height: 1.55;
+      font-weight: 700;
+    }
+
+    @media (max-width: 1180px) {
+      .app {
+        grid-template-columns: 240px minmax(0, 1fr);
+      }
+
+      .order-panel {
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        top: auto;
+        width: min(360px, calc(100vw - 36px));
+        height: 430px;
+        z-index: 10;
+        border: 1px solid var(--line);
+      }
+
+      .menu-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        display: block;
+      }
+
+      .brand-panel {
+        position: relative;
+        height: auto;
+        min-height: 0;
+      }
+
+      .main {
+        padding: 18px;
+      }
+
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .tabs {
+        overflow-x: auto;
+      }
+
+      .menu-card {
+        grid-template-columns: 1fr;
+      }
+
+      .thumb {
+        height: 150px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="brand-panel">
+      <div>
+        <div class="naver-source"><span>N</span> NAVER MENU APP</div>
+        <h1>고메정식당<br>교대본점</h1>
+        <p class="brand-copy">사용자가 제공한 네이버 지도 place/1593583520 메뉴 탭 화면을 기준으로 만든 웹앱형 메뉴판입니다. 대표 메뉴, 가격, 간단 설명을 카드형으로 정리하고 주문 요약 기능을 붙였습니다.</p>
+      </div>
+      <div></div>
+      <div class="info-stack">
+        <div><strong>주소</strong>서울 서초구 서초중앙로22길 42 동진빌딩 1층</div>
+        <div><strong>영업</strong>11:30-03:00 · 브레이크 15:00-17:00</div>
+        <div><strong>기준</strong>네이버 지도 place/1593583520 메뉴 화면 캡처, 2026.05.04 확인</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="toolbar">
+        <label class="search-box" aria-label="메뉴 검색">
+          <span class="search-icon" aria-hidden="true"></span>
+          <input id="searchInput" type="search" placeholder="메뉴명 검색" autocomplete="off">
+        </label>
+        <div class="tabs" aria-label="메뉴 카테고리">
+          <button class="tab active" type="button" data-filter="all">전체</button>
+          <button class="tab" type="button" data-filter="beef">한우</button>
+          <button class="tab" type="button" data-filter="pork">돼지고기</button>
+          <button class="tab" type="button" data-filter="special">대표</button>
+        </div>
+      </div>
+
+      <section class="menu-grid" id="menuGrid" aria-label="네이버 메뉴 목록"></section>
+    </main>
+
+    <aside class="order-panel" aria-label="주문 요약">
+      <div>
+        <h2>주문 요약</h2>
+        <p class="order-note">카드를 누르면 수량과 합계가 계산됩니다. 실제 주문은 매장에서 확인하세요.</p>
+      </div>
+      <div class="cart" id="cartList">
+        <div class="cart-empty">아직 담은 메뉴가 없습니다.</div>
+      </div>
+      <div class="total-box">
+        <div class="total-line"><span>총 합계</span><strong id="totalPrice">0원</strong></div>
+        <button class="primary-action" type="button" id="resetCart">초기화</button>
+        <div class="source-note">네이버 메뉴 화면에서 직접 보이는 항목을 우선 반영했습니다. 이전 1noon 가격과 다른 항목은 SOURCE_NOTES.md에 기록했습니다.</div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const menus = [
+      {
+        id: "hanwoo-special",
+        name: "명품 드라이에이징 한우 스페셜",
+        category: "beef",
+        price: 59000,
+        representative: true,
+        image: "assets/reference/naver-hanwoo-special.png",
+        desc: "엄선된 한우를 최적의 시간으로 건조 숙성한 네이버 대표 메뉴.",
+      },
+      {
+        id: "bone-samgyeop",
+        name: "30일 드라이에이징 본 삼겹살",
+        category: "pork",
+        price: 23000,
+        representative: true,
+        image: "assets/reference/naver-bone-samgyeop.png",
+        desc: "최고 1+등급 암퇘지를 30일 이상 건조숙성한 본 삼겹살.",
+      },
+      {
+        id: "galbisal",
+        name: "한우 주물럭 꽃갈비살",
+        category: "beef",
+        price: 59000,
+        image: "assets/reference/naver-galbisal.png",
+        desc: "최상급 암소 한우를 과일 소스로 숙성해 참숯에 구워 먹는 메뉴.",
+      },
+      {
+        id: "aged-samgyeop",
+        name: "15일 드라이에이징 숙성 삼겹살",
+        category: "pork",
+        price: 19000,
+        image: "assets/reference/naver-aged-samgyeop.png",
+        desc: "15일 이상 건조 숙성시킨 감칠맛 가득한 삼겹살.",
+      },
+      {
+        id: "aged-moksal",
+        name: "15일 드라이에이징 숙성 목살",
+        category: "pork",
+        price: 19000,
+        image: "assets/reference/naver-aged-moksal.png",
+        desc: "부드러움의 끝을 살린 숙성 목살.",
+      },
+      {
+        id: "iberico-moksal",
+        name: "15일 드라이에이징 숙성 이베리코목살",
+        category: "pork",
+        price: 22000,
+        image: "assets/reference/naver-aged-moksal.png",
+        desc: "베요타 블랙라벨 이베리코 목살의 진한 풍미.",
+      },
+      {
+        id: "iberico-deungsim",
+        name: "이베리코 등심추리",
+        category: "pork",
+        price: 23000,
+        image: "assets/reference/naver-bone-samgyeop.png",
+        desc: "네이버 메뉴 화면에서 확인한 이베리코 특수 부위.",
+      },
+      {
+        id: "jeyuk",
+        name: "직화 제육 쌈밥 정식",
+        category: "special",
+        price: 12000,
+        signature: true,
+        image: "assets/reference/1noon-jeyuk-main.jpg",
+        desc: "1noon 메뉴판에서 확인한 점심특선 대표 메뉴. 불향 제육과 쌈채소 구성.",
+      },
+      {
+        id: "yukhoe",
+        name: "아보카도 한우 육회 (한우 1++)",
+        category: "beef",
+        price: 29000,
+        image: "assets/reference/naver-yukhoe.png",
+        desc: "영양 만점 아보카도와 숙성 한우 1++ 육회의 조합.",
+      },
+      {
+        id: "galbitang",
+        name: "보양 갈비탕",
+        category: "special",
+        price: 15000,
+        image: "assets/reference/naver-galbisal.png",
+        desc: "기존 메뉴판 근거에서 확인한 점심특선 보양 메뉴.",
+      },
+    ];
+
+    const formatter = new Intl.NumberFormat("ko-KR");
+    const grid = document.getElementById("menuGrid");
+    const cartList = document.getElementById("cartList");
+    const totalPrice = document.getElementById("totalPrice");
+    const searchInput = document.getElementById("searchInput");
+    const tabs = [...document.querySelectorAll(".tab")];
+    const cart = new Map();
+    let activeFilter = "all";
+
+    function renderMenus() {
+      const query = searchInput.value.trim().toLowerCase();
+      grid.innerHTML = "";
+      menus.forEach((menu, index) => {
+        const matchFilter =
+          activeFilter === "all" ||
+          menu.category === activeFilter ||
+          (activeFilter === "special" && (menu.representative || menu.signature));
+        const matchQuery = !query || menu.name.toLowerCase().includes(query) || menu.desc.toLowerCase().includes(query);
+        if (!matchFilter || !matchQuery) return;
+
+        const card = document.createElement("article");
+        card.className = "menu-card";
+        card.innerHTML = `
+          <div>
+            <div class="menu-meta">
+              ${menu.representative ? '<span class="pill rep">대표</span>' : ""}
+              ${menu.signature ? '<span class="pill sig">점심특선</span>' : ""}
+              <span class="pill">${labelFor(menu.category)}</span>
+            </div>
+            <h2>${menu.name}</h2>
+            <p>${menu.desc}</p>
+            <div class="card-foot">
+              <strong class="price">${formatter.format(menu.price)}원</strong>
+              <button class="add-btn" type="button" data-id="${menu.id}" aria-label="${menu.name} 담기">+</button>
+            </div>
+          </div>
+          <div class="thumb"><img src="${menu.image}" alt="${menu.name} 참고 이미지" loading="lazy"></div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function labelFor(category) {
+      return {
+        beef: "한우",
+        pork: "돼지고기",
+        special: "식사",
+      }[category] || "메뉴";
+    }
+
+    function addToCart(id) {
+      const count = cart.get(id) || 0;
+      cart.set(id, count + 1);
+      renderCart();
+    }
+
+    function changeCart(id, delta) {
+      const next = (cart.get(id) || 0) + delta;
+      if (next <= 0) cart.delete(id);
+      else cart.set(id, next);
+      renderCart();
+    }
+
+    function renderCart() {
+      cartList.innerHTML = "";
+      let total = 0;
+      if (!cart.size) {
+        cartList.innerHTML = '<div class="cart-empty">아직 담은 메뉴가 없습니다.</div>';
+      }
+      cart.forEach((qty, id) => {
+        const menu = menus.find((item) => item.id === id);
+        total += menu.price * qty;
+        const row = document.createElement("div");
+        row.className = "cart-row";
+        row.innerHTML = `
+          <strong>${menu.name}</strong>
+          <div class="cart-controls">
+            <div class="stepper">
+              <button type="button" data-step="-1" data-id="${id}" aria-label="${menu.name} 수량 줄이기">-</button>
+              <span>${qty}</span>
+              <button type="button" data-step="1" data-id="${id}" aria-label="${menu.name} 수량 늘리기">+</button>
+            </div>
+            <span class="cart-price">${formatter.format(menu.price * qty)}원</span>
+          </div>
+        `;
+        cartList.appendChild(row);
+      });
+      totalPrice.textContent = `${formatter.format(total)}원`;
+    }
+
+    grid.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-id]");
+      if (!button) return;
+      addToCart(button.dataset.id);
+    });
+
+    cartList.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-step]");
+      if (!button) return;
+      changeCart(button.dataset.id, Number(button.dataset.step));
+    });
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        activeFilter = tab.dataset.filter;
+        tabs.forEach((item) => item.classList.toggle("active", item === tab));
+        renderMenus();
+      });
+    });
+
+    searchInput.addEventListener("input", renderMenus);
+    document.getElementById("resetCart").addEventListener("click", () => {
+      cart.clear();
+      renderCart();
+    });
+
+    renderMenus();
+    renderCart();
+  </script>
+</body>
+</html>
