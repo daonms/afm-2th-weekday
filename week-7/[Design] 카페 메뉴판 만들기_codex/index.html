@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LiLo Coffee Roasters 한국어 메뉴판</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Pretendard:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: #f7efe1;
+      --cream: #fffaf0;
+      --ink: #241815;
+      --muted: #75665d;
+      --line: rgba(36, 24, 21, 0.15);
+      --coffee: #6b3d24;
+      --red: #ba4636;
+      --green: #0f7a5a;
+      --blue: #255f7a;
+      --gold: #c28c33;
+      --shadow: 0 24px 80px rgba(40, 24, 12, 0.16);
+      --title: "Noto Serif KR", serif;
+      --body: "Pretendard", "Noto Sans KR", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: var(--body);
+      background:
+        radial-gradient(circle at 18% 10%, rgba(186, 70, 54, 0.12), transparent 28%),
+        radial-gradient(circle at 88% 18%, rgba(37, 95, 122, 0.10), transparent 26%),
+        linear-gradient(90deg, rgba(36, 24, 21, 0.04) 1px, transparent 1px),
+        linear-gradient(rgba(36, 24, 21, 0.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: auto, auto, 34px 34px, 34px 34px, auto;
+    }
+
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+
+    .page {
+      width: min(1180px, calc(100% - 32px));
+      margin: 28px auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    .menu-board {
+      min-height: 1350px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: var(--cream);
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+      min-height: 390px;
+      border-bottom: 1px solid var(--line);
+      background: #fbf2e3;
+    }
+
+    .hero-copy {
+      padding: 48px 46px 38px;
+      display: grid;
+      align-content: space-between;
+      gap: 28px;
+    }
+
+    .eyebrow {
+      width: fit-content;
+      padding: 8px 12px;
+      border: 1px solid rgba(36, 24, 21, 0.18);
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: rgba(255, 255, 255, 0.42);
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 760px;
+      font-family: var(--title);
+      font-size: clamp(48px, 8vw, 96px);
+      line-height: 0.95;
+      letter-spacing: 0;
+    }
+
+    .hero-copy p {
+      margin: 18px 0 0;
+      max-width: 720px;
+      color: var(--muted);
+      font-size: 19px;
+      font-weight: 700;
+      line-height: 1.75;
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .pill {
+      padding: 9px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--coffee);
+      background: rgba(255, 255, 255, 0.55);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .hero-image {
+      position: relative;
+      min-height: 390px;
+    }
+
+    .hero-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .hero-image::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(251, 242, 227, 0.72), transparent 34%);
+      pointer-events: none;
+    }
+
+    .bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-bottom: 1px solid var(--line);
+      background: var(--ink);
+      color: var(--cream);
+    }
+
+    .bar-item {
+      padding: 20px 24px;
+      border-right: 1px solid rgba(255, 250, 240, 0.16);
+    }
+
+    .bar-item:last-child { border-right: 0; }
+
+    .bar-item strong {
+      display: block;
+      margin-bottom: 6px;
+      font-family: var(--title);
+      font-size: 23px;
+      line-height: 1.15;
+    }
+
+    .bar-item span {
+      color: rgba(255, 250, 240, 0.72);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .content {
+      padding: 34px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 330px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .section {
+      padding: 25px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.45);
+    }
+
+    .section + .section { margin-top: 20px; }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 17px;
+      margin-bottom: 18px;
+      border-bottom: 2px solid var(--ink);
+      align-items: end;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-family: var(--title);
+      font-size: 32px;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .section-head span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .menu-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .menu-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      padding: 18px;
+      border: 1px solid rgba(36, 24, 21, 0.11);
+      background: var(--cream);
+    }
+
+    .menu-item.featured {
+      border-color: rgba(186, 70, 54, 0.5);
+      background: linear-gradient(135deg, rgba(186, 70, 54, 0.08), rgba(255, 250, 240, 0.94));
+    }
+
+    .menu-name {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .menu-name strong {
+      font-size: 20px;
+      font-weight: 900;
+      line-height: 1.25;
+    }
+
+    .tag {
+      padding: 5px 8px;
+      border-radius: 999px;
+      color: var(--cream);
+      background: var(--red);
+      font-size: 11px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .tag.green { background: var(--green); }
+    .tag.blue { background: var(--blue); }
+    .tag.gold { background: var(--gold); color: #241815; }
+
+    .desc {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 650;
+      line-height: 1.62;
+    }
+
+    .notes {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .note {
+      padding: 5px 7px;
+      border: 1px solid rgba(36, 24, 21, 0.14);
+      color: var(--coffee);
+      background: rgba(255, 255, 255, 0.54);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .price {
+      min-width: 94px;
+      text-align: right;
+      font-size: 21px;
+      font-weight: 900;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+
+    .side {
+      display: grid;
+      gap: 20px;
+      position: sticky;
+      top: 20px;
+    }
+
+    .taste-card {
+      padding: 24px;
+      color: var(--cream);
+      background: var(--ink);
+    }
+
+    .taste-card h3 {
+      margin: 0 0 16px;
+      font-family: var(--title);
+      font-size: 31px;
+      line-height: 1.12;
+    }
+
+    .taste-wheel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .taste {
+      min-height: 90px;
+      padding: 13px;
+      display: grid;
+      align-content: space-between;
+      color: var(--ink);
+      font-weight: 900;
+    }
+
+    .taste small {
+      color: rgba(36, 24, 21, 0.7);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.4;
+    }
+
+    .taste:nth-child(1) { background: #f4c24f; }
+    .taste:nth-child(2) { background: #e67b57; }
+    .taste:nth-child(3) { background: #8fc9aa; }
+    .taste:nth-child(4) { background: #9db7d3; }
+
+    .brew-card {
+      padding: 24px;
+      border: 1px solid var(--line);
+      background: #f3e4cf;
+    }
+
+    .brew-card h3 {
+      margin: 0 0 12px;
+      font-family: var(--title);
+      font-size: 27px;
+    }
+
+    .brew-card ol {
+      margin: 0;
+      padding-left: 19px;
+      display: grid;
+      gap: 10px;
+      color: var(--muted);
+      font-weight: 750;
+      line-height: 1.55;
+    }
+
+    .source {
+      padding: 22px 34px 34px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.65;
+    }
+
+    .source strong { color: var(--ink); }
+
+    @media (max-width: 980px) {
+      .hero,
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-image {
+        min-height: 280px;
+        order: -1;
+      }
+
+      .bar {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .side {
+        position: static;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .page {
+        width: 100%;
+        margin: 0;
+      }
+
+      .menu-board {
+        border-left: 0;
+        border-right: 0;
+      }
+
+      .hero-copy,
+      .content {
+        padding: 24px 18px;
+      }
+
+      .bar {
+        grid-template-columns: 1fr;
+      }
+
+      .menu-item {
+        grid-template-columns: 1fr;
+      }
+
+      .price {
+        text-align: left;
+      }
+    }
+
+    @media print {
+      body { background: white; }
+      .page { width: 1080px; margin: 0; }
+      .menu-board { box-shadow: none; border: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <article class="menu-board" aria-label="LiLo Coffee Roasters 한국어 메뉴판">
+      <section class="hero">
+        <div class="hero-copy">
+          <div>
+            <div class="eyebrow">Osaka Specialty Roaster</div>
+            <h1>LiLo Coffee Roasters</h1>
+            <p>
+              오사카 신사이바시의 스페셜티 커피 로스터 감성을 한국어 메뉴판으로 재구성했습니다.
+              매월 새롭게 출시되는 원두, 다양한 추출 도구, 계절의 향미를 중심으로 한 과제용 메뉴입니다.
+            </p>
+          </div>
+          <div class="hero-meta">
+            <span class="pill">매월 3-4종 원두 출시</span>
+            <span class="pill">V60 / Siphon / Cold Brew</span>
+            <span class="pill">향미 중심 메뉴</span>
+          </div>
+        </div>
+        <figure class="hero-image">
+          <img src="assets/generated/lilo-specialty-coffee-hero.png" alt="핸드드립 커피와 원두 카드가 놓인 스페셜티 카페 이미지" />
+        </figure>
+      </section>
+
+      <section class="bar" aria-label="메뉴 특징">
+        <div class="bar-item">
+          <strong>Seasonal</strong>
+          <span>봄의 부드러운 향, 여름의 선명한 산미처럼 계절감을 향미로 표현합니다.</span>
+        </div>
+        <div class="bar-item">
+          <strong>Osaka</strong>
+          <span>축제, 음식, 거리의 활기를 8가지 블렌드 컨셉으로 해석합니다.</span>
+        </div>
+        <div class="bar-item">
+          <strong>Brewing</strong>
+          <span>한 원두도 V60, 오리가미, 사이폰에 따라 다른 표정을 보여줍니다.</span>
+        </div>
+        <div class="bar-item">
+          <strong>Gift</strong>
+          <span>드립백과 원두 세트는 여행 선물처럼 고르기 쉽게 구성했습니다.</span>
+        </div>
+      </section>
+
+      <div class="content">
+        <div>
+          <section class="section">
+            <div class="section-head">
+              <h2>Signature Cups</h2>
+              <span>오늘의 추천</span>
+            </div>
+            <div class="menu-list">
+              <article class="menu-item featured">
+                <div>
+                  <div class="menu-name"><strong>사이폰 게이샤 스페셜</strong><span class="tag">대표</span><span class="tag gold">희소 원두</span></div>
+                  <p class="desc">게이샤 특유의 재스민, 복숭아, 꿀 같은 단맛을 사이폰의 맑은 질감으로 추출한 한 잔.</p>
+                  <div class="notes"><span class="note">Jasmine</span><span class="note">Peach</span><span class="note">Honey</span></div>
+                </div>
+                <div class="price">12,000원</div>
+              </article>
+              <article class="menu-item">
+                <div>
+                  <div class="menu-name"><strong>오사카 시즌 블렌드 드립</strong><span class="tag green">Seasonal</span></div>
+                  <p class="desc">계절 블렌드를 V60로 추출합니다. 밝은 과일 산미와 캐러멜 단맛, 깨끗한 피니시가 중심입니다.</p>
+                  <div class="notes"><span class="note">Citrus</span><span class="note">Caramel</span><span class="note">Clean</span></div>
+                </div>
+                <div class="price">7,500원</div>
+              </article>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="section-head">
+              <h2>Brewing Menu</h2>
+              <span>추출 방식 선택</span>
+            </div>
+            <div class="menu-list">
+              <article class="menu-item">
+                <div>
+                  <div class="menu-name"><strong>V60 핫 브루</strong><span class="tag blue">Hot</span></div>
+                  <p class="desc">향의 첫인상과 단맛을 또렷하게 보여주는 기본 핸드드립. 가벼운 산미의 원두에 추천합니다.</p>
+                  <div class="notes"><span class="note">Floral</span><span class="note">Bright</span></div>
+                </div>
+                <div class="price">6,500원</div>
+              </article>
+              <article class="menu-item">
+                <div>
+                  <div class="menu-name"><strong>V60 아이스 브루</strong><span class="tag blue">Iced</span></div>
+                  <p class="desc">얼음 위에 빠르게 추출해 향은 선명하고 맛은 산뜻하게 마무리되는 여름형 브루.</p>
+                  <div class="notes"><span class="note">Lime</span><span class="note">Tea-like</span></div>
+                </div>
+                <div class="price">6,800원</div>
+              </article>
+              <article class="menu-item">
+                <div>
+                  <div class="menu-name"><strong>오리가미 드립</strong><span class="tag green">Balanced</span></div>
+                  <p class="desc">리브가 깊은 드리퍼로 단맛과 향을 균형 있게 끌어낸 컵. 처음 방문한 손님에게 추천합니다.</p>
+                  <div class="notes"><span class="note">Balanced</span><span class="note">Sweet</span></div>
+                </div>
+                <div class="price">7,000원</div>
+              </article>
+              <article class="menu-item">
+                <div>
+                  <div class="menu-name"><strong>콜드브루</strong><span class="tag">Slow</span></div>
+                  <p class="desc">낮은 온도에서 천천히 추출해 쓴맛은 낮추고 초콜릿, 견과, 부드러운 바디를 살립니다.</p>
+                  <div class="notes"><span class="note">Chocolate</span><span class="note">Round</span></div>
+                </div>
+                <div class="price">6,500원</div>
+              </article>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="section-head">
+              <h2>Beans & Gifts</h2>
+              <span>원두와 선물</span>
+            </div>
+            <div class="menu-list">
+              <article class="menu-item">
+                <div>
+                  <div class="menu-name"><strong>이번 달 뉴 빈 200g</strong><span class="tag green">Monthly</span></div>
+                  <p class="desc">매월 공개되는 새 원두 중 한 가지를 선택합니다. 산지, 품종, 프로세스에 따라 향미 카드 제공.</p>
+                  <div class="notes"><span class="note">Origin</span><span class="note">Process</span><span class="note">Roast</span></div>
+                </div>
+                <div class="price">18,000원</div>
+              </article>
+              <article class="menu-item">
+                <div>
+                  <div class="menu-name"><strong>LiLo Journey 드립백 3종</strong><span class="tag gold">Gift</span></div>
+                  <p class="desc">Takeoff, In Transit, Back to Everyday 콘셉트를 한국어 선물 세트로 재구성한 드립백.</p>
+                  <div class="notes"><span class="note">Fruity</span><span class="note">Soft</span><span class="note">Daily</span></div>
+                </div>
+                <div class="price">9,000원</div>
+              </article>
+            </div>
+          </section>
+        </div>
+
+        <aside class="side" aria-label="향미와 주문 안내">
+          <section class="taste-card">
+            <h3>Flavor Map</h3>
+            <div class="taste-wheel">
+              <div class="taste">Floral<small>재스민, 홍차, 맑은 향</small></div>
+              <div class="taste">Fruity<small>시트러스, 베리, 복숭아</small></div>
+              <div class="taste">Sweet<small>꿀, 캐러멜, 갈색 설탕</small></div>
+              <div class="taste">Deep<small>카카오, 견과, 긴 여운</small></div>
+            </div>
+          </section>
+          <section class="brew-card">
+            <h3>주문 가이드</h3>
+            <ol>
+              <li>가벼운 향을 원하면 V60 핫 또는 아이스 브루를 선택합니다.</li>
+              <li>희소 원두의 향을 깊게 느끼고 싶다면 사이폰 게이샤를 추천합니다.</li>
+              <li>선물용은 드립백 3종 또는 이번 달 뉴 빈을 고르면 좋습니다.</li>
+            </ol>
+          </section>
+          <section class="brew-card">
+            <h3>과제 적용</h3>
+            <ol>
+              <li>사이트의 원두, 드립백, 추출 도구 구성을 한국어 메뉴로 변환했습니다.</li>
+              <li>가격은 제출용 원화 메뉴판에 맞춘 가상 가격입니다.</li>
+              <li>상단 이미지는 GPT 이미지 생성으로 제작했습니다.</li>
+            </ol>
+          </section>
+        </aside>
+      </div>
+
+      <footer class="source">
+        <strong>Reference.</strong>
+        coffee.liloinveve.com 공식 사이트의 “Released 4 Beans Every Month”, “A journey through aroma”,
+        “Savor the Japanese Changing Seasons”, V60/ORIGAMI/Siphon/Cold Brew 추출 가이드 구성을 참고했습니다.
+        실제 매장 가격표가 아니라 수업 제출용 한국어 메뉴판입니다.
+      </footer>
+    </article>
+  </main>
+</body>
+</html>
