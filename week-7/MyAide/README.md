@@ -38,6 +38,19 @@ start index.html
 - `Notion 회의`: Notion AI Meeting Notes의 전사/요약/액션아이템을 붙여 넣고, 다음 회의 전략으로 전환한다.
 - 수업용 버전은 실제 녹음 파일을 업로드하거나 외부 메시지를 전송하지 않는다.
 
+## 디자인 시스템 실습 자료
+
+수업에서 다룬 `Single HTML Agent -> Vite/React 디자인 시스템 -> Turborepo 재사용` 흐름은 공용 에이전트로 분리했다.
+
+| 파일 | 역할 |
+|---|---|
+| `.claude/agents/수업용/design-agent.md` | Claude에서 호출하는 수업용 DESIGN agent |
+| `.claude/agents/수업용/design-agent-kit/DESIGN.md` | AFM Classroom 디자인 시스템 원본 |
+| `.claude/agents/수업용/design-agent-kit/skills/*/SKILL.md` | 단계별 디자인 스킬 |
+| `.claude/agents/수업용/design-agent-kit/RECOMMENDED_SKILLS.md` | 프로젝트별 외부 디자인 스킬 추천 3안 |
+
+디자인 작업에서는 `DESIGN.md`를 먼저 읽고, 프로젝트 단계에 맞는 skill을 선택한다. 이미지가 필요한 경우 OpenAI `gpt-image-2`는 배경/무드/포스터 시안에 사용하고, 한국어 텍스트는 HTML/CSS 또는 디자인 도구의 텍스트 레이어로 배치한다.
+
 ## 운영 버전과 다른 점
 
 - 운영 버전: 개인·업무·관계 전략 코치 기능 중심

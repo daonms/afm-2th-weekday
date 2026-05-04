@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>자몽 선셋 에이드 신메뉴 포스터</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Pretendard:wght@500;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sunset-coral: #ff4f3e;
+      --cream: #fff4df;
+      --deep-ink: #17130f;
+      --font-display: "Black Han Sans", "Pretendard", system-ui, sans-serif;
+      --font-body: "Pretendard", "Noto Sans KR", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #24201b;
+      color: var(--deep-ink);
+      font-family: var(--font-body);
+      padding: 28px;
+    }
+    .poster {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      overflow: hidden;
+      background: var(--cream);
+      box-shadow: 0 28px 90px rgba(0, 0, 0, 0.28);
+    }
+    .photo-wrap {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background-image: url("./assets/grapefruit-sunset-ade-realistic.png");
+      background-size: cover;
+      background-position: center;
+      filter: saturate(0.95) brightness(0.82);
+    }
+    .photo-wrap img {
+      position: absolute;
+      right: 22px;
+      bottom: 120px;
+      width: 800px;
+      height: auto;
+      max-height: 70%;
+      object-fit: contain;
+      display: block;
+      border-radius: 22px;
+      box-shadow: 0 28px 64px rgba(0, 0, 0, 0.35);
+    }
+    .photo-wrap::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(100deg, rgba(23, 19, 15, 0.8) 0 44%, rgba(23, 19, 15, 0.12) 72%, rgba(23, 19, 15, 0.08) 100%),
+        linear-gradient(0deg, rgba(23, 19, 15, 0.42) 0%, rgba(23, 19, 15, 0.08) 42%);
+    }
+    .content {
+      position: relative;
+      z-index: 2;
+      height: 100%;
+      padding: 70px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      color: var(--cream);
+    }
+    .eyebrow {
+      display: inline-flex;
+      width: max-content;
+      margin: 0;
+      padding: 12px 18px;
+      border-radius: 999px;
+      border: 2px solid var(--cream);
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+    }
+    h1 {
+      margin: 24px 0 0;
+      font-family: var(--font-display);
+      font-size: 158px;
+      line-height: 0.86;
+      font-weight: 400;
+      color: var(--cream);
+    }
+    h1 .coral { color: var(--sunset-coral); }
+    .menu-name {
+      margin: 24px 0 0;
+      width: max-content;
+      padding: 12px 16px;
+      background: var(--sunset-coral);
+      color: var(--cream);
+      font-size: 30px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .bottom {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: end;
+    }
+    .info {
+      margin: 0;
+      padding: 22px;
+      max-width: 560px;
+      background: rgba(23, 19, 15, 0.56);
+      border: 2px solid rgba(255, 244, 223, 0.45);
+      backdrop-filter: blur(3px);
+    }
+    .desc {
+      margin: 0 0 10px;
+      font-size: 23px;
+      line-height: 1.36;
+      font-weight: 850;
+      word-break: keep-all;
+    }
+    .meta {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.35;
+      font-weight: 800;
+      color: rgba(255, 244, 223, 0.9);
+      word-break: keep-all;
+    }
+    .price {
+      width: 224px;
+      height: 224px;
+      border-radius: 999px;
+      border: 10px solid var(--sunset-coral);
+      background: rgba(23, 19, 15, 0.88);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      transform: rotate(5deg);
+    }
+    .price span {
+      display: block;
+      font-size: 18px;
+      font-weight: 900;
+      margin-bottom: 8px;
+      letter-spacing: 0.08em;
+    }
+    .price strong {
+      display: block;
+      font-size: 48px;
+      font-weight: 950;
+      line-height: 0.95;
+      font-variant-numeric: tabular-nums;
+    }
+    @media (max-width: 1120px) {
+      body { padding: 0; background: var(--cream); }
+      .poster { width: 100vw; height: calc(100vw * 1.25); box-shadow: none; }
+      h1 { font-size: 14vw; }
+    }
+  </style>
+</head>
+<body>
+  <main class="poster" aria-label="자몽 선셋 에이드 신메뉴 포스터">
+    <div class="photo-wrap">
+      <img src="./assets/grapefruit-sunset-ade-realistic.png" alt="자몽 선셋 에이드 실사 이미지" />
+    </div>
+    <section class="content">
+      <div>
+        <p class="eyebrow">5월 한정 신메뉴</p>
+        <h1>여름엔,<br><span class="coral">자몽.</span></h1>
+        <p class="menu-name">자몽 선셋 에이드</p>
+      </div>
+      <div></div>
+      <div class="bottom">
+        <div class="info">
+          <p class="desc">생자몽 과즙과 탄산을 섞은 여름 한정 에이드</p>
+          <p class="meta">5.4 - 5.31 · 하루 30잔 · 매장 한정</p>
+        </div>
+        <div class="price" aria-label="가격 6,500원">
+          <div>
+            <span>NEW</span>
+            <strong>6,500</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -41,3 +41,44 @@
 - MyAide changes should land in the class route first, then move to the operational route after review.
 - Meeting recording support should be framed as strategy conversion from user-provided transcript/summary, not as hidden recording or automatic external transmission.
 - Personality analysis copy must remain hypothesis/strategy language, not diagnosis or counseling language.
+
+---
+
+# Work Record — MYAIDE-CLASS-20260504-001
+
+- work_id: `MYAIDE-CLASS-20260504-001`
+- executor: `Codex`
+- source: `user`
+- risk_level: `low`
+- approval_state: `requested by user`
+- scope: 수업용 DESIGN agent 및 디자인 skill 문서 생성
+
+## Changed Files / Resources
+
+- `D:\다온\DAON_AI - 문서\afm-2th-weekday\.claude\agents\수업용\design-agent.md`
+- `D:\다온\DAON_AI - 문서\afm-2th-weekday\.claude\agents\수업용\design-agent-kit\AGENTS.md`
+- `D:\다온\DAON_AI - 문서\afm-2th-weekday\.claude\agents\수업용\design-agent-kit\DESIGN.md`
+- `D:\다온\DAON_AI - 문서\afm-2th-weekday\.claude\agents\수업용\design-agent-kit\RECOMMENDED_SKILLS.md`
+- `D:\다온\DAON_AI - 문서\afm-2th-weekday\.claude\agents\수업용\design-agent-kit\skills\*\SKILL.md`
+- `D:\다온\DAON_AI - 문서\afm-2th-weekday\week-7\MyAide\README.md`
+- `D:\다온\DAON_AI - 문서\afm-2th-weekday\week-7\MyAide\DEV.md`
+- `D:\다온\DAON_AI - 문서\afm-2th-weekday\week-7\MyAide\WORK_RECORD.md`
+
+## Completion Report
+
+- Added a classroom DESIGN agent for the design-system lesson flow.
+- Added a reusable `DESIGN.md` for AFM Classroom visual direction.
+- Added seven category skills: design brief, visual research, design system, single HTML, React/Vite, brand media, and design review.
+- Added external GitHub skill recommendations for each project phase.
+- Checked current OpenAI and Anthropic public guidance for `gpt-image-2` and Claude Design availability.
+
+## Verification Result
+
+- Documentation-only change.
+- Existing `index.html` app was not modified.
+
+## Follow-up Move
+
+- Moved the design agent kit from `week-7\MyAide\design-agent` to `.claude\agents\수업용\design-agent-kit`.
+- Added `.claude\agents\수업용\design-agent.md` as the callable classroom agent.
+- Generalized naming from MyAide Classroom to AFM Classroom so it can be reused across class projects.

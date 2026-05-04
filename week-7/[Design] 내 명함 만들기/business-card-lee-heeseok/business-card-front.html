@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>이희석 명함 앞면</title>
+  <style>
+    :root {
+      --daon-black: #071519;
+      --ink-white: #ffffff;
+      --daon-red: #e30613;
+      --muted: rgba(255, 255, 255, 0.8);
+      --line: rgba(255, 255, 255, 0.22);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: #e9ecef;
+    }
+    body {
+      display: grid;
+      place-items: center;
+      font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Noto Sans KR", system-ui, sans-serif;
+    }
+
+    .card {
+      width: 1050px;
+      height: 630px;
+      position: relative;
+      overflow: hidden;
+      background: var(--daon-black);
+      color: var(--ink-white);
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 28px;
+      border: 1px solid var(--line);
+    }
+
+    .content {
+      position: absolute;
+      inset: 72px 78px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .slogan {
+      margin: 0;
+      font-size: 86px;
+      font-weight: 700;
+      letter-spacing: -0.035em;
+      line-height: 1.08;
+      color: #f7f7f5;
+    }
+    .role {
+      margin-top: 18px;
+      font-size: 34px;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      color: var(--muted);
+    }
+    .point {
+      margin-top: 34px;
+      display: inline-block;
+      font-size: 38px;
+      font-weight: 700;
+      color: var(--daon-red);
+      letter-spacing: -0.02em;
+    }
+
+    .brand-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+    }
+    .name {
+      font-size: 28px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+    .stamp {
+      width: 96px;
+      height: 96px;
+      border: 2px solid var(--daon-red);
+      color: var(--daon-red);
+      display: grid;
+      place-items: center;
+      font-size: 30px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body>
+  <article class="card">
+    <div class="content">
+      <div>
+        <h1 class="slogan">경영에 멋을 담다.</h1>
+        <div class="role">현장을 아는 AI F&amp;B 디렉터</div>
+        <div class="point">AI 접목형 F&amp;B 성장 설계</div>
+      </div>
+      <div class="brand-row">
+        <div class="name">이희석 / Lee Hee Seok</div>
+        <div class="stamp">DAON</div>
+      </div>
+    </div>
+  </article>
+</body>
+</html>

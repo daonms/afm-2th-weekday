@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>에이전트 대화 스냅샷</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #efe8dd;
+      font-family: "Noto Sans KR", sans-serif;
+      color: #1d1b18;
+    }
+
+    .canvas {
+      width: 1400px;
+      min-height: 980px;
+      margin: 0 auto;
+      padding: 54px;
+    }
+
+    h1 {
+      margin: 0 0 28px;
+      font-size: 40px;
+      letter-spacing: -0.04em;
+    }
+
+    .chat {
+      display: grid;
+      gap: 18px;
+    }
+
+    .bubble {
+      max-width: 980px;
+      padding: 22px 26px;
+      border-radius: 22px;
+      line-height: 1.7;
+      font-size: 27px;
+      box-shadow: 0 14px 28px rgba(29, 27, 24, 0.06);
+    }
+
+    .user {
+      margin-left: auto;
+      background: #1d1b18;
+      color: #f8f4eb;
+      border-bottom-right-radius: 8px;
+    }
+
+    .agent {
+      background: #fff;
+      border: 1px solid rgba(29, 27, 24, 0.08);
+      border-bottom-left-radius: 8px;
+    }
+
+    .tag {
+      display: inline-block;
+      margin-bottom: 8px;
+      font-size: 17px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(29, 27, 24, 0.42);
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas">
+    <h1>에이전트 대화 스냅샷</h1>
+    <div class="chat">
+      <div class="bubble user">
+        나는 F&amp;B 기획자이자 디렉터야. 현장 실무를 바탕으로 한 만능 엔터테이먼트 이희석이고, 여기에 AI까지 접목해줘.
+      </div>
+      <div class="bubble agent">
+        <div class="tag">design-agent</div>
+        방향을 `F&amp;B + 운영 + 데이터 + AI`로 잡고, 5초 안에 정체성이 읽히는 명함 구조로 정리하겠습니다.
+      </div>
+      <div class="bubble user">
+        이걸로 위 과제를 진행. design-agent를 사용해서.
+      </div>
+      <div class="bubble agent">
+        <div class="tag">codex</div>
+        명함 정본은 재사용 가능한 HTML/CSS로 만들고, 제출용 이미지까지 함께 준비하겠습니다.
+      </div>
+    </div>
+  </div>
+</body>
+</html>

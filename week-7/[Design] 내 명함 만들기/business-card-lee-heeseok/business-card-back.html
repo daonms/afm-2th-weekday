@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>이희석 명함 뒷면</title>
+  <style>
+    :root {
+      --paper: #ffffff;
+      --ink: #090909;
+      --muted: #5f6063;
+      --line: #242424;
+      --red: #e30613;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: #ececec;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      font-family: "Pretendard", "Noto Sans KR", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    }
+
+    .card {
+      position: relative;
+      width: 1050px;
+      height: 630px;
+      overflow: hidden;
+      background: var(--paper);
+      color: var(--ink);
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border: 1.4px solid var(--line);
+      pointer-events: none;
+    }
+
+    .brand {
+      position: absolute;
+      left: 106px;
+      top: 248px;
+      width: 360px;
+    }
+
+    .brand-logo {
+      font-family: Didot, "Bodoni 72", "Bodoni MT", "Times New Roman", serif;
+      font-size: 104px;
+      line-height: 0.78;
+      font-weight: 500;
+      letter-spacing: 0.025em;
+      color: #000;
+    }
+
+    .brand-sub {
+      margin-top: 17px;
+      padding-left: 28px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 17px;
+      line-height: 1;
+      letter-spacing: 0.44em;
+      color: #000;
+    }
+
+    .info {
+      position: absolute;
+      left: 568px;
+      top: 202px;
+      width: 385px;
+      display: grid;
+      gap: 40px;
+    }
+
+    .identity {
+      display: flex;
+      align-items: baseline;
+      gap: 24px;
+      white-space: nowrap;
+    }
+
+    .name-ko {
+      font-size: 46px;
+      line-height: 1;
+      font-weight: 850;
+      letter-spacing: 0.12em;
+    }
+
+    .name-en {
+      font-size: 25px;
+      line-height: 1;
+      font-weight: 400;
+      letter-spacing: 0.01em;
+      color: #151515;
+    }
+
+    .role {
+      margin-top: 16px;
+      font-size: 18px;
+      line-height: 1;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: -0.01em;
+    }
+
+    .contact {
+      display: grid;
+      gap: 22px;
+      font-size: 31px;
+      line-height: 1;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr);
+      align-items: baseline;
+      gap: 20px;
+    }
+
+    .key {
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      color: #000;
+      text-align: left;
+    }
+
+    .value {
+      color: #111;
+      white-space: nowrap;
+    }
+
+    .qr-area {
+      position: absolute;
+      right: 70px;
+      bottom: 54px;
+      display: flex;
+      align-items: end;
+      gap: 16px;
+    }
+
+    .qr-copy {
+      text-align: right;
+      font-size: 12px;
+      line-height: 1.35;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .qr-copy strong {
+      display: block;
+      color: var(--ink);
+      font-size: 13px;
+      margin-bottom: 3px;
+    }
+
+    .qr {
+      width: 96px;
+      height: 96px;
+      padding: 5px;
+      background: #fff;
+      border: 1px solid rgba(0, 0, 0, 0.18);
+    }
+
+    .qr img {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .red-stamp {
+      position: absolute;
+      right: 84px;
+      top: 80px;
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border: 3px solid var(--red);
+      color: var(--red);
+      font-size: 15px;
+      line-height: 0.9;
+      font-weight: 950;
+      letter-spacing: -0.04em;
+      transform: rotate(-11deg);
+    }
+  </style>
+</head>
+<body>
+  <article class="card" aria-label="이희석 DAON 명함 뒷면">
+    <section class="brand" aria-label="DAON Management Solution">
+      <div class="brand-logo">DAON</div>
+      <div class="brand-sub">MANAGEMENT SOLUTION</div>
+    </section>
+
+    <section class="info">
+      <div>
+        <div class="identity">
+          <div class="name-ko">이희석</div>
+          <div class="name-en">Lee Hee Seok</div>
+        </div>
+        <div class="role">현장을 아는 AI F&amp;B 디렉터</div>
+      </div>
+
+      <div class="contact" aria-label="연락처">
+        <div class="row">
+          <div class="key">M</div>
+          <div class="value">010. 2838. 0589</div>
+        </div>
+        <div class="row">
+          <div class="key">E</div>
+          <div class="value">leepro@daonms.com</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="qr-area">
+      <div class="qr-copy"><strong>Portfolio</strong>Scan QR</div>
+      <div class="qr"><img src="./qr-github.png" alt="포트폴리오 QR"></div>
+    </div>
+
+    <div class="red-stamp" aria-hidden="true">DA<br>ON</div>
+  </article>
+</body>
+</html>
